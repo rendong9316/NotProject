@@ -1,0 +1,171 @@
+欹O鳵&1bjbj118PS覈eS覈ej
+(((((<<<8t\l<cc&<****^ ~頱餬餬餬餬餬餬塭?hT餬-(^^餬((**4c###((*(*頱#頱##N刉\\*01W柢 X,Y0赽3c0cc\Y揾!揾`\\\\揾(V_#餬餬!cc揾
+:瀃寶N0Fisher縹'`R{|hV剉緥婦esign of Fisher Classfication
+10瀃寶顅剉
+f[`N菓(uMatlabz廭Nuck`R^剉孨魚彇:gpematlab(umvnrnd齉pevQ諲韹颯耂matlab-N剉mvnrnd齉pe陙L橯
+宑醕0O媨|GW<PT蠎OS筫頬閣5{|魰粂ce^閣50{|匭粂ce^閣5杽v嫍{筫誰
+宑醕Fisher縹'`$R+R筫誰
+宑醕Bayes砆V{剉曪媷s剉嫍{
+宑醕R{|hV曪媷s剉0O梴筫誰
+颯錘e圗Q0鲖\~W[钀R RdTSbpS0
+
+20瀃寶烻t
+Fisher芉R鶺,g烻t
+俌済(W孨魚zz魰-NNag魐縹齹\$N{|7h,gR_bR{|坃\RTN{|+R7h,gpenc(W鍕魐縹剉USMO誰T蠎
+N剉昩q_剉輣'YYpe龕擽鍕厤菑術N<P0鍿N{|penc剉昩q_龕擽鍕\嶯(b輣'YYpe龕\嶯)鍕<PR購ag魐縹1\g颯齹\$N{|R_0 
+芉RT蠎 EMBED Equation.DSMT4  剉筫T愰b擽齹O$N{|7h,g昩q_剉GW<PKN頬=\颯齹'Y汵O{|匭7h,g剉粂cez^=\颯齹\0購1\/fFisher芉R齉pe剉鶺,g`飴0  EMBED Equation.DSMT4  
+膵鱊昩q_筫T EMBED Equation.DSMT4  剉齉pe  EMBED Equation.DSMT4  
+gsO EMBED Equation.DSMT4  <P剉nx歔Bl諷O EMBED Equation.DSMT4  緩乬'Y<P鰁剉w* EMBED Equation.DSMT4  
+ EMBED Equation.DSMT4  nx歔 EMBED Equation.DSMT4  
+30瀃寶匭筟蔛亯Bl
+1NwNu$N{|孨魚7h,gpenc蟢{|7h,gT10*N;u鶴7h,g剉R^V0$N{|7h,g
+g蜰ck*YR^GW<PT蠎0OS筫頬閣5杺YN0
+ EMBED Equation.DSMT4 EMBED Equation.DSMT4 EMBED Equation.DSMT4 EMBED Equation.DSMT4  
+2橯z廭9hnc1Nu剉孨魚7h,g0O媨|GW<PT蠎孴OS筫頬閣50{|魰粂ce^閣50{|匭粂ce^閣5
+3Q咶isher縹'`$R+R筫誰9hnc2Bl銐gO昩q_筫TW
+(W1-N剉7h,gR^V
+N;u鶴h:ygO昩q_筫T剉魐縹
+嫍{昩q_T剉<PCg
+邁c12Bl鶴剉R{|hV剉T{|曪媷s蔛;`剉s^GW曪媷s
+4T{|7h,g諷10000*N蛻
+Y1.
+40瀃寶觺済
+9hnc瀃寶亯Bl賬鶴鴙sQVh埵Spenc
+
+50觺簨
+鵞瀃寶觺済\O{USR恎孴▼簨
+
+60瀃寶z廭
+
+ 賬鶴Matlab恘z廭颯(u\5鱏W[
+
+瀃寶孨KGW<PZ{|梴誰 
+dk瀃寶亯Bl\頞9e)R(uNS:N慛s^餝孾b0_N颯錘陙z廭孾b
+10瀃寶顅剉
+1宑醕繬HN/f^椦vcwf[`N梴誰
+2宑醕^椦vcwf[`N筫誰-N剉蟸xQ筫誰----KGW<PZ{|梴誰
+20瀃寶烻t
+ 陙馷e圗Q0
+30瀃寶匭筟蔛亯Bl
+ )R(uh1penc孾bNb梽v瀃寶
+橯C-GW<P梴誰v^(u
+Nh坧enccNRag鯪R+RKm諎
+c=2({|+Rpe)R薡Z{|剉GW<Pm1(0)=(1,1,1), m2(0)=(-1,1,-1)
+c=2({|+Rpe)R薡Z{|剉GW<Pm1(0)=(0,0,0), m2(0)=(1,1,-1)0\梍0R剉觺済Na-N觺済詋儚v^銐蕬頬+RS靊韽鉔!kpe剉頬+R0
+c=3({|+Rpe)R薡Z{|剉GW<Pm1(0)=(0,0,0), m2(0)=(1,1,1), m3(0)=(-1,0,2)
+$`bdnpHJfhl>
+斛痖嘀逝府釜弄オ牄獱洜憚wp謐fah}o(ho(h
+io(
+hCJo(h@;h@;o(h@;o(h5'h@;B*o(phh@;B*o(phh!o(ho(ho(h纇hFRB*o(phh*v
+hFRB*o(phhFRo(h*hCJaJo(h*hCJo(hCJaJo(hh*h蜬bo(h%o(h1yo("bpJh
+H
+
+劋WD`劋gdU
+劋WD`劋gdk
+劋WD`劋gdk!
+劋WD`劋gdgd}
+劋WD`劋gd
+劋WD`劋gd@;
+&Fgd纇dゐゐgd纇$a$gdq>
+
+@BDFHLN|~黟麒滟惕麒淞磋鳢桎楄瘨桎噝鑡l桎_鑜j
+h諂hk!EHUhko(h
+iCJ$aJ$o(jMhk!hk!EHUjW湼m
+hk!UVh鬥o(jh諂hk!EHUj;湼m
+hk!UVho(jhk!hk!EHUj湼m
+hk!UVjh諂hk!EHUj6湼m
+hk!UVhk!jhk!Uh}h}h}h}o(%
+
+B
+D
+F
+H
+N
+P
+~
+
+皲茏妥茳碌堙煕悆焴煕sf焌ZPZPh*hCJo(
+hCJo(ho(jbhUhUEHUj脺竚
+hUUVh桰Wo(jh諂hUEHUj販竚
+hUUVhUjhUUhkB*QJaJ$o(phjhk!hk!EHUj獪竚
+hk!UVhk!hk5乷(hko(jhk!Uj@h諂hk!EHUj啘竚
+hk!UVhk!
+
+>@BDFHJLvxz|~躐斛扃扃爝垤廴贿爝垤郇涍爝垤蹐{哽咣燠h$j釢竚
+h(8CJKHUVaJo(j>%hA<zhUEHU$j澑m
+hUCJKHUVaJo(j!h4I\hUEHU$j澑m
+hUCJKHUVaJo(j>hA<zhUEHU$j鳒竚
+hUCJKHUVaJo(h!0jh!0Uhwko(h!0o(h(8hYo(hxo('
+V HVvxgd/Eidゐゐgd纇
+;WD`;gdU
+&Fgd%I
+&Fgd(|
+;WD`;gd!
+凥WD`凥gdVZ
+;WD`;gd纇
+TV\z &6:HPVbvx蜿遴壑坂燕遨糖陆赋畅碂槑亂煒lg]gh纇h/EiCJo(h/Eio(h覹6h/EiB*o(phh!0h/Eio(hjrh/EiB*o(phh/EiB*o(ph
+h/EiCJo(h<elh/EiCJo(h>o(hUo(h)>o(h@o(hvRo(hD;o(hao(h(|o(h!o(hao(h+o(h閟>o(h!0o(jh!0Uj(h4I\h(8EHU!:<@HJjnpv&H&箢殄傩倌倏撼潣簶簶懇噦簯硲憓xtxtxtxotxmxUh45o(h45h8o(h+<o(ho(h纇h0CJo(
+h0CJo(h& o(h*h0CJaJo(h*h0CJo(
+h纇CJo(h0o(h+o(htuhtuCJaJo(h纇CJaJo(htuhDCJaJo(hNhTso(h/Eio(hnIh/EiB*o(ph*<JlNN&&.'$刧劍VDWD^刧`劍a$gd=$l刧劍VDWD^刧`劍gd8
+&Fgd8刪^刪gd8gd8gd0
+剝WD&`剝gd& 則^則gd& dゐゐgd纇gd/Ei$a$gd纇c=2({|+Rpe)R薡Z{|剉GW<Pm1(0)=(-0.1,0,0.1), m2(0)=(0,-0.1,0.1), m3(0)=(-0.1,-0.1,0.1)0\梍0R剉觺済NaNc-N觺済詋儚v^銐蕬頬+RS靊韽鉔!kpe剉頬+R0
+
+-h10(u嶯C-GW<P梴誰瀃寶剉penc(X10X20X3/f7h,g剉yr乢)
+7h,g12345678910X1-7.82-6.624.366.72-8.64-6.874.476.73-7.71-6.91X2-4.583.16-2.190.883.060.57-2.62-2.012.34-0.49X3-3.972.712.092.803.51-5.455.764.17-6.33-5.687h,g11121314151617181920X16.186.72-6.25-6.958.096.81-5.19-6.384.086.27X22.81-0.93-0.26-1.220.200.184.24-1.741.300.93X35.82-4.040.511.132.25-4.154.041.435.33-2.78
+40瀃寶觺済
+
+50觺簨
+
+60瀃寶z廭
+
+D朥_0膵鱊h芉
+h4 
+N:g瀃寶膵鱊h芉
+瀃寶y橆v鶺,g亯Bl膵鱊h芉b閪詋婳(%)O纘o倉YT<h
+NT<h瀃寶1
+R{|hV緥齹Y菓(uMATLABz 瀃皊Fisher縹'`R{|hV緥孾bwQSONw菑z鵞Nw觺済蹚LR恎gTb_b
+N:g瀃寶bJT0/e慸誯N亯Bl41.瀃寶菑z`^w0飝乬;N≧;
+1.瀃寶菑z`^詋儚w0飝乬;N≧1.瀃寶菑z`^儚w 
+1.瀃寶菑z`^
+N飠ck0
+Nu悎[獈媉
+502.觺済寶6epencYt芉nx膲0觺済Tt0觺簨cknx2.觺済寶6e瀃寶pencYt芉nx0觺済Tt0觺簨cknx2.觺済寶6e瀃寶pencYt儚芉nx0觺済鶺,gTt0觺簨鶺,gcknx2.觺済寶6eg'Y蠎曪*g緩0R瀃寶顅剉3.瀃寶bJT<h_膲0匭筟EQ瀃0R恎駇;R0翂銐靣0R03.瀃寶bJT<h_膲0匭筟孾te0R恎cknx0g*N篘翂銐03.瀃寶bJT<h_儚膲匭筟儚孾teR恎鶺,gcknx03.瀃寶bJT<h_
+N膲匭筟
+N孾te0瀃寶2
+Z{|梴誰齹Y菓(uMATLABz 瀃皊KGW<PZ{|梴誰孾bwQSONw菑z鵞Nw觺済蹚LR恎gTb_b
+N:g瀃寶bJT0/e慸誯N亯Bl41.瀃寶菑z`^w0飝乬;N≧;
+1.瀃寶菑z`^詋儚w0飝乬;N≧1.瀃寶菑z`^儚w 
+1.瀃寶菑z`^
+N飠ck0
+Nu悎[獈媉
+502.觺済寶6epencYt芉nx膲0觺済Tt0觺簨cknx2.觺済寶6e瀃寶pencYt芉nx0觺済Tt0觺簨cknx2.觺済寶6e瀃寶pencYt儚芉nx0觺済鶺,gTt0觺簨鶺,gcknx2.觺済寶6eg'Y蠎曪*g緩0R瀃寶顅剉3.瀃寶bJT<h_膲0匭筟EQ瀃0R恎駇;R0翂銐靣0R03.瀃寶bJT<h_膲0匭筟孾te0R恎cknx0g*N篘翂銐03.瀃寶bJT<h_儚膲匭筟儚孾teR恎鶺,gcknx03.瀃寶bJT<h_
+N膲匭筟
+N孾te0
+
+H&J&n&p&r&&&&&''','.'^'`'b'f'z'|'''''L(N(P(T(((((((((()) )$)L)N)))))))****(***v*x*黩鏖菰菔率荻獱稏悥獱稏獱稏悥悥稏丢牰枑柂牰枑柂牰枑柂
+h(8aJhqh8aJo(hqh85乤Jhqh8CJaJo(hqh85乤Jo(hjRh85hjRh85乷(h=$l5乤Jo(hjRh85乤Jo(h85乤Jo(h45o(h8o(h458.'4'8'<'@'D'H'L'P'T'X'^'`'f'r'~'''''''''''''Ff/Ff,$Ifgd@''(
+(((*(6(@(L(N(T(`(j(t(~((((((((((((((Ffl5Ff2$Ifgd@'((((((((((((()
+)))))$).)8)D)P)Z)d)p)|)FfF;FfY8$Ifgd@'|))))))))))))))****"*,*6*@*L*V*`*j*v*FfAFf/>$Ifgd@'v*x*z*************$
+dp$G$IfXD2a$gd=$剎剤dpG$XD2^剎`剤鷄$gdn剎剤dpG$XD2^剎`剤鷊dngd/Eigd纇dゐゐgd纇gd8FfDx*z**************************+++ +(+痖阚疸垩吐定稜櫊憟~ththt^~t~^PhxhnCJ\乤Jo(h蓗Jhn5丆Jh蓗Jhn5乤Jo(h蓗Jhn5乤Jh蓗Jhn\乤Jhn\乤Jo(h蓗Jhno(hhnhhno(h蓗Jhn5丆JPJo(h蓗Jhn5丆JPJhn5丆JPJo(h
+gh纇h0CJo(h纇h纇o(
+h0CJ
+h0CJo(h<elh0CJo(h8o(**+G1
+dp$G$IfXD2gd=kdYF$$If杔4謀lY9!%`ln
+t0%644
+lalp(ytn+++++++ +*+6++++,.,0,X,Z,`,b,d,Ff婯
+d俐$G$Ifgd=
+dp$G$IfXD2gd=FfaH$
+dp$G$IfXD2a$gd=(+*+4+V+p++++++++,,*,.,0,>,V,X,Z,^,`,b,d,f,t,,,,,,--- -<->-@-B-D-F-T-|--------.筱浙阵钦蟮钦钦笄悝鬅晪浙钦钦铅悝闱闱倠浙钦钦笄泱倾hn\乤Jo(h蓗Jhn5丆Jh蓗Jhn\乤J
+hn\乤JhxhnCJOJQJaJ#hxhnB*CJ\乤Jo(phhxhn5丆JaJo(hxhnCJ\乤Jo(hxhnCJOJQJaJo(hxhnCJ\乤J3d,f,,,->-@-B-D-F-~---...$....Ff鏠
+dp$G$IfXD2gd=Ff筃$
+dp$G$IfXD2a$gd=
+d俐$G$Ifgd=$$7$8$H$Ifa$gd=..... .".$.,.N.\.........
+////*/B/D/F/J/L/N/P/R/`/////////0蜷哐妊极勋鸭蜓紮蜓蜓娂騴娂si哐z蜓蜓驃z妟h蓗Jhn\乤J
+hn\乤JhxhnCJOJQJaJo(hxhnCJOJQJaJ#hxhnB*CJ\乤Jo(ph hxhnB*CJaJo(phhxhnCJ\乤JhnCJ\乤JhxhnCJ\乤Jo(h蓗Jhn5丆Jhn\乤Jo(hxhn5丆JaJo()....//D/F/L/N/P/R////*0,0.000FfCX$$7$8$H$Ifa$gd=
+dp$G$IfXD2gd=FfU$
+dp$G$IfXD2a$gd=
+d俐$G$Ifgd=0(0*0,0.00020@0h0x000000011111
+11111111$1&1镝匚里崂崂瘁锎犸嶝围煑摋摋摋摕h<jh<Uhnhno(hn5丆JOJPJQJhxhnCJ\乤JhxhnCJ\乤Jo(h蓗Jhn5丆Jhn\乤Jo(hxhn5丆JaJo(hxhnCJOJQJaJo(0020j0001111
+1111111 1"1$1&1gd/EidpXD2YD2gdnFfq[$
+dp$G$IfXD2a$gd=
+d俐$G$Ifgd=$$7$8$H$Ifa$gd=6182P:p祍皞. 捌A!皀"皀#恘$惂%癝班惄
