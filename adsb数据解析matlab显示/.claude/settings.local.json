@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp \"D:\\\\temp_track_heilongjiang.mat\" \"D:\\\\Desktop\\\\adsb数据解析matlab显示\\\\track_20251210175946_heilongjiang.mat\")",
+      "Bash(rm \"D:\\\\temp_track.mat\" \"D:\\\\temp_track_heilongjiang.mat\" \"D:\\\\temp_move_hlj.m\")",
+      "Bash(rm \"D:\\\\Desktop\\\\adsb数据解析matlab显示\\\\move_to_heilongjiang.m\" \"D:\\\\Desktop\\\\adsb数据解析matlab显示\\\\move_to_heilongjiang_v3.py\")",
+      "Bash(rm \"D:\\\\temp_track.mat\" \"D:\\\\temp_track_heilongjiang.mat\")",
+      "Bash(rm \"D:\\\\Desktop\\\\adsb数据解析matlab显示\\\\move_to_heilongjiang.m\" \"D:\\\\Desktop\\\\adsb数据解析matlab显示\\\\move_to_heilongjiang_full.m\" \"D:\\\\Desktop\\\\adsb数据解析matlab显示\\\\move_to_heilongjiang_v3.py\")"
+    ]
+  }
+}
