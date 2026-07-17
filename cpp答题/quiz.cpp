@@ -43,6 +43,8 @@ struct Question {
     std::wstring opts[4];
     std::vector<int> answers;
     std::wstring exp;
+    std::wstring fillAnswer;
+    std::vector<std::wstring> fillAlts;
 };
 
 struct QuestionBank {
@@ -55,7 +57,7 @@ struct QuestionBank {
 };
 
 enum Page { PAGE_HOME, PAGE_QUIZ, PAGE_RESULT };
-enum QuizMode { MODE_SINGLE, MODE_MULTIPLE };
+enum QuizMode { MODE_SINGLE, MODE_MULTIPLE, MODE_FILL };
 
 const int QUESTION_TIME_LIMIT_SECONDS = 90;
 
@@ -75,6 +77,7 @@ struct QuizState {
     std::vector<bool> used[3];
     int curQIdx = -1;
     bool selected[4] = {false, false, false, false};
+    std::wstring userFill;
     int settledSeconds = 0;
     std::chrono::system_clock::time_point quizStart;
     std::chrono::system_clock::time_point quizEnd;
@@ -93,16 +96,19 @@ struct QuizState {
         consecWrong[0] = consecWrong[1] = consecWrong[2] = 0;
         curQIdx = -1;
         selected[0] = selected[1] = selected[2] = selected[3] = false;
+        userFill.clear();
         settledSeconds = 0;
         questionSeconds.clear();
         for (int i = 0; i < 3; ++i) used[i].assign(bank.pool(i).size(), false);
     }
 };
 
-QuestionBank g_banks[2];
+QuestionBank g_banks[3];
 QuizState g_state;
 
 HWND g_hwndMain = nullptr;
+HWND g_hwndEdit = nullptr;
+HFONT g_hfontEdit = nullptr;
 int g_clientW = 2440, g_clientH = 1760;
 int g_w = 2440, g_h = 1760;
 HDC g_hdcMem = nullptr;
@@ -297,6 +303,7 @@ bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& ban
         Question q;
         bool hasAnswer = false;
         bool hasFourOptions = false;
+        bool hasFillAnswer = false;
         while (!p.eat('}') && p.i < text.size()) {
             std::string key = p.str();
             p.eat(':');
@@ -316,6 +323,13 @@ bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& ban
                 q.answers = p.intArray();
                 hasAnswer = true;
             }
+            else if (key == "fill_answer") {
+                q.fillAnswer = Utf8ToWide(p.str());
+                hasFillAnswer = !q.fillAnswer.empty();
+            }
+            else if (key == "fill_alternatives" || key == "alternatives") {
+                q.fillAlts = p.stringArray();
+            }
             else if (key == "explanation") q.exp = Utf8ToWide(p.str());
             else p.skipValue();
             p.eat(',');
@@ -327,7 +341,13 @@ bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& ban
         bool validOptions = hasFourOptions;
         for (int k = 0; k < 4; ++k) validOptions = validOptions && !q.opts[k].empty();
         bool validCount = mode == MODE_SINGLE ? q.answers.size() == 1 : q.answers.size() >= 2;
-        if (q.q.empty() || q.difficulty < 0 || !validOptions || !validAnswers || !validCount) {
+        bool valid;
+        if (mode == MODE_FILL) {
+            valid = !q.q.empty() && q.difficulty >= 0 && hasFillAnswer;
+        } else {
+            valid = !q.q.empty() && q.difficulty >= 0 && validOptions && validAnswers && validCount;
+        }
+        if (!valid) {
             error = L"题库文件中存在无效题目：" + path + L"（题目 ID " + IntToWStr(q.id) + L"）。";
             return false;
         }
@@ -345,6 +365,148 @@ bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& ban
     }
     bank = loaded;
     return true;
+}
+
+void UpdateLayoutSize() {
+    g_w = std::max(720, (int)(g_clientW / g_fontScale));
+    g_h = std::max(560, (int)(g_clientH / g_fontScale));
+}
+
+int ScaleCoord(int v) {
+    return (int)(v * g_fontScale + 0.5f);
+}
+
+void ResizeBackBuffer(HWND hwnd) {
+    if (g_hdcMem) {
+        DeleteObject(g_hbmMem);
+        DeleteDC(g_hdcMem);
+        g_hdcMem = nullptr;
+        g_hbmMem = nullptr;
+    }
+    InvalidateRect(hwnd, nullptr, FALSE);
+}
+
+bool Hit(int mx, int my, int x, int y, int w, int h) {
+    return mx >= x && mx <= x + w && my >= y && my <= y + h;
+}
+
+void AdjustFont(float delta) {
+    g_fontScale += delta;
+    if (g_fontScale < 1.0f) g_fontScale = 1.0f;
+    if (g_fontScale > 3.0f) g_fontScale = 3.0f;
+    UpdateLayoutSize();
+    ResizeBackBuffer(g_hwndMain);
+}
+
+struct UIRect { int x, y, w, h; };
+
+UIRect HomeButtonRect(int idx) {
+    int cw = std::min(g_w - 80, 880);
+    int cx = (g_w - cw) / 2, cy = 110;
+    int btnW = 210, btnGap = 30;
+    int totalBtnW = btnW * 3 + btnGap * 2;
+    int btnStartX = cx + (cw - totalBtnW) / 2;
+    int btnY = cy + 408;
+    return {btnStartX + idx * (btnW + btnGap), btnY, btnW, 56};
+}
+
+UIRect ReturnHomeButtonRect() {
+    return {g_w - 300, 14, 138, 36};
+}
+
+UIRect FillEditRect() {
+    int cardX = 38, cardY = 236, cardW = g_w - 76;
+    int boxY = cardY + 110;
+    return {cardX + 34, boxY, cardW - 68, 56};
+}
+
+UIRect ConfirmButtonRect() {
+    return {g_w / 2 - 116, g_h - 78, 232, 54};
+}
+
+std::wstring TrimString(const std::wstring& s) {
+    size_t a = s.find_first_not_of(L" \t\r\n");
+    size_t b = s.find_last_not_of(L" \t\r\n");
+    if (a == std::wstring::npos) return L"";
+    return s.substr(a, b - a + 1);
+}
+
+std::wstring LowerString(const std::wstring& s) {
+    std::wstring out = s;
+    for (size_t i = 0; i < out.size(); ++i) out[i] = (wchar_t)std::towlower(out[i]);
+    return out;
+}
+
+bool CheckFillAnswer(const std::wstring& user, const Question& q) {
+    std::wstring u = LowerString(TrimString(user));
+    if (u.empty()) return false;
+    if (u == LowerString(TrimString(q.fillAnswer))) return true;
+    for (const auto& alt : q.fillAlts) {
+        if (u == LowerString(TrimString(alt))) return true;
+    }
+    return false;
+}
+
+void ApplyEditFont() {
+    if (!g_hwndEdit) return;
+    int px = (int)(18 * g_fontScale + 0.5f);
+    if (g_hfontEdit) DeleteObject(g_hfontEdit);
+    g_hfontEdit = CreateFontW(-px, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                              DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                              CLEARTYPE_QUALITY, FF_DONTCARE, L"Microsoft YaHei");
+    SendMessageW(g_hwndEdit, WM_SETFONT, (WPARAM)g_hfontEdit, TRUE);
+}
+
+void EnsureEditControl(HWND parent) {
+    if (g_hwndEdit) return;
+    g_hwndEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+                                 WS_CHILD | ES_AUTOHSCROLL,
+                                 0, 0, 100, 30, parent, nullptr,
+                                 GetModuleHandleW(nullptr), nullptr);
+    ApplyEditFont();
+}
+
+void UpdateEditForState() {
+    if (!g_hwndEdit) return;
+    bool shouldShow = g_state.page == PAGE_QUIZ
+                      && g_state.mode == MODE_FILL
+                      && !g_state.answered;
+    if (shouldShow) {
+        UIRect r = FillEditRect();
+        SetWindowPos(g_hwndEdit, HWND_TOP,
+                     ScaleCoord(r.x), ScaleCoord(r.y),
+                     ScaleCoord(r.w), ScaleCoord(r.h),
+                     SWP_SHOWWINDOW | SWP_NOACTIVATE);
+        if (g_state.userFill.empty()) {
+            SetWindowTextW(g_hwndEdit, L"");
+        } else {
+            SetWindowTextW(g_hwndEdit, g_state.userFill.c_str());
+        }
+    } else {
+        ShowWindow(g_hwndEdit, SW_HIDE);
+    }
+}
+
+void DestroyEditControl() {
+    if (g_hwndEdit) {
+        DestroyWindow(g_hwndEdit);
+        g_hwndEdit = nullptr;
+    }
+    if (g_hfontEdit) {
+        DeleteObject(g_hfontEdit);
+        g_hfontEdit = nullptr;
+    }
+}
+
+void ReadEditIntoState() {
+    if (!g_hwndEdit) return;
+    int len = GetWindowTextLengthW(g_hwndEdit);
+    if (len <= 0) { g_state.userFill.clear(); return; }
+    std::wstring buf(len + 1, L'\0');
+    int got = GetWindowTextW(g_hwndEdit, &buf[0], len + 1);
+    if (got < 0) got = 0;
+    buf.resize(got);
+    g_state.userFill = buf;
 }
 
 Color GdiColor(COLORREF cr) { return Color(255, GetRValue(cr), GetGValue(cr), GetBValue(cr)); }
@@ -456,7 +618,7 @@ void DrawHomePage(Graphics& g) {
     DrawHeader(g, L"请选择答题模式");
     DrawFontControls(g);
 
-    int cw = std::min(g_w - 80, 800), ch = 500;
+    int cw = std::min(g_w - 80, 880), ch = 540;
     int cx = (g_w - cw) / 2, cy = 110;
     DrawCard(g, (float)cx, (float)cy, (float)cw, (float)ch, 24);
 
@@ -467,29 +629,41 @@ void DrawHomePage(Graphics& g) {
     TextCenter(g, L"法律知识答题", title, GdiColor(CLR_NAVY), cx, cy + 28, cw, 42);
     TextCenter(g, L"每轮10题，系统根据答题情况动态调整难度。", sub, GdiColor(CLR_MUTED), cx + 30, cy + 76, cw - 60, 30);
 
-    int bx = cx + 50, by = cy + 126, bw = cw - 100, bh = 236;
+    int bx = cx + 50, by = cy + 126, bw = cw - 100, bh = 252;
     FillRoundRect(g, (float)bx, (float)by, (float)bw, (float)bh, 18, GdiColor(CLR_SOFT));
     TextLeft(g, L"答题规则", h, GdiColor(CLR_NAVY), bx + 28, by + 20, 180, 28);
     std::wstring lines[] = {
-        L"1. 单选题只能选择一个答案；多选题可选择多个答案。",
+        L"1. 单选题只能选择一个答案；多选题可选择多个答案；填空题请直接输入答案。",
         L"2. 多选题须与标准答案完全一致，漏选或多选均不得分。",
-        L"3. 每题限时1分30秒；超时后本题锁定并按错误结算。",
-        L"4. 超时不会自动跳题，请点击“下一题”继续作答。",
-        L"5. 右上角 A- / A+ 或 Ctrl + 鼠标滚轮可缩放界面。"
+        L"3. 填空题答案不区分大小写与首尾空格，与标准答案或备选答案一致即判正确。",
+        L"4. 每题限时1分30秒；超时后本题锁定并按错误结算。",
+        L"5. 超时不会自动跳题，请点击“下一题”继续作答。",
+        L"6. 答题过程中可点击右上角“返回主页”按钮放弃本次答题，需二次确认。"
     };
-    for (int i = 0; i < 5; ++i) TextLeft(g, lines[i], body, GdiColor(CLR_INK), bx + 30, by + 60 + i * 32, bw - 60, 27);
+    for (int i = 0; i < 6; ++i) TextLeft(g, lines[i], body, GdiColor(CLR_INK), bx + 30, by + 60 + i * 32, bw - 60, 27);
 
-    DrawButton(g, cx + cw / 2 - 240, cy + 400, 210, 56, L"单选题模式", CLR_BLUE, RGB(30, 64, 175));
-    DrawButton(g, cx + cw / 2 + 30, cy + 400, 210, 56, L"多选题模式", CLR_NAVY, CLR_NAVY_2);
+    int btnW = 210, btnGap = 30;
+    int totalBtnW = btnW * 3 + btnGap * 2;
+    int btnStartX = cx + (cw - totalBtnW) / 2;
+    int btnY = cy + 408;
+    DrawButton(g, btnStartX, btnY, btnW, 56, L"单选题模式", CLR_BLUE, RGB(30, 64, 175));
+    DrawButton(g, btnStartX + (btnW + btnGap), btnY, btnW, 56, L"多选题模式", CLR_NAVY, CLR_NAVY_2);
+    DrawButton(g, btnStartX + (btnW + btnGap) * 2, btnY, btnW, 56, L"填空题模式", CLR_GREEN, RGB(0, 112, 56));
     delete title; delete sub; delete h; delete body;
 }
 
 QuestionBank& ActiveBank() {
-    return g_banks[g_state.mode == MODE_MULTIPLE ? 1 : 0];
+    if (g_state.mode == MODE_MULTIPLE) return g_banks[1];
+    if (g_state.mode == MODE_FILL) return g_banks[2];
+    return g_banks[0];
 }
 
 std::wstring ModeName() {
-    return g_state.mode == MODE_MULTIPLE ? L"多选题模式" : L"单选题模式";
+    switch (g_state.mode) {
+        case MODE_MULTIPLE: return L"多选题模式";
+        case MODE_FILL: return L"填空题模式";
+        default: return L"单选题模式";
+    }
 }
 
 const Question* CurrentQuestion() {
@@ -552,6 +726,7 @@ bool StartQuestion(int diff) {
     g_state.curQIdx = idx;
     g_state.used[resolved][idx] = true;
     g_state.selected[0] = g_state.selected[1] = g_state.selected[2] = g_state.selected[3] = false;
+    g_state.userFill.clear();
     g_state.answered = false;
     g_state.timedOut = false;
     g_state.settledSeconds = 0;
@@ -607,7 +782,13 @@ void SettleCurrentQuestion(bool timeout) {
     g_state.settledSeconds = seconds;
     g_state.answered = true;
     g_state.timedOut = timeout;
-    bool ok = !timeout && SelectedAnswers() == question->answers;
+    bool ok;
+    if (g_state.mode == MODE_FILL) {
+        if (!timeout) ReadEditIntoState();
+        ok = !timeout && CheckFillAnswer(g_state.userFill, *question);
+    } else {
+        ok = !timeout && SelectedAnswers() == question->answers;
+    }
     g_state.lastCorrect = ok;
     if (ok) {
         ++g_state.correct;
@@ -648,39 +829,72 @@ void DrawQuizPage(Graphics& g) {
     Font* qFont = MakeFont(18, FontStyleBold);
     Font* optFont = MakeFont(16);
     TextLeft(g, IntToWStr(g_state.qNum) + L". " + q->q, qFont, GdiColor(CLR_INK), cardX + 34, cardY + 22, cardW - 68, 58);
-    TextLeft(g, g_state.mode == MODE_MULTIPLE ? L"请选择所有正确答案后确认" : L"请选择一个正确答案后确认", meta2, GdiColor(CLR_MUTED), cardX + 34, cardY + 78, cardW - 68, 24);
 
-    int optY = cardY + 110;
-    for (int i = 0; i < 4; ++i) {
-        int ox = cardX + 34, oy = optY + i * 64, ow = cardW - 68, oh = 52;
-        bool selected = g_state.selected[i];
-        bool correctAnswer = std::find(q->answers.begin(), q->answers.end(), i) != q->answers.end();
-        bool showCorrect = g_state.answered && correctAnswer;
-        bool showWrong = g_state.answered && selected && !correctAnswer;
-        Color border = selected ? GdiColor(CLR_BLUE) : GdiColor(CLR_LINE);
-        Color fill = selected ? Color(255, 224, 238, 255) : Color(255, 255, 255, 255);
-        if (showWrong) { fill = Color(255, 254, 226, 226); border = GdiColor(CLR_RED); }
-        if (showCorrect) { fill = Color(255, 231, 248, 238); border = GdiColor(CLR_GREEN); }
-        FillRoundRectBorder(g, (float)ox, (float)oy, (float)ow, (float)oh, 14, fill, border, selected || showCorrect || showWrong ? 2.4f : 1.5f);
-        wchar_t letter[2] = {(wchar_t)(L'A' + i), L'\0'};
-        COLORREF letterColor = showCorrect ? CLR_GREEN : showWrong ? CLR_RED : selected ? CLR_BLUE : CLR_NAVY;
-        FillRoundRect(g, (float)(ox + 14), (float)(oy + 10), 32, 32, 16, GdiColor(letterColor));
-        Font* lf = MakeFont(13, FontStyleBold);
-        TextCenter(g, letter, lf, Color(255, 255, 255, 255), ox + 14, oy + 10, 32, 32);
-        TextLeft(g, q->opts[i].size() > 2 ? q->opts[i].substr(2) : q->opts[i], optFont, GdiColor(CLR_INK), ox + 62, oy + 12, ow - 78, 32);
-        delete lf;
+    UIRect backRect = ReturnHomeButtonRect();
+    DrawButton(g, backRect.x, backRect.y, backRect.w, backRect.h, L"返回主页", CLR_RED, RGB(160, 30, 30), true);
+
+    if (g_state.mode == MODE_FILL) {
+        TextLeft(g, L"请在下方输入框中填写答案后确认（不区分大小写与首尾空格）", meta2, GdiColor(CLR_MUTED), cardX + 34, cardY + 78, cardW - 68, 24);
+
+        UIRect editRect = FillEditRect();
+        if (g_state.answered) {
+            bool ok = g_state.lastCorrect;
+            Color fill = ok ? Color(255, 231, 248, 238) : Color(255, 254, 226, 226);
+            Color border = ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED);
+            FillRoundRectBorder(g, (float)editRect.x, (float)editRect.y, (float)editRect.w, (float)editRect.h, 14, fill, border, 2.4f);
+            std::wstring shown = g_state.userFill.empty() ? L"（未作答）" : g_state.userFill;
+            TextLeft(g, L"你的答案：" + shown, optFont, ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), editRect.x + 18, editRect.y + 16, editRect.w - 36, 28);
+        }
+
+        if (g_state.answered) {
+            int fy = editRect.y + editRect.h + 14;
+            bool ok = g_state.lastCorrect;
+            FillRoundRectBorder(g, (float)(cardX + 34), (float)fy, (float)(cardW - 68), 82, 14, ok ? Color(255, 231, 248, 238) : Color(255, 254, 226, 226), ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), 2.0f);
+            std::wstring fb = ok ? L"回答正确。" : (g_state.timedOut ? L"答题超时，本题按错误结算。正确答案：" + q->fillAnswer + L"。"
+                                                                       : L"回答错误，正确答案：" + q->fillAnswer + L"。");
+            TextLeft(g, fb, meta, ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), cardX + 54, fy + 12, cardW - 108, 26);
+            if (!q->exp.empty()) TextLeft(g, q->exp, meta2, GdiColor(CLR_INK), cardX + 54, fy + 44, cardW - 108, 30);
+        }
+    } else {
+        TextLeft(g, g_state.mode == MODE_MULTIPLE ? L"请选择所有正确答案后确认" : L"请选择一个正确答案后确认", meta2, GdiColor(CLR_MUTED), cardX + 34, cardY + 78, cardW - 68, 24);
+
+        int optY = cardY + 110;
+        for (int i = 0; i < 4; ++i) {
+            int ox = cardX + 34, oy = optY + i * 64, ow = cardW - 68, oh = 52;
+            bool selected = g_state.selected[i];
+            bool correctAnswer = std::find(q->answers.begin(), q->answers.end(), i) != q->answers.end();
+            bool showCorrect = g_state.answered && correctAnswer;
+            bool showWrong = g_state.answered && selected && !correctAnswer;
+            Color border = selected ? GdiColor(CLR_BLUE) : GdiColor(CLR_LINE);
+            Color fill = selected ? Color(255, 224, 238, 255) : Color(255, 255, 255, 255);
+            if (showWrong) { fill = Color(255, 254, 226, 226); border = GdiColor(CLR_RED); }
+            if (showCorrect) { fill = Color(255, 231, 248, 238); border = GdiColor(CLR_GREEN); }
+            FillRoundRectBorder(g, (float)ox, (float)oy, (float)ow, (float)oh, 14, fill, border, selected || showCorrect || showWrong ? 2.4f : 1.5f);
+            wchar_t letter[2] = {(wchar_t)(L'A' + i), L'\0'};
+            COLORREF letterColor = showCorrect ? CLR_GREEN : showWrong ? CLR_RED : selected ? CLR_BLUE : CLR_NAVY;
+            FillRoundRect(g, (float)(ox + 14), (float)(oy + 10), 32, 32, 16, GdiColor(letterColor));
+            Font* lf = MakeFont(13, FontStyleBold);
+            TextCenter(g, letter, lf, Color(255, 255, 255, 255), ox + 14, oy + 10, 32, 32);
+            TextLeft(g, q->opts[i].size() > 2 ? q->opts[i].substr(2) : q->opts[i], optFont, GdiColor(CLR_INK), ox + 62, oy + 12, ow - 78, 32);
+            delete lf;
+        }
+
+        if (g_state.answered) {
+            int fy = optY + 4 * 64 + 10;
+            bool ok = g_state.lastCorrect;
+            FillRoundRectBorder(g, (float)(cardX + 34), (float)fy, (float)(cardW - 68), 82, 14, ok ? Color(255, 231, 248, 238) : Color(255, 254, 226, 226), ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), 2.0f);
+            std::wstring fb = ok ? L"回答正确。" : (g_state.timedOut ? L"答题超时，本题按错误结算。正确答案：" : L"回答错误，正确答案：") + AnswerLetters(*q) + L"。";
+            TextLeft(g, fb, meta, ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), cardX + 54, fy + 12, cardW - 108, 26);
+            if (!q->exp.empty()) TextLeft(g, q->exp, meta2, GdiColor(CLR_INK), cardX + 54, fy + 44, cardW - 108, 30);
+        }
     }
 
-    if (g_state.answered) {
-        int fy = optY + 4 * 64 + 10;
-        bool ok = g_state.lastCorrect;
-        FillRoundRectBorder(g, (float)(cardX + 34), (float)fy, (float)(cardW - 68), 82, 14, ok ? Color(255, 231, 248, 238) : Color(255, 254, 226, 226), ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), 2.0f);
-        std::wstring fb = ok ? L"回答正确。" : (g_state.timedOut ? L"答题超时，本题按错误结算。正确答案：" : L"回答错误，正确答案：") + AnswerLetters(*q) + L"。";
-        TextLeft(g, fb, meta, ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), cardX + 54, fy + 12, cardW - 108, 26);
-        if (!q->exp.empty()) TextLeft(g, q->exp, meta2, GdiColor(CLR_INK), cardX + 54, fy + 44, cardW - 108, 30);
-    }
-
-    DrawButton(g, g_w / 2 - 116, g_h - 78, 232, 54, g_state.answered && g_state.qNum >= g_state.total ? L"提交结果" : (g_state.answered ? L"下一题" : L"确认答案"), g_state.answered && g_state.qNum >= g_state.total ? CLR_GREEN : CLR_BLUE, g_state.answered && g_state.qNum >= g_state.total ? RGB(0, 112, 56) : RGB(0, 69, 170));
+    bool finalQ = g_state.answered && g_state.qNum >= g_state.total;
+    COLORREF cBtn = finalQ ? CLR_GREEN : CLR_BLUE;
+    COLORREF cBtn2 = finalQ ? RGB(0, 112, 56) : RGB(0, 69, 170);
+    const wchar_t* btnText = finalQ ? L"提交结果" : (g_state.answered ? L"下一题" : L"确认答案");
+    UIRect confirmRect = ConfirmButtonRect();
+    DrawButton(g, confirmRect.x, confirmRect.y, confirmRect.w, confirmRect.h, btnText, cBtn, cBtn2);
 
     delete meta; delete meta2; delete qFont; delete optFont;
 }
@@ -725,40 +939,11 @@ void DrawResultPage(Graphics& g) {
     delete title; delete scoreFont; delete stat; delete body;
 }
 
-void UpdateLayoutSize() {
-    g_w = std::max(720, (int)(g_clientW / g_fontScale));
-    g_h = std::max(560, (int)(g_clientH / g_fontScale));
-}
-
-int ScaleCoord(int v) {
-    return (int)(v * g_fontScale + 0.5f);
-}
-
-void ResizeBackBuffer(HWND hwnd) {
-    if (g_hdcMem) {
-        DeleteObject(g_hbmMem);
-        DeleteDC(g_hdcMem);
-        g_hdcMem = nullptr;
-        g_hbmMem = nullptr;
-    }
-    InvalidateRect(hwnd, nullptr, FALSE);
-}
-
-bool Hit(int mx, int my, int x, int y, int w, int h) {
-    return mx >= x && mx <= x + w && my >= y && my <= y + h;
-}
-
-void AdjustFont(float delta) {
-    g_fontScale += delta;
-    if (g_fontScale < 1.0f) g_fontScale = 1.0f;
-    if (g_fontScale > 3.0f) g_fontScale = 3.0f;
-    UpdateLayoutSize();
-    ResizeBackBuffer(g_hwndMain);
-}
-
 void HandleGlobalClick(int mx, int my) {
-    if (Hit(mx, my, g_w - 154, 16, 48, 32)) AdjustFont(-0.06f);
-    if (Hit(mx, my, g_w - 98, 16, 48, 32)) AdjustFont(0.06f);
+    bool changed = false;
+    if (Hit(mx, my, g_w - 154, 16, 48, 32)) { AdjustFont(-0.06f); changed = true; }
+    if (Hit(mx, my, g_w - 98, 16, 48, 32)) { AdjustFont(0.06f); changed = true; }
+    if (changed) { ApplyEditFont(); UpdateEditForState(); }
 }
 
 void ApplyTitleBarStyle(HWND hwnd) {
@@ -787,21 +972,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         my = (short)(my / g_fontScale);
 
         if (g_state.page == PAGE_HOME) {
-            int cw = std::min(g_w - 80, 800), cy = 110, cx = (g_w - cw) / 2;
-            if (Hit(mx, my, cx + cw / 2 - 240, cy + 400, 210, 56) || Hit(mx, my, cx + cw / 2 + 30, cy + 400, 210, 56)) {
-                SetCursor(LoadCursorW(nullptr, IDC_HAND));
-                return TRUE;
-            }
-        } else if (g_state.page == PAGE_QUIZ) {
-            int cardX = 38, cardY = 236, cardW = g_w - 76, optY = cardY + 110;
-            for (int i = 0; i < 4; ++i) {
-                int ox = cardX + 34, oy = optY + i * 64, ow = cardW - 68, oh = 52;
-                if (!g_state.answered && Hit(mx, my, ox, oy, ow, oh)) {
+            for (int i = 0; i < 3; ++i) {
+                UIRect r = HomeButtonRect(i);
+                if (Hit(mx, my, r.x, r.y, r.w, r.h)) {
                     SetCursor(LoadCursorW(nullptr, IDC_HAND));
                     return TRUE;
                 }
             }
-            if (Hit(mx, my, g_w / 2 - 116, g_h - 78, 232, 54)) {
+        } else if (g_state.page == PAGE_QUIZ) {
+            UIRect backRect = ReturnHomeButtonRect();
+            if (Hit(mx, my, backRect.x, backRect.y, backRect.w, backRect.h)) {
+                SetCursor(LoadCursorW(nullptr, IDC_HAND));
+                return TRUE;
+            }
+            if (g_state.mode != MODE_FILL) {
+                int cardX = 38, cardY = 236, cardW = g_w - 76, optY = cardY + 110;
+                for (int i = 0; i < 4; ++i) {
+                    int ox = cardX + 34, oy = optY + i * 64, ow = cardW - 68, oh = 52;
+                    if (!g_state.answered && Hit(mx, my, ox, oy, ow, oh)) {
+                        SetCursor(LoadCursorW(nullptr, IDC_HAND));
+                        return TRUE;
+                    }
+                }
+            }
+            UIRect confirmRect = ConfirmButtonRect();
+            if (Hit(mx, my, confirmRect.x, confirmRect.y, confirmRect.w, confirmRect.h)) {
                 SetCursor(LoadCursorW(nullptr, IDC_HAND));
                 return TRUE;
             }
@@ -823,6 +1018,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         g_hwndMain = hwnd;
         ApplyTitleBarStyle(hwnd);
         SetTimer(hwnd, 1, 1000, nullptr);
+        EnsureEditControl(hwnd);
 
         // Force set window icon to override DWM dark title bar behavior
         HINSTANCE hInst = GetModuleHandleW(nullptr);
@@ -838,19 +1034,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         g_clientH = std::max(560, (int)HIWORD(lParam));
         UpdateLayoutSize();
         ResizeBackBuffer(hwnd);
+        UpdateEditForState();
         return 0;
     }
     case WM_MOUSEWHEEL: {
         if (GetKeyState(VK_CONTROL) & 0x8000) {
             short z = GET_WHEEL_DELTA_WPARAM(wParam);
             AdjustFont(z > 0 ? 0.06f : -0.06f);
+            ApplyEditFont();
+            UpdateEditForState();
             return 0;
         }
         break;
     }
     case WM_TIMER: {
         if (g_state.page == PAGE_QUIZ && !g_state.answered) {
-            if (QuestionRemainingSeconds() <= 0) SettleCurrentQuestion(true);
+            if (QuestionRemainingSeconds() <= 0) {
+                SettleCurrentQuestion(true);
+                UpdateEditForState();
+                SetFocus(hwnd);
+            }
             InvalidateRect(hwnd, nullptr, FALSE);
         }
         return 0;
@@ -861,36 +1064,68 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         HandleGlobalClick(mx, my);
 
         if (g_state.page == PAGE_HOME) {
-            int cw = std::min(g_w - 80, 800), cy = 110, cx = (g_w - cw) / 2;
-            if (Hit(mx, my, cx + cw / 2 - 240, cy + 400, 210, 56)) StartQuiz(MODE_SINGLE);
-            else if (Hit(mx, my, cx + cw / 2 + 30, cy + 400, 210, 56)) StartQuiz(MODE_MULTIPLE);
-            InvalidateRect(hwnd, nullptr, FALSE);
-        } else if (g_state.page == PAGE_QUIZ) {
-            int cardX = 38, cardY = 236, cardW = g_w - 76, optY = cardY + 110;
-            if (!g_state.answered && QuestionRemainingSeconds() <= 0) SettleCurrentQuestion(true);
-            for (int i = 0; i < 4; ++i) {
-                int ox = cardX + 34, oy = optY + i * 64, ow = cardW - 68, oh = 52;
-                if (!g_state.answered && Hit(mx, my, ox, oy, ow, oh)) {
-                    if (g_state.mode == MODE_SINGLE) {
-                        g_state.selected[0] = g_state.selected[1] = g_state.selected[2] = g_state.selected[3] = false;
-                        g_state.selected[i] = true;
-                    } else {
-                        g_state.selected[i] = !g_state.selected[i];
-                    }
+            for (int i = 0; i < 3; ++i) {
+                UIRect r = HomeButtonRect(i);
+                if (Hit(mx, my, r.x, r.y, r.w, r.h)) {
+                    StartQuiz(i == 0 ? MODE_SINGLE : (i == 1 ? MODE_MULTIPLE : MODE_FILL));
+                    UpdateEditForState();
+                    if (g_state.mode == MODE_FILL && g_hwndEdit) SetFocus(g_hwndEdit);
                     InvalidateRect(hwnd, nullptr, FALSE);
                     return 0;
                 }
             }
-            if (Hit(mx, my, g_w / 2 - 116, g_h - 78, 232, 54)) {
+        } else if (g_state.page == PAGE_QUIZ) {
+            UIRect backRect = ReturnHomeButtonRect();
+            if (Hit(mx, my, backRect.x, backRect.y, backRect.w, backRect.h)) {
+                int rc = MessageBoxW(hwnd,
+                    L"确定要放弃本次答题并返回主页吗？\n本次答题记录将被丢弃，无法恢复。",
+                    L"返回主页确认", MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2);
+                if (rc == IDYES) {
+                    g_state.resetQuiz(ActiveBank());
+                    g_state.page = PAGE_HOME;
+                    UpdateEditForState();
+                    SetFocus(hwnd);
+                }
+                InvalidateRect(hwnd, nullptr, FALSE);
+                return 0;
+            }
+            if (!g_state.answered && QuestionRemainingSeconds() <= 0) SettleCurrentQuestion(true);
+            if (g_state.mode != MODE_FILL) {
+                int cardX = 38, cardY = 236, cardW = g_w - 76, optY = cardY + 110;
+                for (int i = 0; i < 4; ++i) {
+                    int ox = cardX + 34, oy = optY + i * 64, ow = cardW - 68, oh = 52;
+                    if (!g_state.answered && Hit(mx, my, ox, oy, ow, oh)) {
+                        if (g_state.mode == MODE_SINGLE) {
+                            g_state.selected[0] = g_state.selected[1] = g_state.selected[2] = g_state.selected[3] = false;
+                            g_state.selected[i] = true;
+                        } else {
+                            g_state.selected[i] = !g_state.selected[i];
+                        }
+                        InvalidateRect(hwnd, nullptr, FALSE);
+                        return 0;
+                    }
+                }
+            }
+            UIRect confirmRect = ConfirmButtonRect();
+            if (Hit(mx, my, confirmRect.x, confirmRect.y, confirmRect.w, confirmRect.h)) {
                 if (!g_state.answered) {
-                    if (!HasSelection()) {
+                    if (g_state.mode == MODE_FILL) {
+                        ReadEditIntoState();
+                        if (TrimString(g_state.userFill).empty()) {
+                            MessageBoxW(hwnd, L"请先在输入框中填写答案。", L"提示", MB_OK | MB_ICONINFORMATION);
+                            return 0;
+                        }
+                    } else if (!HasSelection()) {
                         MessageBoxW(hwnd, L"请先选择答案。", L"提示", MB_OK | MB_ICONINFORMATION);
                         return 0;
                     }
                     SettleCurrentQuestion(false);
+                    UpdateEditForState();
+                    SetFocus(hwnd);
                 } else if (g_state.qNum >= g_state.total) {
                     g_state.quizEnd = std::chrono::system_clock::now();
                     g_state.page = PAGE_RESULT;
+                    UpdateEditForState();
                 } else {
                     int nextDifficulty = NextDifficulty();
                     ++g_state.qNum;
@@ -898,6 +1133,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                         --g_state.qNum;
                         MessageBoxW(hwnd, L"题库没有足够的未使用题目。", L"题库错误", MB_OK | MB_ICONERROR);
                     }
+                    UpdateEditForState();
+                    if (g_state.mode == MODE_FILL && g_hwndEdit) SetFocus(g_hwndEdit);
                 }
                 InvalidateRect(hwnd, nullptr, FALSE);
             }
@@ -905,9 +1142,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             int cw = std::min(g_w - 80, 760), ch = 500, cx = (g_w - cw) / 2, cy = 120;
             if (Hit(mx, my, cx + cw / 2 - 210, cy + ch - 82, 190, 48)) {
                 StartQuiz(g_state.mode);
+                UpdateEditForState();
+                if (g_state.mode == MODE_FILL && g_hwndEdit) SetFocus(g_hwndEdit);
             } else if (Hit(mx, my, cx + cw / 2 + 20, cy + ch - 82, 190, 48)) {
                 g_state.resetQuiz(ActiveBank());
                 g_state.page = PAGE_HOME;
+                UpdateEditForState();
             }
             InvalidateRect(hwnd, nullptr, FALSE);
         }
@@ -940,6 +1180,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         return 1;
     case WM_DESTROY:
         KillTimer(hwnd, 1);
+        DestroyEditControl();
         if (g_hdcMem) {
             DeleteObject(g_hbmMem);
             DeleteDC(g_hdcMem);
@@ -959,7 +1200,8 @@ int main() {
     }
     std::wstring error;
     if (!LoadQuestionBank(JoinPath(ExeDir(), L"questions.json"), MODE_SINGLE, g_banks[0], error) ||
-        !LoadQuestionBank(JoinPath(ExeDir(), L"multiple_questions_from_xlsx.json"), MODE_MULTIPLE, g_banks[1], error)) {
+        !LoadQuestionBank(JoinPath(ExeDir(), L"multiple_questions_from_xlsx.json"), MODE_MULTIPLE, g_banks[1], error) ||
+        !LoadQuestionBank(JoinPath(ExeDir(), L"fill_questions.json"), MODE_FILL, g_banks[2], error)) {
         MessageBoxW(nullptr, error.c_str(), L"题库加载失败", MB_OK | MB_ICONERROR);
         return 1;
     }
