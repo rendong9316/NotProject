@@ -1,0 +1,71 @@
+[
+  {
+    "id": 1,
+    "type": "multiple",
+    "difficulty": "easy",
+    "question": "在行政机关负责人作出行政处罚的决定之前，应当由从事行政处罚决定法制审核的人员进行法制审核的情形包括（）。",
+    "options": [
+      "A.涉及重大公共利益的。",
+      "B.直接关系当事人或者第三人重大权益，经过听证程序的。",
+      "C.案件情况疑难复杂涉及多个法律关系的。",
+      "D.涉及商业秘密国家秘密个人隐私的。"
+    ],
+    "answers": [
+      0,
+      1,
+      2
+    ],
+    "answerLetters": [
+      "A",
+      "B",
+      "C"
+    ],
+    "explanation": ""
+  },
+  {
+    "id": 2,
+    "type": "multiple",
+    "difficulty": "medium",
+    "question": "电子技术监控设备记录违法事实的要求（）。",
+    "options": [
+      "A.真实",
+      "B.清晰",
+      "C.完整",
+      "D.准确"
+    ],
+    "answers": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "answerLetters": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "explanation": ""
+  },
+  {
+    "id": 3,
+    "type": "multiple",
+    "difficulty": "hard",
+    "question": "行政机关依照法律行政法规规定利用电子技术监控设备收集固定违法事实的，应当经过（）审核，确保电子技术监控设备符合标准设置合理标志明显，设置地点应当向社会公布。",
+    "options": [
+      "A.法制",
+      "B.技术",
+      "C.负责人",
+      "D.审批人员"
+    ],
+    "answers": [
+      0,
+      1
+    ],
+    "answerLetters": [
+      "A",
+      "B"
+    ],
+    "explanation": ""
+  }
+]
