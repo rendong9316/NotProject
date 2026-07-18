@@ -36,6 +36,115 @@
 
 using namespace Gdiplus;
 
+// ======================== 配置常量区 ========================
+// 所有用户可见的文案、路径、提示语集中在此，便于维护与本地化。
+
+// --- 窗口类名 ---
+static const wchar_t* CFG_CLASS_NAME = L"JusticeQuizAppClass";
+
+// --- 字体 ---
+static const wchar_t* CFG_FONT_FAMILY = L"Microsoft YaHei";
+
+// --- 题库文件路径 ---
+static const wchar_t* CFG_FILE_SINGLE = L"questions.json";
+static const wchar_t* CFG_FILE_MULTIPLE = L"multiple_questions_from_xlsx.json";
+static const wchar_t* CFG_FILE_FILL = L"fill_questions.json";
+
+// --- 错误提示 ---
+static const wchar_t* CFG_ERR_LOAD_FAILED = L"题库加载失败";
+static const wchar_t* CFG_NO_SELECTION = L"请先选择答案。";
+static const wchar_t* CFG_ERR_NO_QUESTIONS = L"题库没有足够的未使用题目。";
+
+// --- 对话框标题 ---
+static const wchar_t* CFG_DLG_TITLE = L"提示";
+static const wchar_t* CFG_DLG_ERR = L"题库错误";
+
+// --- 题库错误提示 ---
+static const wchar_t* CFG_ERR_FILE_NOT_FOUND = L"未找到题库文件：";
+static const wchar_t* CFG_ERR_FILE_READ = L"无法读取题库文件：";
+static const wchar_t* CFG_ERR_JSON_ROOT = L"题库 JSON 格式错误：根节点应为数组。";
+static const wchar_t* CFG_ERR_JSON_ITEM = L"题库 JSON 格式错误：题目项应为对象。";
+static const wchar_t* CFG_ERR_INVALID_Q = L"题库文件中存在无效题目：";
+static const wchar_t* CFG_ERR_Q_ID = L"（题目 ID ";
+static const wchar_t* CFG_ERR_MISSING_GROUPS = L"题库至少需要包含 easy、medium、hard 三类题目：";
+static const wchar_t* CFG_ERR_MIN_QUESTIONS = L"题库至少需要 10 道有效题目：";
+
+// --- 应用标识 ---
+static const wchar_t* CFG_APP_TITLE = L"法律知识答题竞赛系统";
+static const wchar_t* CFG_APP_TAGLINE = L"V1.0.0";
+static const wchar_t* CFG_APP_PAGE_SUBTITLE = L"请选择答题模式";
+static const wchar_t* CFG_APP_CARD_TITLE = L"法律知识答题";
+static const wchar_t* CFG_APP_CARD_DESC = L"每轮10题，系统根据答题情况动态调整难度。";
+
+// --- 答题规则 ---
+static const wchar_t* CFG_RULES_TITLE = L"答题规则";
+static const wchar_t* CFG_RULES[] = {
+    L"1. 单选题只能选择一个答案；多选题可选择多个答案；填空题请直接输入答案。",
+    L"2. 多选题须与标准答案完全一致，漏选或多选均不得分。",
+    L"3. 填空题答案不区分大小写与首尾空格，与标准答案或备选答案一致即判正确。",
+    L"4. 每题限时1分30秒；超时后本题锁定并按错误结算。",
+    L"5. 超时不会自动跳题，请点击\"下一题\"继续作答。",
+    L"6. 答题过程中可点击右上角\"返回主页\"按钮放弃本次答题，需二次确认。"
+};
+static const int CFG_RULES_COUNT = 6;
+
+// --- 按钮文案 ---
+static const wchar_t* CFG_BTN_SINGLE = L"单选题模式";
+static const wchar_t* CFG_BTN_MULTIPLE = L"多选题模式";
+static const wchar_t* CFG_BTN_FILL = L"填空题模式";
+static const wchar_t* CFG_BTN_RETURN_HOME = L"返回主页";
+static const wchar_t* CFG_BTN_CONFIRM = L"确认答案";
+static const wchar_t* CFG_BTN_NEXT = L"下一题";
+static const wchar_t* CFG_BTN_SUBMIT = L"提交结果";
+static const wchar_t* CFG_BTN_RESTART = L"再次答题";
+
+// --- 题型提示 ---
+static const wchar_t* CFG_HINT_SINGLE = L"请选择一个正确答案后确认";
+static const wchar_t* CFG_HINT_MULTIPLE = L"请选择所有正确答案后确认";
+static const wchar_t* CFG_HINT_FILL = L"请在下方输入框中填写答案后确认（不区分大小写与首尾空格）";
+
+// --- 难度名称 ---
+static const wchar_t* CFG_DIFF_NAMES[] = {L"简单题", L"中档题", L"高档题"};
+
+// --- 指标标签 ---
+static const wchar_t* CFG_METRIC_PROGRESS = L"当前进度";
+static const wchar_t* CFG_METRIC_DIFFICULTY = L"当前难度";
+static const wchar_t* CFG_METRIC_REMAINING = L"本题剩余";
+static const wchar_t* CFG_METRIC_TOTAL_TIME = L"总用时";
+static const wchar_t* CFG_METRIC_MODE = L"答题模式";
+static const wchar_t* CFG_METRIC_CORRECT_TOTAL = L"答对 / 总题数";
+static const wchar_t* CFG_METRIC_DURATION = L"全程用时";
+static const wchar_t* CFG_METRIC_END_TIME = L"答题结束";
+static const wchar_t* CFG_METRIC_DIFF_STATS = L"难度统计";
+
+// --- 结果页 ---
+static const wchar_t* CFG_RESULT_TITLE = L"答题结果";
+static const wchar_t* CFG_RESULT_SCORE_LABEL = L"总分";
+
+// --- 反馈文案 ---
+static const wchar_t* CFG_FEEDBACK_CORRECT = L"回答正确。";
+static const wchar_t* CFG_FEEDBACK_TIMEOUT = L"答题超时，本题按错误结算。";
+static const wchar_t* CFG_FEEDBACK_WRONG_PREFIX = L"回答错误，正确答案：";
+static const wchar_t* CFG_FEEDBACK_FILL_CORRECT = L"回答正确。";
+static const wchar_t* CFG_FEEDBACK_FILL_TIMEOUT = L"答题超时，本题按错误结算。正确答案：";
+static const wchar_t* CFG_FEEDBACK_FILL_WRONG = L"回答错误，正确答案：";
+static const wchar_t* CFG_FEEDBACK_SUFFIX = L"。";
+
+// --- 填空题 ---
+static const wchar_t* CFG_FILL_PLACEHOLDER = L"";
+static const wchar_t* CFG_FILL_UNANSWERED = L"（未作答）";
+static const wchar_t* CFG_FILL_PROMPT = L"请先在输入框中填写答案。";
+static const wchar_t* CFG_FILL_USER_ANSWER_LABEL = L"你的答案：";
+
+// --- 选项分隔符 ---
+static const wchar_t* CFG_OPTION_SEPARATOR = L"、";
+
+// --- 确认对话框 ---
+static const wchar_t* CFG_CONFIRM_TITLE = L"返回主页确认";
+static const wchar_t* CFG_CONFIRM_MESSAGE = L"确定要放弃本次答题并返回主页吗？\n本次答题记录将被丢弃，无法恢复。";
+
+// ======================== 配置常量区结束 ========================
+
 struct Question {
     int id = 0;
     int difficulty = 0;
@@ -115,8 +224,6 @@ HDC g_hdcMem = nullptr;
 HBITMAP g_hbmMem = nullptr;
 float g_fontScale = 2.0f;
 
-const wchar_t* CLASS_NAME = L"JusticeQuizAppClass";
-const wchar_t* WINDOW_TITLE = L"司法局法律知识答题竞赛系统";
 const int INITIAL_WINDOW_W = 2440;
 const int INITIAL_WINDOW_H = 1760;
 
@@ -273,13 +380,13 @@ int DifficultyFromText(const std::wstring& d) {
 bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& bank, std::wstring& error) {
     HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (file == INVALID_HANDLE_VALUE) {
-        error = L"未找到题库文件：" + path;
+        error = CFG_ERR_FILE_NOT_FOUND + path;
         return false;
     }
     LARGE_INTEGER fileSize;
     if (!GetFileSizeEx(file, &fileSize) || fileSize.QuadPart > 0x7fffffff) {
         CloseHandle(file);
-        error = L"无法读取题库文件：" + path;
+        error = CFG_ERR_FILE_READ + path;
         return false;
     }
     std::string text((size_t)fileSize.QuadPart, '\0');
@@ -287,7 +394,7 @@ bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& ban
     bool readOk = text.empty() || ReadFile(file, &text[0], (DWORD)text.size(), &bytesRead, nullptr);
     CloseHandle(file);
     if (!readOk || bytesRead != text.size()) {
-        error = L"无法读取题库文件：" + path;
+        error = CFG_ERR_FILE_READ + path;
         return false;
     }
     if (text.size() >= 3 && (unsigned char)text[0] == 0xEF && (unsigned char)text[1] == 0xBB && (unsigned char)text[2] == 0xBF) text.erase(0, 3);
@@ -295,11 +402,11 @@ bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& ban
     QuestionBank loaded;
     JsonParser p(text);
     if (!p.eat('[')) {
-        error = L"题库 JSON 格式错误：根节点应为数组。";
+        error = CFG_ERR_JSON_ROOT;
         return false;
     }
     while (!p.eat(']') && p.i < text.size()) {
-        if (!p.eat('{')) { error = L"题库 JSON 格式错误：题目项应为对象。"; return false; }
+        if (!p.eat('{')) { error = CFG_ERR_JSON_ITEM; return false; }
         Question q;
         bool hasAnswer = false;
         bool hasFourOptions = false;
@@ -348,7 +455,7 @@ bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& ban
             valid = !q.q.empty() && q.difficulty >= 0 && validOptions && validAnswers && validCount;
         }
         if (!valid) {
-            error = L"题库文件中存在无效题目：" + path + L"（题目 ID " + IntToWStr(q.id) + L"）。";
+            error = CFG_ERR_INVALID_Q + path + CFG_ERR_Q_ID + IntToWStr(q.id) + L")。";
             return false;
         }
         loaded.pool(q.difficulty).push_back(q);
@@ -356,11 +463,11 @@ bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& ban
     }
 
     if (!loaded.ready()) {
-        error = L"题库至少需要包含 easy、medium、hard 三类题目：" + path;
+        error = CFG_ERR_MISSING_GROUPS + path;
         return false;
     }
     if (loaded.size() < 10) {
-        error = L"题库至少需要 10 道有效题目：" + path;
+        error = CFG_ERR_MIN_QUESTIONS + path;
         return false;
     }
     bank = loaded;
@@ -453,7 +560,7 @@ void ApplyEditFont() {
     if (g_hfontEdit) DeleteObject(g_hfontEdit);
     g_hfontEdit = CreateFontW(-px, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                               DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                              CLEARTYPE_QUALITY, FF_DONTCARE, L"Microsoft YaHei");
+                              CLEARTYPE_QUALITY, FF_DONTCARE, CFG_FONT_FAMILY);
     SendMessageW(g_hwndEdit, WM_SETFONT, (WPARAM)g_hfontEdit, TRUE);
 }
 
@@ -540,7 +647,7 @@ void DrawCard(Graphics& g, float x, float y, float w, float h, float r) {
 }
 
 Font* MakeFont(float size, int style = FontStyleRegular) {
-    FontFamily ff(L"Microsoft YaHei");
+    FontFamily ff(CFG_FONT_FAMILY);
     return new Font(&ff, size, (FontStyle)style, UnitPixel);
 }
 
@@ -573,8 +680,8 @@ void DrawBackground(Graphics& g) {
 void DrawHeader(Graphics& g, const std::wstring& rightText = L"") {
     Font* title = MakeFont(24, FontStyleBold);
     Font* sub = MakeFont(13, FontStyleBold);
-    TextLeft(g, L"司法局法律知识答题竞赛系统", title, GdiColor(CLR_INK), 34, 14, 500, 34);
-    TextLeft(g, L"题库导入 · 自动计时 · 成绩留痕", sub, GdiColor(CLR_INK), 36, 52, 390, 24);
+    TextLeft(g, CFG_APP_TITLE, title, GdiColor(CLR_INK), 34, 14, 500, 34);
+    TextLeft(g, CFG_APP_TAGLINE, sub, GdiColor(CLR_INK), 36, 52, 390, 24);
     if (!rightText.empty()) TextLeft(g, rightText, sub, GdiColor(CLR_INK), g_w - 370, 34, 330, 26);
     delete title;
     delete sub;
@@ -615,7 +722,7 @@ void DrawFontControls(Graphics& g) {
 
 void DrawHomePage(Graphics& g) {
     DrawBackground(g);
-    DrawHeader(g, L"请选择答题模式");
+    DrawHeader(g, CFG_APP_PAGE_SUBTITLE);
     DrawFontControls(g);
 
     int cw = std::min(g_w - 80, 880), ch = 540;
@@ -626,29 +733,21 @@ void DrawHomePage(Graphics& g) {
     Font* sub = MakeFont(14);
     Font* h = MakeFont(16, FontStyleBold);
     Font* body = MakeFont(13);
-    TextCenter(g, L"法律知识答题", title, GdiColor(CLR_NAVY), cx, cy + 28, cw, 42);
-    TextCenter(g, L"每轮10题，系统根据答题情况动态调整难度。", sub, GdiColor(CLR_MUTED), cx + 30, cy + 76, cw - 60, 30);
+    TextCenter(g, CFG_APP_CARD_TITLE, title, GdiColor(CLR_NAVY), cx, cy + 28, cw, 42);
+    TextCenter(g, CFG_APP_CARD_DESC, sub, GdiColor(CLR_MUTED), cx + 30, cy + 76, cw - 60, 30);
 
     int bx = cx + 50, by = cy + 126, bw = cw - 100, bh = 252;
     FillRoundRect(g, (float)bx, (float)by, (float)bw, (float)bh, 18, GdiColor(CLR_SOFT));
-    TextLeft(g, L"答题规则", h, GdiColor(CLR_NAVY), bx + 28, by + 20, 180, 28);
-    std::wstring lines[] = {
-        L"1. 单选题只能选择一个答案；多选题可选择多个答案；填空题请直接输入答案。",
-        L"2. 多选题须与标准答案完全一致，漏选或多选均不得分。",
-        L"3. 填空题答案不区分大小写与首尾空格，与标准答案或备选答案一致即判正确。",
-        L"4. 每题限时1分30秒；超时后本题锁定并按错误结算。",
-        L"5. 超时不会自动跳题，请点击“下一题”继续作答。",
-        L"6. 答题过程中可点击右上角“返回主页”按钮放弃本次答题，需二次确认。"
-    };
-    for (int i = 0; i < 6; ++i) TextLeft(g, lines[i], body, GdiColor(CLR_INK), bx + 30, by + 60 + i * 32, bw - 60, 27);
+    TextLeft(g, CFG_RULES_TITLE, h, GdiColor(CLR_NAVY), bx + 28, by + 20, 180, 28);
+    for (int i = 0; i < CFG_RULES_COUNT; ++i) TextLeft(g, CFG_RULES[i], body, GdiColor(CLR_INK), bx + 30, by + 60 + i * 32, bw - 60, 27);
 
     int btnW = 210, btnGap = 30;
     int totalBtnW = btnW * 3 + btnGap * 2;
     int btnStartX = cx + (cw - totalBtnW) / 2;
     int btnY = cy + 408;
-    DrawButton(g, btnStartX, btnY, btnW, 56, L"单选题模式", CLR_BLUE, RGB(30, 64, 175));
-    DrawButton(g, btnStartX + (btnW + btnGap), btnY, btnW, 56, L"多选题模式", CLR_NAVY, CLR_NAVY_2);
-    DrawButton(g, btnStartX + (btnW + btnGap) * 2, btnY, btnW, 56, L"填空题模式", CLR_GREEN, RGB(0, 112, 56));
+    DrawButton(g, btnStartX, btnY, btnW, 56, CFG_BTN_SINGLE, CLR_BLUE, RGB(30, 64, 175));
+    DrawButton(g, btnStartX + (btnW + btnGap), btnY, btnW, 56, CFG_BTN_MULTIPLE, CLR_NAVY, CLR_NAVY_2);
+    DrawButton(g, btnStartX + (btnW + btnGap) * 2, btnY, btnW, 56, CFG_BTN_FILL, CLR_GREEN, RGB(0, 112, 56));
     delete title; delete sub; delete h; delete body;
 }
 
@@ -807,7 +906,6 @@ void DrawQuizPage(Graphics& g) {
     DrawHeader(g, ModeName());
     DrawFontControls(g);
 
-    const wchar_t* diffNames[] = {L"简单题", L"中档题", L"高档题"};
     COLORREF diffColors[] = {CLR_GREEN, CLR_GOLD, CLR_RED};
     const Question* q = CurrentQuestion();
     if (!q) return;
@@ -817,10 +915,10 @@ void DrawQuizPage(Graphics& g) {
     Font* meta = MakeFont(14, FontStyleBold);
     Font* meta2 = MakeFont(13);
     int metricW = std::max(150, (topW - 92) / 4);
-    DrawMetric(g, topX + 22, topY + 18, metricW, 70, L"当前进度", L"第 " + IntToWStr(g_state.qNum) + L" / " + IntToWStr(g_state.total) + L" 题", CLR_BLUE);
-    DrawMetric(g, topX + 34 + metricW, topY + 18, metricW, 70, L"当前难度", diffNames[g_state.curDiff], diffColors[g_state.curDiff]);
-    DrawMetric(g, topX + 46 + metricW * 2, topY + 18, metricW, 70, L"本题剩余", FormatDuration(remaining), remaining == 0 ? CLR_RED : remaining <= 30 ? CLR_GOLD : CLR_BLUE);
-    DrawMetric(g, topX + 58 + metricW * 3, topY + 18, topW - 80 - metricW * 3, 70, L"总用时", FormatDuration(totalElapsed), CLR_RED);
+    DrawMetric(g, topX + 22, topY + 18, metricW, 70, CFG_METRIC_PROGRESS, L"第 " + IntToWStr(g_state.qNum) + L" / " + IntToWStr(g_state.total) + L" 题", CLR_BLUE);
+    DrawMetric(g, topX + 34 + metricW, topY + 18, metricW, 70, CFG_METRIC_DIFFICULTY, CFG_DIFF_NAMES[g_state.curDiff], diffColors[g_state.curDiff]);
+    DrawMetric(g, topX + 46 + metricW * 2, topY + 18, metricW, 70, CFG_METRIC_REMAINING, FormatDuration(remaining), remaining == 0 ? CLR_RED : remaining <= 30 ? CLR_GOLD : CLR_BLUE);
+    DrawMetric(g, topX + 58 + metricW * 3, topY + 18, topW - 80 - metricW * 3, 70, CFG_METRIC_TOTAL_TIME, FormatDuration(totalElapsed), CLR_RED);
     FillRoundRect(g, (float)(topX + 24), (float)(topY + 96), (float)(topW - 48), 10, 5, Color(255, 219, 227, 238));
     FillRoundRect(g, (float)(topX + 24), (float)(topY + 96), (float)((topW - 48) * g_state.qNum / g_state.total), 10, 5, GdiColor(CLR_BLUE));
 
@@ -831,10 +929,10 @@ void DrawQuizPage(Graphics& g) {
     TextLeft(g, IntToWStr(g_state.qNum) + L". " + q->q, qFont, GdiColor(CLR_INK), cardX + 34, cardY + 22, cardW - 68, 58);
 
     UIRect backRect = ReturnHomeButtonRect();
-    DrawButton(g, backRect.x, backRect.y, backRect.w, backRect.h, L"返回主页", CLR_RED, RGB(160, 30, 30), true);
+    DrawButton(g, backRect.x, backRect.y, backRect.w, backRect.h, CFG_BTN_RETURN_HOME, CLR_RED, RGB(160, 30, 30), true);
 
     if (g_state.mode == MODE_FILL) {
-        TextLeft(g, L"请在下方输入框中填写答案后确认（不区分大小写与首尾空格）", meta2, GdiColor(CLR_MUTED), cardX + 34, cardY + 78, cardW - 68, 24);
+        TextLeft(g, CFG_HINT_FILL, meta2, GdiColor(CLR_MUTED), cardX + 34, cardY + 78, cardW - 68, 24);
 
         UIRect editRect = FillEditRect();
         if (g_state.answered) {
@@ -842,21 +940,20 @@ void DrawQuizPage(Graphics& g) {
             Color fill = ok ? Color(255, 231, 248, 238) : Color(255, 254, 226, 226);
             Color border = ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED);
             FillRoundRectBorder(g, (float)editRect.x, (float)editRect.y, (float)editRect.w, (float)editRect.h, 14, fill, border, 2.4f);
-            std::wstring shown = g_state.userFill.empty() ? L"（未作答）" : g_state.userFill;
-            TextLeft(g, L"你的答案：" + shown, optFont, ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), editRect.x + 18, editRect.y + 16, editRect.w - 36, 28);
+            std::wstring shown = g_state.userFill.empty() ? CFG_FILL_UNANSWERED : g_state.userFill;
+            TextLeft(g, CFG_FILL_USER_ANSWER_LABEL + shown, optFont, ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), editRect.x + 18, editRect.y + 16, editRect.w - 36, 28);
         }
 
         if (g_state.answered) {
             int fy = editRect.y + editRect.h + 14;
             bool ok = g_state.lastCorrect;
             FillRoundRectBorder(g, (float)(cardX + 34), (float)fy, (float)(cardW - 68), 82, 14, ok ? Color(255, 231, 248, 238) : Color(255, 254, 226, 226), ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), 2.0f);
-            std::wstring fb = ok ? L"回答正确。" : (g_state.timedOut ? L"答题超时，本题按错误结算。正确答案：" + q->fillAnswer + L"。"
-                                                                       : L"回答错误，正确答案：" + q->fillAnswer + L"。");
+            std::wstring fb = ok ? CFG_FEEDBACK_FILL_CORRECT : (g_state.timedOut ? CFG_FEEDBACK_FILL_TIMEOUT : CFG_FEEDBACK_FILL_WRONG) + q->fillAnswer + CFG_FEEDBACK_SUFFIX;
             TextLeft(g, fb, meta, ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), cardX + 54, fy + 12, cardW - 108, 26);
             if (!q->exp.empty()) TextLeft(g, q->exp, meta2, GdiColor(CLR_INK), cardX + 54, fy + 44, cardW - 108, 30);
         }
     } else {
-        TextLeft(g, g_state.mode == MODE_MULTIPLE ? L"请选择所有正确答案后确认" : L"请选择一个正确答案后确认", meta2, GdiColor(CLR_MUTED), cardX + 34, cardY + 78, cardW - 68, 24);
+        TextLeft(g, g_state.mode == MODE_MULTIPLE ? CFG_HINT_MULTIPLE : CFG_HINT_SINGLE, meta2, GdiColor(CLR_MUTED), cardX + 34, cardY + 78, cardW - 68, 24);
 
         int optY = cardY + 110;
         for (int i = 0; i < 4; ++i) {
@@ -883,7 +980,7 @@ void DrawQuizPage(Graphics& g) {
             int fy = optY + 4 * 64 + 10;
             bool ok = g_state.lastCorrect;
             FillRoundRectBorder(g, (float)(cardX + 34), (float)fy, (float)(cardW - 68), 82, 14, ok ? Color(255, 231, 248, 238) : Color(255, 254, 226, 226), ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), 2.0f);
-            std::wstring fb = ok ? L"回答正确。" : (g_state.timedOut ? L"答题超时，本题按错误结算。正确答案：" : L"回答错误，正确答案：") + AnswerLetters(*q) + L"。";
+            std::wstring fb = ok ? CFG_FEEDBACK_CORRECT : (g_state.timedOut ? CFG_FEEDBACK_TIMEOUT : CFG_FEEDBACK_WRONG_PREFIX) + AnswerLetters(*q) + CFG_FEEDBACK_SUFFIX;
             TextLeft(g, fb, meta, ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), cardX + 54, fy + 12, cardW - 108, 26);
             if (!q->exp.empty()) TextLeft(g, q->exp, meta2, GdiColor(CLR_INK), cardX + 54, fy + 44, cardW - 108, 30);
         }
@@ -892,7 +989,7 @@ void DrawQuizPage(Graphics& g) {
     bool finalQ = g_state.answered && g_state.qNum >= g_state.total;
     COLORREF cBtn = finalQ ? CLR_GREEN : CLR_BLUE;
     COLORREF cBtn2 = finalQ ? RGB(0, 112, 56) : RGB(0, 69, 170);
-    const wchar_t* btnText = finalQ ? L"提交结果" : (g_state.answered ? L"下一题" : L"确认答案");
+    const wchar_t* btnText = finalQ ? CFG_BTN_SUBMIT : (g_state.answered ? CFG_BTN_NEXT : CFG_BTN_CONFIRM);
     UIRect confirmRect = ConfirmButtonRect();
     DrawButton(g, confirmRect.x, confirmRect.y, confirmRect.w, confirmRect.h, btnText, cBtn, cBtn2);
 
@@ -914,27 +1011,28 @@ void DrawResultPage(Graphics& g) {
     Font* scoreFont = MakeFont(46, FontStyleBold);
     Font* stat = MakeFont(16, FontStyleBold);
     Font* body = MakeFont(13);
-    TextCenter(g, L"答题结果", title, GdiColor(CLR_NAVY), cx, cy + 28, cw, 40);
+    TextCenter(g, CFG_RESULT_TITLE, title, GdiColor(CLR_NAVY), cx, cy + 28, cw, 40);
     TextCenter(g, IntToWStr(score), scoreFont, score >= 80 ? GdiColor(CLR_GREEN) : score >= 60 ? GdiColor(CLR_GOLD) : GdiColor(CLR_RED), cx, cy + 78, cw, 70);
-    TextCenter(g, L"总分", body, GdiColor(CLR_MUTED), cx, cy + 142, cw, 24);
+    TextCenter(g, CFG_RESULT_SCORE_LABEL, body, GdiColor(CLR_MUTED), cx, cy + 142, cw, 24);
 
     int sy = cy + 190;
-    std::wstring stats[][2] = {
-        {L"答题模式", ModeName()},
-        {L"答对 / 总题数", IntToWStr(g_state.correct) + L" / " + IntToWStr(g_state.total)},
-        {L"全程用时", FormatDuration(totalSeconds)},
-        {L"答题结束", FormatTime(g_state.quizEnd)},
-        {L"难度统计", L"简单 " + IntToWStr(g_state.easyC) + L"/" + IntToWStr(g_state.easyT) + L"    中档 " + IntToWStr(g_state.medC) + L"/" + IntToWStr(g_state.medT) + L"    高档 " + IntToWStr(g_state.hardC) + L"/" + IntToWStr(g_state.hardT)}
+    std::wstring statsLabels[] = {CFG_METRIC_MODE, CFG_METRIC_CORRECT_TOTAL, CFG_METRIC_DURATION, CFG_METRIC_END_TIME, CFG_METRIC_DIFF_STATS};
+    std::wstring statsValues[][2] = {
+        {statsLabels[0], ModeName()},
+        {statsLabels[1], IntToWStr(g_state.correct) + L" / " + IntToWStr(g_state.total)},
+        {statsLabels[2], FormatDuration(totalSeconds)},
+        {statsLabels[3], FormatTime(g_state.quizEnd)},
+        {statsLabels[4], L"简单 " + IntToWStr(g_state.easyC) + L"/" + IntToWStr(g_state.easyT) + L"    中档 " + IntToWStr(g_state.medC) + L"/" + IntToWStr(g_state.medT) + L"    高档 " + IntToWStr(g_state.hardC) + L"/" + IntToWStr(g_state.hardT)}
     };
     for (int i = 0; i < 5; ++i) {
         int y = sy + i * 42;
         FillRoundRect(g, (float)(cx + 54), (float)y, (float)(cw - 108), 34, 10, GdiColor(CLR_SOFT));
-        TextLeft(g, stats[i][0], body, GdiColor(CLR_MUTED), cx + 76, y + 7, 140, 22);
-        TextLeft(g, stats[i][1], stat, GdiColor(CLR_INK), cx + 220, y + 5, cw - 310, 24);
+        TextLeft(g, statsValues[i][0], body, GdiColor(CLR_MUTED), cx + 76, y + 7, 140, 22);
+        TextLeft(g, statsValues[i][1], stat, GdiColor(CLR_INK), cx + 220, y + 5, cw - 310, 24);
     }
 
-    DrawButton(g, cx + cw / 2 - 210, cy + ch - 82, 190, 48, L"再次答题", CLR_BLUE, RGB(30, 64, 175));
-    DrawButton(g, cx + cw / 2 + 20, cy + ch - 82, 190, 48, L"返回主页", CLR_NAVY, RGB(34, 70, 118), true);
+    DrawButton(g, cx + cw / 2 - 210, cy + ch - 82, 190, 48, CFG_BTN_RESTART, CLR_BLUE, RGB(30, 64, 175));
+    DrawButton(g, cx + cw / 2 + 20, cy + ch - 82, 190, 48, CFG_BTN_RETURN_HOME, CLR_NAVY, RGB(34, 70, 118), true);
 
     delete title; delete scoreFont; delete stat; delete body;
 }
@@ -1078,8 +1176,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             UIRect backRect = ReturnHomeButtonRect();
             if (Hit(mx, my, backRect.x, backRect.y, backRect.w, backRect.h)) {
                 int rc = MessageBoxW(hwnd,
-                    L"确定要放弃本次答题并返回主页吗？\n本次答题记录将被丢弃，无法恢复。",
-                    L"返回主页确认", MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2);
+                    CFG_CONFIRM_MESSAGE,
+                    CFG_CONFIRM_TITLE, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2);
                 if (rc == IDYES) {
                     g_state.resetQuiz(ActiveBank());
                     g_state.page = PAGE_HOME;
@@ -1112,11 +1210,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     if (g_state.mode == MODE_FILL) {
                         ReadEditIntoState();
                         if (TrimString(g_state.userFill).empty()) {
-                            MessageBoxW(hwnd, L"请先在输入框中填写答案。", L"提示", MB_OK | MB_ICONINFORMATION);
+                            MessageBoxW(hwnd, CFG_FILL_PROMPT, CFG_DLG_TITLE, MB_OK | MB_ICONINFORMATION);
                             return 0;
                         }
                     } else if (!HasSelection()) {
-                        MessageBoxW(hwnd, L"请先选择答案。", L"提示", MB_OK | MB_ICONINFORMATION);
+                        MessageBoxW(hwnd, CFG_NO_SELECTION, CFG_DLG_TITLE, MB_OK | MB_ICONINFORMATION);
                         return 0;
                     }
                     SettleCurrentQuestion(false);
@@ -1131,7 +1229,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     ++g_state.qNum;
                     if (!StartQuestion(nextDifficulty)) {
                         --g_state.qNum;
-                        MessageBoxW(hwnd, L"题库没有足够的未使用题目。", L"题库错误", MB_OK | MB_ICONERROR);
+                        MessageBoxW(hwnd, CFG_ERR_NO_QUESTIONS, CFG_DLG_ERR, MB_OK | MB_ICONERROR);
                     }
                     UpdateEditForState();
                     if (g_state.mode == MODE_FILL && g_hwndEdit) SetFocus(g_hwndEdit);
@@ -1199,10 +1297,10 @@ int main() {
         if (setDpiAware) setDpiAware();
     }
     std::wstring error;
-    if (!LoadQuestionBank(JoinPath(ExeDir(), L"questions.json"), MODE_SINGLE, g_banks[0], error) ||
-        !LoadQuestionBank(JoinPath(ExeDir(), L"multiple_questions_from_xlsx.json"), MODE_MULTIPLE, g_banks[1], error) ||
-        !LoadQuestionBank(JoinPath(ExeDir(), L"fill_questions.json"), MODE_FILL, g_banks[2], error)) {
-        MessageBoxW(nullptr, error.c_str(), L"题库加载失败", MB_OK | MB_ICONERROR);
+    if (!LoadQuestionBank(JoinPath(ExeDir(), CFG_FILE_SINGLE), MODE_SINGLE, g_banks[0], error) ||
+        !LoadQuestionBank(JoinPath(ExeDir(), CFG_FILE_MULTIPLE), MODE_MULTIPLE, g_banks[1], error) ||
+        !LoadQuestionBank(JoinPath(ExeDir(), CFG_FILE_FILL), MODE_FILL, g_banks[2], error)) {
+        MessageBoxW(nullptr, error.c_str(), CFG_ERR_LOAD_FAILED, MB_OK | MB_ICONERROR);
         return 1;
     }
     g_state.page = PAGE_HOME;
@@ -1220,10 +1318,10 @@ int main() {
     wc.hIcon = (HICON)LoadImageW(hInst, MAKEINTRESOURCEW(IDI_ICON), IMAGE_ICON, 32, 32, LR_DEFAULTSIZE);
     wc.hIconSm = (HICON)LoadImageW(hInst, MAKEINTRESOURCEW(IDI_ICON), IMAGE_ICON, 16, 16, LR_DEFAULTSIZE);
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.lpszClassName = CLASS_NAME;
+    wc.lpszClassName = CFG_CLASS_NAME;
     RegisterClassExW(&wc);
 
-    HWND hwnd = CreateWindowExW(0, CLASS_NAME, WINDOW_TITLE, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, INITIAL_WINDOW_W, INITIAL_WINDOW_H, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+    HWND hwnd = CreateWindowExW(0, CFG_CLASS_NAME, CFG_APP_TITLE, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, INITIAL_WINDOW_W, INITIAL_WINDOW_H, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
     if (!hwnd) {
         GdiplusShutdown(gdiplusToken);
         return 1;
