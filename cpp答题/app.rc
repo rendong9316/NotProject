@@ -1,3 +1,9 @@
 #define IDI_ICON 101
+#define IDS_SOUND_CORRECT 1001
+#define IDS_SOUND_WRONG 1002
+#define IDS_SOUND_TIMEOUT 1003
 
 IDI_ICON ICON "app_icon.ico"
+IDS_SOUND_CORRECT WAVE "sound_correct.wav"
+IDS_SOUND_WRONG WAVE "sound_wrong.wav"
+IDS_SOUND_TIMEOUT WAVE "sound_timeout.wav"

@@ -1,5 +1,5 @@
 /* quiz.exe - 鸡东司法局法律知识答题竞赛系统 (Win32 + GDI+)
- * 编译: g++ -std=c++11 -o quiz.exe quiz.cpp app.res -lgdi32 -lgdiplus -DUNICODE -D_UNICODE -mwindows
+ * 编译: g++ -std=c++11 -o quiz.exe quiz.cpp app_res.obj -lgdi32 -lgdiplus -lwinmm -DUNICODE -D_UNICODE -mwindows
  */
 
 #include <windows.h>
@@ -16,6 +16,8 @@
 #include <cwctype>
 #include <cwchar>
 #include <cstdio>
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
@@ -38,6 +40,14 @@ using namespace Gdiplus;
 
 // ======================== 配置常量区 ========================
 // 所有用户可见的文案、路径、提示语集中在此，便于维护与本地化。
+
+// --- 各题型固定答题数量 ---
+static const int QUESTION_COUNT_SINGLE = 5;
+static const int QUESTION_COUNT_MULTIPLE = 5;
+static const int QUESTION_COUNT_FILL = 5;
+
+// --- 每题限时（秒） ---
+static const int QUESTION_TIME_LIMIT_SECONDS = 30;
 
 // --- 窗口类名 ---
 static const wchar_t* CFG_CLASS_NAME = L"JusticeQuizAppClass";
@@ -74,7 +84,7 @@ static const wchar_t* CFG_APP_TITLE = L"法律知识答题竞赛系统";
 static const wchar_t* CFG_APP_TAGLINE = L"V1.0.0";
 static const wchar_t* CFG_APP_PAGE_SUBTITLE = L"请选择答题模式";
 static const wchar_t* CFG_APP_CARD_TITLE = L"法律知识答题";
-static const wchar_t* CFG_APP_CARD_DESC = L"每轮10题，系统根据答题情况动态调整难度。";
+static const wchar_t* CFG_APP_CARD_DESC = L"系统根据答题情况动态调整难度。";
 
 // --- 答题规则 ---
 static const wchar_t* CFG_RULES_TITLE = L"答题规则";
@@ -82,7 +92,7 @@ static const wchar_t* CFG_RULES[] = {
     L"1. 单选题只能选择一个答案；多选题可选择多个答案；填空题请直接输入答案。",
     L"2. 多选题须与标准答案完全一致，漏选或多选均不得分。",
     L"3. 填空题答案不区分大小写与首尾空格，与标准答案或备选答案一致即判正确。",
-    L"4. 每题限时1分30秒；超时后本题锁定并按错误结算。",
+    L"4. 每题限时30秒；超时后本题锁定并按错误结算。",
     L"5. 超时不会自动跳题，请点击\"下一题\"继续作答。",
     L"6. 答题过程中可点击右上角\"返回主页\"按钮放弃本次答题，需二次确认。"
 };
@@ -143,6 +153,12 @@ static const wchar_t* CFG_OPTION_SEPARATOR = L"、";
 static const wchar_t* CFG_CONFIRM_TITLE = L"返回主页确认";
 static const wchar_t* CFG_CONFIRM_MESSAGE = L"确定要放弃本次答题并返回主页吗？\n本次答题记录将被丢弃，无法恢复。";
 
+// --- 音效 ---
+// WAV 资源 ID（嵌入 app.rc）
+static const int SOUND_CORRECT_ID = 1001;
+static const int SOUND_WRONG_ID = 1002;
+static const int SOUND_TIMEOUT_ID = 1003;
+
 // ======================== 配置常量区结束 ========================
 
 struct Question {
@@ -168,8 +184,6 @@ struct QuestionBank {
 enum Page { PAGE_HOME, PAGE_QUIZ, PAGE_RESULT };
 enum QuizMode { MODE_SINGLE, MODE_MULTIPLE, MODE_FILL };
 
-const int QUESTION_TIME_LIMIT_SECONDS = 90;
-
 struct QuizState {
     Page page = PAGE_HOME;
     QuizMode mode = MODE_SINGLE;
@@ -193,6 +207,8 @@ struct QuizState {
     std::chrono::steady_clock::time_point questionStart;
     std::vector<int> questionSeconds;
 
+    bool flashVisible = false;
+
     void resetQuiz(const QuestionBank& bank) {
         curDiff = 0;
         qNum = 0;
@@ -205,6 +221,7 @@ struct QuizState {
         consecWrong[0] = consecWrong[1] = consecWrong[2] = 0;
         curQIdx = -1;
         selected[0] = selected[1] = selected[2] = selected[3] = false;
+        flashVisible = false;
         userFill.clear();
         settledSeconds = 0;
         questionSeconds.clear();
@@ -288,6 +305,23 @@ std::wstring FormatDuration(int seconds) {
     if (m > 0 || h > 0) ss << m << L"分";
     ss << s << L"秒";
     return ss.str();
+}
+
+void PlaySoundEffect(const wchar_t* soundName) {
+    PlaySoundW(soundName, nullptr, SND_ALIAS | SND_ASYNC);
+}
+
+void PlayEmbeddedSound(int resourceId) {
+    HMODULE hInst = GetModuleHandleW(nullptr);
+    HRSRC hRes = FindResourceW(hInst, MAKEINTRESOURCEW(resourceId), L"WAVE");
+    if (!hRes) return;
+    HGLOBAL hData = LoadResource(hInst, hRes);
+    if (!hData) return;
+    LPVOID pData = LockResource(hData);
+    if (!pData) return;
+    PlaySoundW((LPCWSTR)pData, hInst, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+    UnlockResource(hData);
+    FreeResource(hData);
 }
 
 struct JsonParser {
@@ -745,9 +779,16 @@ void DrawHomePage(Graphics& g) {
     int totalBtnW = btnW * 3 + btnGap * 2;
     int btnStartX = cx + (cw - totalBtnW) / 2;
     int btnY = cy + 408;
+
     DrawButton(g, btnStartX, btnY, btnW, 56, CFG_BTN_SINGLE, CLR_BLUE, RGB(30, 64, 175));
     DrawButton(g, btnStartX + (btnW + btnGap), btnY, btnW, 56, CFG_BTN_MULTIPLE, CLR_NAVY, CLR_NAVY_2);
     DrawButton(g, btnStartX + (btnW + btnGap) * 2, btnY, btnW, 56, CFG_BTN_FILL, CLR_GREEN, RGB(0, 112, 56));
+
+    Font* countFont = MakeFont(12, FontStyleBold);
+    TextCenter(g, IntToWStr(QUESTION_COUNT_SINGLE) + L" 题", countFont, GdiColor(CLR_BLUE), btnStartX, btnY + 58, btnW, 24);
+    TextCenter(g, IntToWStr(QUESTION_COUNT_MULTIPLE) + L" 题", countFont, GdiColor(CLR_NAVY), btnStartX + btnW + btnGap, btnY + 58, btnW, 24);
+    TextCenter(g, IntToWStr(QUESTION_COUNT_FILL) + L" 题", countFont, GdiColor(CLR_GREEN), btnStartX + (btnW + btnGap) * 2, btnY + 58, btnW, 24);
+    delete countFont;
     delete title; delete sub; delete h; delete body;
 }
 
@@ -837,6 +878,9 @@ bool StartQuestion(int diff) {
 void StartQuiz(QuizMode mode) {
     g_state.mode = mode;
     g_state.resetQuiz(ActiveBank());
+    if (mode == MODE_MULTIPLE) g_state.total = QUESTION_COUNT_MULTIPLE;
+    else if (mode == MODE_FILL) g_state.total = QUESTION_COUNT_FILL;
+    else g_state.total = QUESTION_COUNT_SINGLE;
     g_state.page = PAGE_QUIZ;
     g_state.qNum = 1;
     g_state.quizStart = std::chrono::system_clock::now();
@@ -872,7 +916,7 @@ std::wstring AnswerLetters(const Question& question) {
     return ss.str();
 }
 
-void SettleCurrentQuestion(bool timeout) {
+void SettleCurrentQuestion(HWND hwnd, bool timeout) {
     if (g_state.answered) return;
     const Question* question = CurrentQuestion();
     if (!question) return;
@@ -881,6 +925,8 @@ void SettleCurrentQuestion(bool timeout) {
     g_state.settledSeconds = seconds;
     g_state.answered = true;
     g_state.timedOut = timeout;
+    g_state.flashVisible = false;
+    KillTimer(hwnd, 2);
     bool ok;
     if (g_state.mode == MODE_FILL) {
         if (!timeout) ReadEditIntoState();
@@ -889,13 +935,17 @@ void SettleCurrentQuestion(bool timeout) {
         ok = !timeout && SelectedAnswers() == question->answers;
     }
     g_state.lastCorrect = ok;
-    if (ok) {
+    if (timeout) {
+        PlayEmbeddedSound(SOUND_TIMEOUT_ID);
+    } else if (ok) {
         ++g_state.correct;
         CountDifficultyCorrect(g_state.curDiff);
         g_state.consecWrong[g_state.curDiff] = 0;
+        PlayEmbeddedSound(SOUND_CORRECT_ID);
     } else {
         ++g_state.wrong;
         ++g_state.consecWrong[g_state.curDiff];
+        PlayEmbeddedSound(SOUND_WRONG_ID);
     }
 }
 
@@ -915,12 +965,14 @@ void DrawQuizPage(Graphics& g) {
     Font* meta = MakeFont(14, FontStyleBold);
     Font* meta2 = MakeFont(13);
     int metricW = std::max(150, (topW - 92) / 4);
+    bool shouldFlash = remaining <= 5 && g_state.flashVisible;
     DrawMetric(g, topX + 22, topY + 18, metricW, 70, CFG_METRIC_PROGRESS, L"第 " + IntToWStr(g_state.qNum) + L" / " + IntToWStr(g_state.total) + L" 题", CLR_BLUE);
     DrawMetric(g, topX + 34 + metricW, topY + 18, metricW, 70, CFG_METRIC_DIFFICULTY, CFG_DIFF_NAMES[g_state.curDiff], diffColors[g_state.curDiff]);
-    DrawMetric(g, topX + 46 + metricW * 2, topY + 18, metricW, 70, CFG_METRIC_REMAINING, FormatDuration(remaining), remaining == 0 ? CLR_RED : remaining <= 30 ? CLR_GOLD : CLR_BLUE);
+    DrawMetric(g, topX + 46 + metricW * 2, topY + 18, metricW, 70, CFG_METRIC_REMAINING, FormatDuration(remaining), shouldFlash ? CLR_RED : (remaining <= 30 ? CLR_GOLD : CLR_BLUE));
     DrawMetric(g, topX + 58 + metricW * 3, topY + 18, topW - 80 - metricW * 3, 70, CFG_METRIC_TOTAL_TIME, FormatDuration(totalElapsed), CLR_RED);
     FillRoundRect(g, (float)(topX + 24), (float)(topY + 96), (float)(topW - 48), 10, 5, Color(255, 219, 227, 238));
-    FillRoundRect(g, (float)(topX + 24), (float)(topY + 96), (float)((topW - 48) * g_state.qNum / g_state.total), 10, 5, GdiColor(CLR_BLUE));
+    COLORREF progressBarColor = shouldFlash ? CLR_RED : CLR_BLUE;
+    FillRoundRect(g, (float)(topX + 24), (float)(topY + 96), (float)((topW - 48) * g_state.qNum / g_state.total), 10, 5, GdiColor(progressBarColor));
 
     int cardX = 38, cardY = 236, cardW = g_w - 76, cardH = g_h - 336;
     DrawCard(g, (float)cardX, (float)cardY, (float)cardW, (float)cardH, 22);
@@ -1147,12 +1199,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     case WM_TIMER: {
         if (g_state.page == PAGE_QUIZ && !g_state.answered) {
-            if (QuestionRemainingSeconds() <= 0) {
-                SettleCurrentQuestion(true);
+            int remaining = QuestionRemainingSeconds();
+            if (remaining <= 0) {
+                SettleCurrentQuestion(hwnd, true);
                 UpdateEditForState();
                 SetFocus(hwnd);
+            } else if (remaining <= 5) {
+                // Toggle flash every 500ms using timer 1
+                static int flashTick = 0;
+                flashTick++;
+                g_state.flashVisible = (flashTick % 2 == 0);
+                InvalidateRect(hwnd, nullptr, FALSE);
+            } else {
+                g_state.flashVisible = false;
+                InvalidateRect(hwnd, nullptr, FALSE);
             }
-            InvalidateRect(hwnd, nullptr, FALSE);
         }
         return 0;
     }
@@ -1187,7 +1248,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 InvalidateRect(hwnd, nullptr, FALSE);
                 return 0;
             }
-            if (!g_state.answered && QuestionRemainingSeconds() <= 0) SettleCurrentQuestion(true);
+            if (!g_state.answered && QuestionRemainingSeconds() <= 0) SettleCurrentQuestion(hwnd, true);
             if (g_state.mode != MODE_FILL) {
                 int cardX = 38, cardY = 236, cardW = g_w - 76, optY = cardY + 110;
                 for (int i = 0; i < 4; ++i) {
@@ -1217,7 +1278,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                         MessageBoxW(hwnd, CFG_NO_SELECTION, CFG_DLG_TITLE, MB_OK | MB_ICONINFORMATION);
                         return 0;
                     }
-                    SettleCurrentQuestion(false);
+                    SettleCurrentQuestion(hwnd, false);
                     UpdateEditForState();
                     SetFocus(hwnd);
                 } else if (g_state.qNum >= g_state.total) {
