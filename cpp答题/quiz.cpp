@@ -17,6 +17,7 @@
 #include <cwchar>
 #include <cstdio>
 #include <mmsystem.h>
+#include <random>   // <-- 新增：支持随机数
 #pragma comment(lib, "winmm.lib")
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
@@ -256,6 +257,9 @@ static const COLORREF CLR_GREEN = RGB(0, 142, 73);
 static const COLORREF CLR_RED = RGB(205, 38, 38);
 static const COLORREF CLR_LINE = RGB(196, 208, 224);
 static const COLORREF CLR_SOFT = RGB(244, 248, 253);
+
+// 全局随机数引擎
+std::mt19937 rng;
 
 std::wstring Utf8ToWide(const std::string& s) {
     if (s.empty()) return L"";
@@ -818,10 +822,21 @@ bool HasUnused(int diff) {
     return false;
 }
 
+// -----------------------------------------------------------------
+// 修改点：PickQuestion 改为随机从未使用中选取一个索引
+// -----------------------------------------------------------------
 int PickQuestion(int diff) {
-    for (int i = 0; i < (int)g_state.used[diff].size(); ++i) if (!g_state.used[diff][i]) return i;
-    return -1;
+    const auto& usedVec = g_state.used[diff];
+    std::vector<int> available;
+    for (int i = 0; i < (int)usedVec.size(); ++i) {
+        if (!usedVec[i]) available.push_back(i);
+    }
+    if (available.empty()) return -1;
+    std::uniform_int_distribution<int> dist(0, (int)available.size() - 1);
+    int idx = dist(rng);
+    return available[idx];
 }
+// -----------------------------------------------------------------
 
 int ResolveAvailableDifficulty(int preferred) {
     if (HasUnused(preferred)) return preferred;
@@ -1351,6 +1366,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 }
 
 int main() {
+    // 初始化随机数引擎
+    std::random_device rd;
+    rng.seed(rd());
+
     HMODULE user32 = GetModuleHandleW(L"user32.dll");
     if (user32) {
         typedef BOOL (WINAPI *SetDpiAwareFn)();
