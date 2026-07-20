@@ -1,6 +1,4 @@
-package com.leetcode.test;
-
-import com.leetcode.array.Leet_59_SpiralMatrixII;
+package com.leetcode.array;
 
 public class Array_Test {
     public static void main(String[] args) {
