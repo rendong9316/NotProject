@@ -1,0 +1,41 @@
+package com.leetcode.LinkedList;
+
+public class LinkList_Test {
+    public static void main(String[] args) {
+        // 1. 创建链表: 1 -> 2 -> 6 -> 3 -> 4 -> 5 -> 6
+        ListNode head = new ListNode(1);
+        head.next = new ListNode(2);
+//        head.next.next = new ListNode(6);
+//        head.next.next.next = new ListNode(3);
+//        head.next.next.next.next = new ListNode(4);
+//        head.next.next.next.next.next = new ListNode(5);
+//        head.next.next.next.next.next.next = new ListNode(6);
+
+        // 2. 打印原链表
+        System.out.print("原链表: ");
+        printList(head);
+
+        // 3. 调用方法删除 val=6
+        RemoveLinkedListElements solution = new RemoveLinkedListElements();
+        ListNode result = solution.removeElements(head, 2);
+
+        // 4. 打印结果
+        System.out.print("删除后: ");
+        printList(result);
+    }
+
+    // 辅助方法：打印链表
+    public static void printList(ListNode head) {
+        ListNode curr = head;
+        while (curr != null) {
+            System.out.print(curr.val);
+            if (curr.next != null) {
+                System.out.print(" -> ");
+            }
+            curr = curr.next;
+        }
+        System.out.println();
+    }
+
+
+}
