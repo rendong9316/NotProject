@@ -13,6 +13,9 @@ package com.leetcode.LinkedList;
 
 public class RemoveLinkedListElements {
     public ListNode removeElements(ListNode head, int val) {
+
+        //原始方法。
+        //注意while和if的选用判断。
         while (head!=null && head.val==val){
             head=head.next;
         }
@@ -25,6 +28,25 @@ public class RemoveLinkedListElements {
             }
         }
         return head;
+
+    }
+
+
+    public ListNode removeElements_dummy(ListNode head, int val) {
+
+        //虚拟头节点方法，更通用地设计算法
+
+        ListNode dummy = new ListNode(0,head);
+        ListNode cur = dummy;
+        while (cur!=null&&cur.next!=null){
+            if(cur.next.val==val){
+                cur.next=cur.next.next;
+
+            }else{
+                cur = cur.next;
+            }
+        }
+        return dummy.next;
 
     }
 

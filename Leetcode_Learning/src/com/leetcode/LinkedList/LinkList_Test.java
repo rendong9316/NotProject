@@ -5,11 +5,11 @@ public class LinkList_Test {
         // 1. 创建链表: 1 -> 2 -> 6 -> 3 -> 4 -> 5 -> 6
         ListNode head = new ListNode(1);
         head.next = new ListNode(2);
-//        head.next.next = new ListNode(6);
-//        head.next.next.next = new ListNode(3);
-//        head.next.next.next.next = new ListNode(4);
-//        head.next.next.next.next.next = new ListNode(5);
-//        head.next.next.next.next.next.next = new ListNode(6);
+        head.next.next = new ListNode(6);
+        head.next.next.next = new ListNode(3);
+        head.next.next.next.next = new ListNode(4);
+        head.next.next.next.next.next = new ListNode(5);
+        head.next.next.next.next.next.next = new ListNode(6);
 
         // 2. 打印原链表
         System.out.print("原链表: ");
@@ -17,7 +17,7 @@ public class LinkList_Test {
 
         // 3. 调用方法删除 val=6
         RemoveLinkedListElements solution = new RemoveLinkedListElements();
-        ListNode result = solution.removeElements(head, 2);
+        ListNode result = solution.removeElements_dummy(head, 1);
 
         // 4. 打印结果
         System.out.print("删除后: ");
