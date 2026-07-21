@@ -16,6 +16,7 @@
 #include <cwctype>
 #include <cwchar>
 #include <cstdio>
+#include <cmath>
 #include <mmsystem.h>
 #include <random>
 #pragma comment(lib, "winmm.lib")
@@ -43,8 +44,8 @@ using namespace Gdiplus;
 // 所有用户可见的文案、路径、提示语集中在此，便于维护与本地化。
 
 // --- 各题型固定答题数量 ---
-static const int QUESTION_COUNT_SINGLE = 5;
-static const int QUESTION_COUNT_MULTIPLE = 5;
+static const int QUESTION_COUNT_SINGLE = 3;
+static const int QUESTION_COUNT_MULTIPLE = 10;
 static const int QUESTION_COUNT_FILL = 2;
 static const int FILL_SCORE_OPTION_COUNT = 6;
 static const int FILL_SCORE_OPTIONS[FILL_SCORE_OPTION_COUNT] = {10, 20, 30, 40, 50, 60};
@@ -83,7 +84,7 @@ static const int QUESTION_TEXT_OFFSET_Y = 20;
 static const int QUESTION_TEXT_WIDTH_INSET = 68;
 static const int QUESTION_TEXT_HEIGHT = 78;
 static const int QUESTION_FONT_MAX_SIZE = 18;
-static const int QUESTION_FONT_MIN_SIZE = 13;
+static const int QUESTION_FONT_MIN_SIZE = 10;
 static const int QUESTION_FONT_STEP = 1;
 static const int QUESTION_MEASURE_HEIGHT = 1000;
 static const int QUESTION_HINT_OFFSET_Y = 100;
@@ -91,13 +92,21 @@ static const int QUESTION_HINT_HEIGHT = 24;
 static const int CHOICE_OPTION_START_OFFSET_Y = 132;
 static const int CHOICE_OPTION_LEFT_INSET = 34;
 static const int CHOICE_OPTION_WIDTH_INSET = 68;
-static const int CHOICE_OPTION_HEIGHT = 60;
-static const int CHOICE_OPTION_STEP_Y = 64;
 static const int CHOICE_OPTION_TEXT_OFFSET_X = 62;
-static const int CHOICE_OPTION_TEXT_OFFSET_Y = 8;
 static const int CHOICE_OPTION_TEXT_WIDTH_INSET = 78;
-static const int CHOICE_OPTION_TEXT_HEIGHT = 44;
 static const int CHOICE_FEEDBACK_GAP_Y = 10;
+static const int CHOICE_OPTION_FONT_MAX_SIZE = 16;
+static const int CHOICE_OPTION_FONT_MIN_SIZE = 10;
+static const int CHOICE_FONT_SHRINK_STEPS = 8;
+static const int CHOICE_DYNAMIC_QUESTION_MIN_HEIGHT = 36;
+static const int CHOICE_DYNAMIC_QUESTION_PADDING = 4;
+static const int CHOICE_DYNAMIC_QUESTION_HINT_GAP = 2;
+static const int CHOICE_DYNAMIC_HINT_OPTION_GAP = 6;
+static const int CHOICE_DYNAMIC_OPTION_MIN_HEIGHT = 44;
+static const int CHOICE_DYNAMIC_OPTION_PADDING = 10;
+static const int CHOICE_DYNAMIC_OPTION_GAP = 6;
+static const int CHOICE_DYNAMIC_BOTTOM_PADDING = 12;
+static const int CHOICE_FEEDBACK_HEIGHT = 82;
 static_assert(FILL_SCORE_OPTION_COUNT == SCORE_SELECT_COLUMNS * SCORE_SELECT_ROWS,
               "Fill score options must match the button grid.");
 
@@ -152,9 +161,9 @@ static const wchar_t* CFG_RULES[] = {
 static const int CFG_RULES_COUNT = 6;
 
 // --- 按钮文案 ---
-static const wchar_t* CFG_BTN_SINGLE = L"单选题模式";
-static const wchar_t* CFG_BTN_MULTIPLE = L"多选题模式";
-static const wchar_t* CFG_BTN_FILL = L"填空/简答模式";
+static const wchar_t* CFG_BTN_SINGLE = L"必答题";
+static const wchar_t* CFG_BTN_MULTIPLE = L"抢答题";
+static const wchar_t* CFG_BTN_FILL = L"风险题";
 static const wchar_t* CFG_BTN_RETURN_HOME = L"返回主页";
 static const wchar_t* CFG_BTN_CONFIRM = L"确认答案";
 static const wchar_t* CFG_BTN_NEXT = L"下一题";
@@ -588,6 +597,9 @@ void AdjustFont(float delta) {
 
 struct UIRect { int x, y, w, h; };
 
+UIRect g_choiceOptionRects[CHOICE_OPTION_COUNT];
+int g_choiceOptionRectCount = 0;
+
 UIRect FillScoreButtonRect(int idx);
 bool IsTimedMode();
 bool TracksTotalTime();
@@ -780,6 +792,18 @@ void TextWrap(Graphics& g, const std::wstring& text, Font* font, Color color,
     g.DrawString(text.c_str(), -1, font, rect, &fmt, &brush);
 }
 
+int MeasureWrappedTextHeight(Graphics& g, const std::wstring& text,
+                             Font* font, float width) {
+    StringFormat fmt;
+    fmt.SetFormatFlags(StringFormatFlagsLineLimit);
+    fmt.SetTrimming(StringTrimmingNone);
+    RectF layout(0.0f, 0.0f, width, (REAL)QUESTION_MEASURE_HEIGHT);
+    RectF bounds;
+    Status status = g.MeasureString(text.c_str(), -1, font, layout, &fmt, &bounds);
+    if (status != Ok) return 0;
+    return (int)std::ceil(bounds.Height);
+}
+
 Font* MakeFittingQuestionFont(Graphics& g, const std::wstring& text,
                               float width, float height) {
     StringFormat fmt;
@@ -959,6 +983,7 @@ int PickRandomUnused() {
 }
 
 bool StartQuestion() {
+    g_choiceOptionRectCount = 0;
     int idx = PickRandomUnused();
     if (idx < 0) return false;
     g_state.curQIdx = idx;
@@ -1109,15 +1134,81 @@ void DrawQuizPage(Graphics& g) {
     int cardX = 38, cardY = 236, cardW = g_w - 76, cardH = g_h - 336;
     DrawCard(g, (float)cardX, (float)cardY, (float)cardW, (float)cardH, 22);
     std::wstring questionText = IntToWStr(g_state.qNum) + L". " + q->q;
-    Font* qFont = MakeFittingQuestionFont(
-        g, questionText, (float)(cardW - QUESTION_TEXT_WIDTH_INSET),
-        (float)QUESTION_TEXT_HEIGHT);
-    Font* optFont = MakeFont(16);
+    Font* qFont = nullptr;
+    Font* optFont = nullptr;
+    int questionHeight = QUESTION_TEXT_HEIGHT;
+    int hintOffsetY = QUESTION_HINT_OFFSET_Y;
+    int optionStartY = CHOICE_OPTION_START_OFFSET_Y;
+    int optionHeights[CHOICE_OPTION_COUNT] = {};
+
+    if (g_state.mode == MODE_FILL) {
+        qFont = MakeFittingQuestionFont(
+            g, questionText, (float)(cardW - QUESTION_TEXT_WIDTH_INSET),
+            (float)QUESTION_TEXT_HEIGHT);
+        optFont = MakeFont(CHOICE_OPTION_FONT_MAX_SIZE);
+        g_choiceOptionRectCount = 0;
+    } else {
+        int feedbackReserve = g_state.answered
+                            ? CHOICE_FEEDBACK_HEIGHT + CHOICE_FEEDBACK_GAP_Y
+                            : NO_TIME_SECONDS;
+        int availableHeight = cardH - QUESTION_TEXT_OFFSET_Y
+                            - CHOICE_DYNAMIC_BOTTOM_PADDING - feedbackReserve;
+        int optionTextWidth = cardW - CHOICE_OPTION_WIDTH_INSET
+                            - CHOICE_OPTION_TEXT_WIDTH_INSET;
+
+        for (int shrink = NO_SCORE; shrink <= CHOICE_FONT_SHRINK_STEPS; ++shrink) {
+            int questionFontSize = std::max(
+                QUESTION_FONT_MIN_SIZE, QUESTION_FONT_MAX_SIZE - shrink);
+            int optionFontSize = std::max(
+                CHOICE_OPTION_FONT_MIN_SIZE, CHOICE_OPTION_FONT_MAX_SIZE - shrink);
+            Font* candidateQuestionFont = MakeFont(questionFontSize, FontStyleBold);
+            Font* candidateOptionFont = MakeFont(optionFontSize);
+            int candidateQuestionHeight = std::max(
+                CHOICE_DYNAMIC_QUESTION_MIN_HEIGHT,
+                MeasureWrappedTextHeight(
+                    g, questionText, candidateQuestionFont,
+                    (float)(cardW - QUESTION_TEXT_WIDTH_INSET))
+                    + CHOICE_DYNAMIC_QUESTION_PADDING);
+            int requiredHeight = candidateQuestionHeight
+                               + CHOICE_DYNAMIC_QUESTION_HINT_GAP
+                               + QUESTION_HINT_HEIGHT
+                               + CHOICE_DYNAMIC_HINT_OPTION_GAP;
+            int candidateOptionHeights[CHOICE_OPTION_COUNT] = {};
+            for (int i = NO_SCORE; i < CHOICE_OPTION_COUNT; ++i) {
+                candidateOptionHeights[i] = std::max(
+                    CHOICE_DYNAMIC_OPTION_MIN_HEIGHT,
+                    MeasureWrappedTextHeight(
+                        g, q->opts[i], candidateOptionFont, (float)optionTextWidth)
+                        + CHOICE_DYNAMIC_OPTION_PADDING);
+                requiredHeight += candidateOptionHeights[i];
+                if (i + 1 < CHOICE_OPTION_COUNT) requiredHeight += CHOICE_DYNAMIC_OPTION_GAP;
+            }
+
+            bool smallestFonts = questionFontSize == QUESTION_FONT_MIN_SIZE
+                              && optionFontSize == CHOICE_OPTION_FONT_MIN_SIZE;
+            if (requiredHeight <= availableHeight || smallestFonts) {
+                qFont = candidateQuestionFont;
+                optFont = candidateOptionFont;
+                questionHeight = candidateQuestionHeight;
+                for (int i = NO_SCORE; i < CHOICE_OPTION_COUNT; ++i) {
+                    optionHeights[i] = candidateOptionHeights[i];
+                }
+                break;
+            }
+            delete candidateQuestionFont;
+            delete candidateOptionFont;
+        }
+        hintOffsetY = QUESTION_TEXT_OFFSET_Y + questionHeight
+                    + CHOICE_DYNAMIC_QUESTION_HINT_GAP;
+        optionStartY = hintOffsetY + QUESTION_HINT_HEIGHT
+                     + CHOICE_DYNAMIC_HINT_OPTION_GAP;
+    }
+
     TextWrap(g, questionText, qFont, GdiColor(CLR_INK),
              cardX + QUESTION_TEXT_OFFSET_X,
              cardY + QUESTION_TEXT_OFFSET_Y,
              cardW - QUESTION_TEXT_WIDTH_INSET,
-             QUESTION_TEXT_HEIGHT);
+             questionHeight);
 
     UIRect backRect = ReturnHomeButtonRect();
     DrawButton(g, backRect.x, backRect.y, backRect.w, backRect.h, CFG_BTN_RETURN_HOME, CLR_RED, RGB(160, 30, 30), true);
@@ -1156,16 +1247,20 @@ void DrawQuizPage(Graphics& g) {
         TextLeft(g, g_state.mode == MODE_MULTIPLE ? CFG_HINT_MULTIPLE : CFG_HINT_SINGLE,
                  meta2, GdiColor(CLR_MUTED),
                  cardX + QUESTION_TEXT_OFFSET_X,
-                 cardY + QUESTION_HINT_OFFSET_Y,
+                 cardY + hintOffsetY,
                  cardW - QUESTION_TEXT_WIDTH_INSET,
                  QUESTION_HINT_HEIGHT);
 
-        int optY = cardY + CHOICE_OPTION_START_OFFSET_Y;
+        int optY = cardY + optionStartY;
+        int nextOptionY = optY;
+        g_choiceOptionRectCount = CHOICE_OPTION_COUNT;
         for (int i = 0; i < CHOICE_OPTION_COUNT; ++i) {
             int ox = cardX + CHOICE_OPTION_LEFT_INSET;
-            int oy = optY + i * CHOICE_OPTION_STEP_Y;
+            int oy = nextOptionY;
             int ow = cardW - CHOICE_OPTION_WIDTH_INSET;
-            int oh = CHOICE_OPTION_HEIGHT;
+            int oh = optionHeights[i];
+            g_choiceOptionRects[i] = {ox, oy, ow, oh};
+            nextOptionY += oh + CHOICE_DYNAMIC_OPTION_GAP;
             bool selected = g_state.selected[i];
             bool correctAnswer = std::find(q->answers.begin(), q->answers.end(), i) != q->answers.end();
             bool showCorrect = g_state.answered && correctAnswer;
@@ -1177,20 +1272,21 @@ void DrawQuizPage(Graphics& g) {
             FillRoundRectBorder(g, (float)ox, (float)oy, (float)ow, (float)oh, 14, fill, border, selected || showCorrect || showWrong ? 2.4f : 1.5f);
             wchar_t letter[2] = {(wchar_t)(L'A' + i), L'\0'};
             COLORREF letterColor = showCorrect ? CLR_GREEN : showWrong ? CLR_RED : selected ? CLR_BLUE : CLR_NAVY;
-            FillRoundRect(g, (float)(ox + 14), (float)(oy + 10), 32, 32, 16, GdiColor(letterColor));
+            int letterY = oy + (oh - 32) / UI_CENTER_DIVISOR;
+            FillRoundRect(g, (float)(ox + 14), (float)letterY, 32, 32, 16, GdiColor(letterColor));
             Font* lf = MakeFont(13, FontStyleBold);
-            TextCenter(g, letter, lf, Color(255, 255, 255, 255), ox + 14, oy + 10, 32, 32);
-            std::wstring optionText = q->opts[i].size() > 2 ? q->opts[i].substr(2) : q->opts[i];
-            TextWrap(g, optionText, optFont, GdiColor(CLR_INK),
+            TextCenter(g, letter, lf, Color(255, 255, 255, 255), ox + 14, letterY, 32, 32);
+            TextWrap(g, q->opts[i], optFont, GdiColor(CLR_INK),
                      ox + CHOICE_OPTION_TEXT_OFFSET_X,
-                     oy + CHOICE_OPTION_TEXT_OFFSET_Y,
+                     oy + CHOICE_DYNAMIC_OPTION_PADDING / UI_CENTER_DIVISOR,
                      ow - CHOICE_OPTION_TEXT_WIDTH_INSET,
-                     CHOICE_OPTION_TEXT_HEIGHT);
+                     oh - CHOICE_DYNAMIC_OPTION_PADDING);
             delete lf;
         }
 
         if (g_state.answered) {
-            int fy = optY + CHOICE_OPTION_COUNT * CHOICE_OPTION_STEP_Y + CHOICE_FEEDBACK_GAP_Y;
+            const UIRect& lastOption = g_choiceOptionRects[CHOICE_OPTION_COUNT - 1];
+            int fy = lastOption.y + lastOption.h + CHOICE_FEEDBACK_GAP_Y;
             bool ok = g_state.lastCorrect;
             FillRoundRectBorder(g, (float)(cardX + 34), (float)fy, (float)(cardW - 68), 82, 14, ok ? Color(255, 231, 248, 238) : Color(255, 254, 226, 226), ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), 2.0f);
             std::wstring fb = ok ? CFG_FEEDBACK_CORRECT : (g_state.timedOut ? CFG_FEEDBACK_TIMEOUT : CFG_FEEDBACK_WRONG_PREFIX) + AnswerLetters(*q) + CFG_FEEDBACK_SUFFIX;
@@ -1325,14 +1421,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 return TRUE;
             }
             if (g_state.mode != MODE_FILL) {
-                int cardX = 38, cardY = 236, cardW = g_w - 76;
-                int optY = cardY + CHOICE_OPTION_START_OFFSET_Y;
-                for (int i = 0; i < CHOICE_OPTION_COUNT; ++i) {
-                    int ox = cardX + CHOICE_OPTION_LEFT_INSET;
-                    int oy = optY + i * CHOICE_OPTION_STEP_Y;
-                    int ow = cardW - CHOICE_OPTION_WIDTH_INSET;
-                    int oh = CHOICE_OPTION_HEIGHT;
-                    if (!g_state.answered && Hit(mx, my, ox, oy, ow, oh)) {
+                for (int i = NO_SCORE; i < g_choiceOptionRectCount; ++i) {
+                    const UIRect& optionRect = g_choiceOptionRects[i];
+                    if (!g_state.answered
+                        && Hit(mx, my, optionRect.x, optionRect.y,
+                               optionRect.w, optionRect.h)) {
                         SetCursor(LoadCursorW(nullptr, IDC_HAND));
                         return TRUE;
                     }
@@ -1467,14 +1560,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 SettleCurrentQuestion(hwnd, true);
             }
             if (g_state.mode != MODE_FILL) {
-                int cardX = 38, cardY = 236, cardW = g_w - 76;
-                int optY = cardY + CHOICE_OPTION_START_OFFSET_Y;
-                for (int i = 0; i < CHOICE_OPTION_COUNT; ++i) {
-                    int ox = cardX + CHOICE_OPTION_LEFT_INSET;
-                    int oy = optY + i * CHOICE_OPTION_STEP_Y;
-                    int ow = cardW - CHOICE_OPTION_WIDTH_INSET;
-                    int oh = CHOICE_OPTION_HEIGHT;
-                    if (!g_state.answered && Hit(mx, my, ox, oy, ow, oh)) {
+                for (int i = NO_SCORE; i < g_choiceOptionRectCount; ++i) {
+                    const UIRect& optionRect = g_choiceOptionRects[i];
+                    if (!g_state.answered
+                        && Hit(mx, my, optionRect.x, optionRect.y,
+                               optionRect.w, optionRect.h)) {
                         if (g_state.mode == MODE_SINGLE) {
                             g_state.selected[0] = g_state.selected[1] = g_state.selected[2] = g_state.selected[3] = false;
                             g_state.selected[i] = true;
