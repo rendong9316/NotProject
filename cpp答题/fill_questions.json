@@ -1,164 +1,132 @@
 [
   {
     "id": 1,
-    "type": "fill",
-    "difficulty": "easy",
-    "question": "《中华人民共和国宪法》是国家的____，具有最高的法律效力。",
-    "fill_answer": "根本法",
-    "fill_alternatives": ["根本大法", "根本法律"],
-    "explanation": "宪法是国家的根本法，具有最高的法律效力，一切法律、行政法规都不得同宪法相抵触。"
+    "question": "行政执法三项制度是：（）（）（）",
+    "fill_answer": "行政执法公示制度",
+    "fill_alternatives": [
+      "行政执法全过程记录制度",
+      "重大执法决定法制审核制度"
+    ]
   },
   {
     "id": 2,
-    "type": "fill",
-    "difficulty": "easy",
-    "question": "我国现行《宪法》于____年颁布施行。",
-    "fill_answer": "1982",
-    "fill_alternatives": ["一九八二"],
-    "explanation": "现行《宪法》于1982年12月4日第五届全国人大第五次会议通过并施行。"
+    "question": "黑龙江省包容审慎监管执法\"四张清单\"分别为：（）（）（）（）",
+    "fill_answer": "不予行政处罚清单",
+    "fill_alternatives": [
+      "从轻处罚清单",
+      "减轻处罚清单",
+      "不予实施行政强制措施清单"
+    ]
   },
   {
     "id": 3,
-    "type": "fill",
-    "difficulty": "easy",
-    "question": "《中华人民共和国民法典》自____年1月1日起施行。",
-    "fill_answer": "2021",
-    "fill_alternatives": ["二零二一", "二〇二一"],
-    "explanation": "《民法典》于2020年5月28日通过，自2021年1月1日起正式施行。"
+    "question": "黑龙江全省自（）年7月30日起全面实施涉企现场检查亮码入企制度",
+    "fill_answer": "2025",
+    "fill_alternatives": []
   },
   {
     "id": 4,
-    "type": "fill",
-    "difficulty": "easy",
-    "question": "我国公民的法定结婚年龄，男不得早于____周岁，女不得早于20周岁。",
-    "fill_answer": "22",
-    "fill_alternatives": ["二十二", "廿二"],
-    "explanation": "《民法典》第一千零四十七条规定：结婚年龄，男不得早于二十二周岁，女不得早于二十周岁。"
+    "question": "执法人员入企检查必须使用（）APP，同步出示电子执法证与检查码。",
+    "fill_answer": "黑龙江行政执法",
+    "fill_alternatives": []
   },
   {
     "id": 5,
-    "type": "fill",
-    "difficulty": "easy",
-    "question": "____是全国人民代表大会的常设机关，对全国人民代表大会负责并报告工作。",
-    "fill_answer": "全国人大常委会",
-    "fill_alternatives": ["全国人民代表大会常务委员会", "人大常委会"],
-    "explanation": "全国人民代表大会常务委员会是全国人大的常设机关，在全国人大闭会期间行使国家权力。"
+    "question": "行政执法人员开展执法活动，必须主动出示执法证件，\n未亮证的，当事人有权（）检查。",
+    "fill_answer": "拒绝",
+    "fill_alternatives": []
   },
   {
     "id": 6,
-    "type": "fill",
-    "difficulty": "easy",
-    "question": "中华人民共和国的国家权力机关是____。",
-    "fill_answer": "人民代表大会",
-    "fill_alternatives": ["全国人民代表大会", "人大"],
-    "explanation": "中华人民共和国的一切权力属于人民，人民行使国家权力的机关是全国人民代表大会和地方各级人民代表大会。"
+    "question": "涉企行政检查实施前，\n须通过黑龙江省行政执法综合管理监督平台制定检查计划、（）后方可生成唯一检查码。",
+    "fill_answer": "审批检查任务",
+    "fill_alternatives": []
   },
   {
     "id": 7,
-    "type": "fill",
-    "difficulty": "medium",
-    "question": "《民法典》规定，向人民法院请求保护民事权利的诉讼时效期间为____年。",
-    "fill_answer": "3",
-    "fill_alternatives": ["三", "三年"],
-    "explanation": "《民法典》第一百八十八条规定：普通诉讼时效期间为三年，自权利人知道或者应当知道权利受到损害以及义务人之日起计算。"
+    "question": "入企检查结束后，\n执法人员须将检查结果实时录入监督平台，企业可扫码对执法行为开展（）。",
+    "fill_answer": "评价",
+    "fill_alternatives": []
   },
   {
     "id": 8,
-    "type": "fill",
-    "difficulty": "medium",
-    "question": "行政处罚的种类中，最轻微的一种是____。",
-    "fill_answer": "警告",
-    "fill_alternatives": ["警告通报批评"],
-    "explanation": "《行政处罚法》第九条规定：警告、通报批评是行政处罚中最轻微的种类。"
+    "question": "实施行政检查需出具（），紧急当场检查的事后补办审批手续。",
+    "fill_answer": "行政检查通知书",
+    "fill_alternatives": []
   },
   {
     "id": 9,
-    "type": "fill",
-    "difficulty": "medium",
-    "question": "公民、法人或者其他组织直接向人民法院提起行政诉讼的，应当自知道或者应当知道作出行政行为之日起____个月内提出。",
-    "fill_answer": "6",
-    "fill_alternatives": ["六", "六个月"],
-    "explanation": "《行政诉讼法》第四十六条规定：直接向法院起诉的，起诉期限为六个月。"
+    "question": "同一企业同一事项无正当理由不得开展（）。",
+    "fill_answer": "重复、多头检查",
+    "fill_alternatives": []
   },
   {
     "id": 10,
-    "type": "fill",
-    "difficulty": "medium",
-    "question": "十八周岁以上的自然人为____，可以独立实施民事法律行为。",
-    "fill_answer": "成年人",
-    "fill_alternatives": ["完全民事行为能力人"],
-    "explanation": "《民法典》第十七条规定：十八周岁以上的自然人为成年人；第十八条：成年人为完全民事行为能力人。"
+    "question": "行政机关在收集证据时，可以采取（）的方法；\n在证据可能灭失或者以后难以取得的情况下，经行政机关负责人批准，可以（），并应当在（）内及时作出处理决定，\n在此期间，当事人或者有关人员不得销毁或者转移证据。",
+    "fill_answer": "抽样取证",
+    "fill_alternatives": [
+      "先行登记保存",
+      "七日"
+    ]
   },
   {
     "id": 11,
-    "type": "fill",
-    "difficulty": "medium",
-    "question": "不能____自己行为的成年人为无民事行为能力人，由其法定代理人代理实施民事法律行为。",
-    "fill_answer": "辨认",
-    "fill_alternatives": ["辨认和判断"],
-    "explanation": "《民法典》第二十一条规定：不能辨认自己行为的成年人为无民事行为能力人。"
+    "question": "执法人员与案件当事人存在利害关系，应当依法（）。",
+    "fill_answer": "回避",
+    "fill_alternatives": []
   },
   {
     "id": 12,
-    "type": "fill",
-    "difficulty": "medium",
-    "question": "行政诉讼的原告只能是____，被告只能是行政机关。",
-    "fill_answer": "公民",
-    "fill_alternatives": ["公民法人其他组织", "行政管理相对人"],
-    "explanation": "行政诉讼中，原告是作为行政管理相对人的公民、法人或者其他组织，被告是作出行政行为的行政机关。"
+    "question": "推行柔性执法，优先采用提醒、告诫、约谈、责令改正等（）手段替代处罚。",
+    "fill_answer": "非强制性执法",
+    "fill_alternatives": []
   },
   {
     "id": 13,
-    "type": "fill",
-    "difficulty": "hard",
-    "question": "行政复议机关应当自受理申请之日起____日内作出行政复议决定。",
-    "fill_answer": "60",
-    "fill_alternatives": ["六十", "六十日"],
-    "explanation": "《行政复议法》第三十一条规定：行政复议机关应当自受理申请之日起六十日内作出行政复议决定。"
+    "question": "简述行政执法公示制度事前、事中、事后公示分别公示哪些内容（）",
+    "fill_answer": "1.事前公示：权责清单、执法依据、主体、流程、裁量基准、四张清单、随机抽查事项、办事指南；\n2.事中公示：亮证、告知当事人权利义务、出示执法文书；\n3.事后公示：处罚、强制、检查结果、行政许可决定，统一在黑龙江行政执法信息公示平台。",
+    "fill_alternatives": []
   },
   {
     "id": 14,
-    "type": "fill",
-    "difficulty": "hard",
-    "question": "我国《刑法》规定的刑罚分为主刑和____两大类。",
-    "fill_answer": "附加刑",
-    "fill_alternatives": ["附加刑罚"],
-    "explanation": "《刑法》第三十二条规定：刑罚分为主刑和附加刑。主刑包括管制、拘役、有期徒刑、无期徒刑、死刑；附加刑包括罚金、剥夺政治权利、没收财产、驱逐出境。"
+    "question": "未落实行政执法三项制度会产生哪些法律后果？（）",
+    "fill_answer": "1.执法程序违法，\n2.行政复议、诉讼败诉、决定被撤销，\n3.相关人员追责。",
+    "fill_alternatives": []
   },
   {
     "id": 15,
-    "type": "fill",
-    "difficulty": "hard",
-    "question": "国家赔偿分为行政赔偿和____两种。",
-    "fill_answer": "刑事赔偿",
-    "fill_alternatives": ["司法赔偿"],
-    "explanation": "《国家赔偿法》规定的国家赔偿包括行政赔偿和刑事赔偿（又称司法赔偿）两类。"
+    "question": "从轻处罚、减轻处罚二者在处罚幅度上有什么区别？（）",
+    "fill_answer": "从轻：在法定处罚幅度内靠下限处罚；\n减轻：低于法定最低处罚幅度予以处罚。",
+    "fill_alternatives": []
   },
   {
     "id": 16,
-    "type": "fill",
-    "difficulty": "hard",
-    "question": "因国际货物买卖合同和技术进出口合同争议提起诉讼或者申请仲裁的期限为____年。",
-    "fill_answer": "4",
-    "fill_alternatives": ["四", "四年"],
-    "explanation": "《民法典》第五百九十四条规定：因国际货物买卖合同和技术进出口合同争议提起诉讼或者申请仲裁的时效期间为四年。"
+    "question": "不予实施行政强制措施清单适用场景有哪些？（）",
+    "fill_answer": "轻微违规、及时整改、\n无安全隐患、无重大风险，不查封扣押设备、财物。",
+    "fill_alternatives": []
   },
   {
     "id": 17,
-    "type": "fill",
-    "difficulty": "hard",
-    "question": "在我国法律的效力层次中，____的效力高于行政法规、地方性法规和规章。",
-    "fill_answer": "法律",
-    "fill_alternatives": ["全国人大及其常委会制定的法律"],
-    "explanation": "《立法法》规定：宪法具有最高的法律效力，法律的效力高于行政法规、地方性法规、规章。"
+    "question": "哪些人员禁止独立执法？（）",
+    "fill_answer": "劳务派遣、临时、\n借调人员无执法资格，不能独立执法办案。",
+    "fill_alternatives": []
   },
   {
     "id": 18,
-    "type": "fill",
-    "difficulty": "hard",
-    "question": "犯罪嫌疑人、被告人自愿如实供述自己的罪行，承认指控的犯罪事实，愿意接受处罚的，可以依法从宽处理的制度称为____制度。",
-    "fill_answer": "认罪认罚从宽",
-    "fill_alternatives": ["认罪认罚"],
-    "explanation": "认罪认罚从宽制度是我国刑事诉讼法确立的重要制度，对自愿认罪认罚的犯罪嫌疑人、被告人依法从宽处理。"
+    "question": "临时辅助人员可以从事哪些辅助工作？（）",
+    "fill_answer": "仅可做记录、搬运、拍照等辅助工作，\n不得单独询问、取证、作出处置。",
+    "fill_alternatives": []
+  },
+  {
+    "id": 19,
+    "question": "亮码入企制度适用哪些主体、哪些检查场景？（）",
+    "fill_answer": "主体：行政机关、授权组织、受委托执法单位；\n场景：所有对企业、个体工商户经营场所的现场行政检查。",
+    "fill_alternatives": []
+  },
+  {
+    "id": 20,
+    "question": "紧急突发现场检查无法提前走平台审批，\"亮码入企\"流程如何补正？（）",
+    "fill_answer": "当场开展检查，24小时内补报单位负责人审批，\n3个工作日内在监督平台补录检查计划、任务、检查码信息。",
+    "fill_alternatives": []
   }
 ]

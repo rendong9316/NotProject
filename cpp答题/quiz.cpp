@@ -17,7 +17,7 @@
 #include <cwchar>
 #include <cstdio>
 #include <mmsystem.h>
-#include <random>   // <-- 新增：支持随机数
+#include <random>
 #pragma comment(lib, "winmm.lib")
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
@@ -71,6 +71,7 @@ static const wchar_t* CFG_DLG_TITLE = L"提示";
 static const wchar_t* CFG_DLG_ERR = L"题库错误";
 
 // --- 题库错误提示 ---
+// 移除难度分组校验
 static const wchar_t* CFG_ERR_FILE_NOT_FOUND = L"未找到题库文件：";
 static const wchar_t* CFG_ERR_FILE_READ = L"无法读取题库文件：";
 static const wchar_t* CFG_ERR_JSON_ROOT = L"题库 JSON 格式错误：根节点应为数组。";
@@ -115,6 +116,7 @@ static const wchar_t* CFG_HINT_MULTIPLE = L"请选择所有正确答案后确认
 static const wchar_t* CFG_HINT_FILL = L"请在下方输入框中填写答案后确认（不区分大小写与首尾空格）";
 
 // --- 难度名称 ---
+// 移除难度概念，保留常量供兼容
 static const wchar_t* CFG_DIFF_NAMES[] = {L"简单题", L"中档题", L"高档题"};
 
 // --- 指标标签 ---
@@ -174,12 +176,10 @@ struct Question {
 };
 
 struct QuestionBank {
-    std::vector<Question> groups[3];
+    std::vector<Question> all;  // 扁平题库，不再按难度分组
 
-    const std::vector<Question>& pool(int diff) const { return groups[diff]; }
-    std::vector<Question>& pool(int diff) { return groups[diff]; }
-    bool ready() const { return !groups[0].empty() && !groups[1].empty() && !groups[2].empty(); }
-    int size() const { return (int)(groups[0].size() + groups[1].size() + groups[2].size()); }
+    bool ready() const { return !all.empty(); }
+    int size() const { return (int)all.size(); }
 };
 
 enum Page { PAGE_HOME, PAGE_QUIZ, PAGE_RESULT };
@@ -188,17 +188,14 @@ enum QuizMode { MODE_SINGLE, MODE_MULTIPLE, MODE_FILL };
 struct QuizState {
     Page page = PAGE_HOME;
     QuizMode mode = MODE_SINGLE;
-    int curDiff = 0;
     int qNum = 0;
     int total = 10;
     int correct = 0;
     int wrong = 0;
-    int easyC = 0, easyT = 0, medC = 0, medT = 0, hardC = 0, hardT = 0;
     bool answered = false;
     bool lastCorrect = false;
     bool timedOut = false;
-    int consecWrong[3] = {0, 0, 0};
-    std::vector<bool> used[3];
+    std::vector<bool> used;  // 单一向量，标记每题是否已出
     int curQIdx = -1;
     bool selected[4] = {false, false, false, false};
     std::wstring userFill;
@@ -207,26 +204,22 @@ struct QuizState {
     std::chrono::system_clock::time_point quizEnd;
     std::chrono::steady_clock::time_point questionStart;
     std::vector<int> questionSeconds;
-
     bool flashVisible = false;
 
     void resetQuiz(const QuestionBank& bank) {
-        curDiff = 0;
         qNum = 0;
         correct = 0;
         wrong = 0;
-        easyC = easyT = medC = medT = hardC = hardT = 0;
         answered = false;
         lastCorrect = false;
         timedOut = false;
-        consecWrong[0] = consecWrong[1] = consecWrong[2] = 0;
         curQIdx = -1;
         selected[0] = selected[1] = selected[2] = selected[3] = false;
         flashVisible = false;
         userFill.clear();
         settledSeconds = 0;
         questionSeconds.clear();
-        for (int i = 0; i < 3; ++i) used[i].assign(bank.pool(i).size(), false);
+        used.assign(bank.all.size(), false);
     }
 };
 
@@ -408,13 +401,6 @@ struct JsonParser {
     }
 };
 
-int DifficultyFromText(const std::wstring& d) {
-    if (d == L"easy" || d == L"简单") return 0;
-    if (d == L"medium" || d == L"中档" || d == L"中等") return 1;
-    if (d == L"hard" || d == L"高档" || d == L"困难") return 2;
-    return -1;
-}
-
 bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& bank, std::wstring& error) {
     HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (file == INVALID_HANDLE_VALUE) {
@@ -453,7 +439,7 @@ bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& ban
             std::string key = p.str();
             p.eat(':');
             if (key == "id") q.id = p.number();
-            else if (key == "difficulty") q.difficulty = DifficultyFromText(Utf8ToWide(p.str()));
+            else if (key == "difficulty") { /* 难度不再参与抽题逻辑 */ }
             else if (key == "question") q.q = Utf8ToWide(p.str());
             else if (key == "options") {
                 auto arr = p.stringArray();
@@ -488,20 +474,20 @@ bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& ban
         bool validCount = mode == MODE_SINGLE ? q.answers.size() == 1 : q.answers.size() >= 2;
         bool valid;
         if (mode == MODE_FILL) {
-            valid = !q.q.empty() && q.difficulty >= 0 && hasFillAnswer;
+            valid = !q.q.empty() && hasFillAnswer;
         } else {
-            valid = !q.q.empty() && q.difficulty >= 0 && validOptions && validAnswers && validCount;
+            valid = !q.q.empty() && validOptions && validAnswers && validCount;
         }
         if (!valid) {
             error = CFG_ERR_INVALID_Q + path + CFG_ERR_Q_ID + IntToWStr(q.id) + L")。";
             return false;
         }
-        loaded.pool(q.difficulty).push_back(q);
+        loaded.all.push_back(q);
         p.eat(',');
     }
 
     if (!loaded.ready()) {
-        error = CFG_ERR_MISSING_GROUPS + path;
+        error = L"题库文件为空：" + path;
         return false;
     }
     if (loaded.size() < 10) {
@@ -811,82 +797,34 @@ std::wstring ModeName() {
 }
 
 const Question* CurrentQuestion() {
-    if (g_state.curDiff < 0 || g_state.curDiff > 2 || g_state.curQIdx < 0) return nullptr;
-    const auto& pool = ActiveBank().pool(g_state.curDiff);
-    if (g_state.curQIdx >= (int)pool.size()) return nullptr;
-    return &pool[g_state.curQIdx];
+    if (g_state.curQIdx < 0 || g_state.curQIdx >= (int)ActiveBank().all.size()) return nullptr;
+    return &ActiveBank().all[g_state.curQIdx];
 }
 
-bool HasUnused(int diff) {
-    for (bool used : g_state.used[diff]) if (!used) return true;
-    return false;
-}
-
-// -----------------------------------------------------------------
-// 修改点：PickQuestion 改为随机从未使用中选取一个索引
-// -----------------------------------------------------------------
-int PickQuestion(int diff) {
-    const auto& usedVec = g_state.used[diff];
+// 随机从未使用题目中选一道
+int PickRandomUnused() {
+    const auto& bank = ActiveBank();
     std::vector<int> available;
-    for (int i = 0; i < (int)usedVec.size(); ++i) {
-        if (!usedVec[i]) available.push_back(i);
+    for (int i = 0; i < (int)bank.all.size(); ++i) {
+        if (!g_state.used[i]) available.push_back(i);
     }
     if (available.empty()) return -1;
     std::uniform_int_distribution<int> dist(0, (int)available.size() - 1);
     int idx = dist(rng);
     return available[idx];
 }
-// -----------------------------------------------------------------
 
-int ResolveAvailableDifficulty(int preferred) {
-    if (HasUnused(preferred)) return preferred;
-    for (int distance = 1; distance < 3; ++distance) {
-        int lower = preferred - distance;
-        int higher = preferred + distance;
-        if (lower >= 0 && HasUnused(lower)) return lower;
-        if (higher <= 2 && HasUnused(higher)) return higher;
-    }
-    return -1;
-}
-
-int NextDifficulty() {
-    int preferred = g_state.curDiff;
-    if (g_state.lastCorrect) {
-        if (preferred < 2) ++preferred;
-    } else if (g_state.consecWrong[preferred] >= 3) {
-        g_state.consecWrong[preferred] = 0;
-        if (preferred > 0) --preferred;
-    }
-    return ResolveAvailableDifficulty(preferred);
-}
-
-void CountDifficultyTotal(int diff) {
-    if (diff == 0) ++g_state.easyT;
-    else if (diff == 1) ++g_state.medT;
-    else ++g_state.hardT;
-}
-
-void CountDifficultyCorrect(int diff) {
-    if (diff == 0) ++g_state.easyC;
-    else if (diff == 1) ++g_state.medC;
-    else ++g_state.hardC;
-}
-
-bool StartQuestion(int diff) {
-    int resolved = ResolveAvailableDifficulty(diff);
-    if (resolved < 0) return false;
-    int idx = PickQuestion(resolved);
+bool StartQuestion() {
+    int idx = PickRandomUnused();
     if (idx < 0) return false;
-    g_state.curDiff = resolved;
     g_state.curQIdx = idx;
-    g_state.used[resolved][idx] = true;
+    g_state.used[idx] = true;
     g_state.selected[0] = g_state.selected[1] = g_state.selected[2] = g_state.selected[3] = false;
     g_state.userFill.clear();
     g_state.answered = false;
     g_state.timedOut = false;
     g_state.settledSeconds = 0;
     g_state.questionStart = std::chrono::steady_clock::now();
-    CountDifficultyTotal(resolved);
     return true;
 }
 
@@ -899,7 +837,7 @@ void StartQuiz(QuizMode mode) {
     g_state.page = PAGE_QUIZ;
     g_state.qNum = 1;
     g_state.quizStart = std::chrono::system_clock::now();
-    StartQuestion(0);
+    StartQuestion();
 }
 
 int QuestionElapsedSeconds() {
@@ -954,12 +892,9 @@ void SettleCurrentQuestion(HWND hwnd, bool timeout) {
         PlayEmbeddedSound(SOUND_TIMEOUT_ID);
     } else if (ok) {
         ++g_state.correct;
-        CountDifficultyCorrect(g_state.curDiff);
-        g_state.consecWrong[g_state.curDiff] = 0;
         PlayEmbeddedSound(SOUND_CORRECT_ID);
     } else {
         ++g_state.wrong;
-        ++g_state.consecWrong[g_state.curDiff];
         PlayEmbeddedSound(SOUND_WRONG_ID);
     }
 }
@@ -971,7 +906,6 @@ void DrawQuizPage(Graphics& g) {
     DrawHeader(g, ModeName());
     DrawFontControls(g);
 
-    COLORREF diffColors[] = {CLR_GREEN, CLR_GOLD, CLR_RED};
     const Question* q = CurrentQuestion();
     if (!q) return;
 
@@ -979,12 +913,12 @@ void DrawQuizPage(Graphics& g) {
     DrawCard(g, (float)topX, (float)topY, (float)topW, (float)topH, 18);
     Font* meta = MakeFont(14, FontStyleBold);
     Font* meta2 = MakeFont(13);
-    int metricW = std::max(150, (topW - 92) / 4);
+    int metricW = (topW - 66) / 4;  // 4列，留出3个间隙(22px)
     bool shouldFlash = remaining <= 5 && g_state.flashVisible;
     DrawMetric(g, topX + 22, topY + 18, metricW, 70, CFG_METRIC_PROGRESS, L"第 " + IntToWStr(g_state.qNum) + L" / " + IntToWStr(g_state.total) + L" 题", CLR_BLUE);
-    DrawMetric(g, topX + 34 + metricW, topY + 18, metricW, 70, CFG_METRIC_DIFFICULTY, CFG_DIFF_NAMES[g_state.curDiff], diffColors[g_state.curDiff]);
+    DrawMetric(g, topX + 34 + metricW, topY + 18, metricW, 70, CFG_METRIC_MODE, ModeName(), CLR_NAVY);
     DrawMetric(g, topX + 46 + metricW * 2, topY + 18, metricW, 70, CFG_METRIC_REMAINING, FormatDuration(remaining), shouldFlash ? CLR_RED : (remaining <= 30 ? CLR_GOLD : CLR_BLUE));
-    DrawMetric(g, topX + 58 + metricW * 3, topY + 18, topW - 80 - metricW * 3, 70, CFG_METRIC_TOTAL_TIME, FormatDuration(totalElapsed), CLR_RED);
+    DrawMetric(g, topX + 58 + metricW * 3, topY + 18, metricW, 70, CFG_METRIC_TOTAL_TIME, FormatDuration(totalElapsed), CLR_RED);
     FillRoundRect(g, (float)(topX + 24), (float)(topY + 96), (float)(topW - 48), 10, 5, Color(255, 219, 227, 238));
     COLORREF progressBarColor = shouldFlash ? CLR_RED : CLR_BLUE;
     FillRoundRect(g, (float)(topX + 24), (float)(topY + 96), (float)((topW - 48) * g_state.qNum / g_state.total), 10, 5, GdiColor(progressBarColor));
@@ -1083,15 +1017,14 @@ void DrawResultPage(Graphics& g) {
     TextCenter(g, CFG_RESULT_SCORE_LABEL, body, GdiColor(CLR_MUTED), cx, cy + 142, cw, 24);
 
     int sy = cy + 190;
-    std::wstring statsLabels[] = {CFG_METRIC_MODE, CFG_METRIC_CORRECT_TOTAL, CFG_METRIC_DURATION, CFG_METRIC_END_TIME, CFG_METRIC_DIFF_STATS};
+    std::wstring statsLabels[] = {CFG_METRIC_MODE, CFG_METRIC_CORRECT_TOTAL, CFG_METRIC_DURATION, CFG_METRIC_END_TIME};
     std::wstring statsValues[][2] = {
         {statsLabels[0], ModeName()},
         {statsLabels[1], IntToWStr(g_state.correct) + L" / " + IntToWStr(g_state.total)},
         {statsLabels[2], FormatDuration(totalSeconds)},
-        {statsLabels[3], FormatTime(g_state.quizEnd)},
-        {statsLabels[4], L"简单 " + IntToWStr(g_state.easyC) + L"/" + IntToWStr(g_state.easyT) + L"    中档 " + IntToWStr(g_state.medC) + L"/" + IntToWStr(g_state.medT) + L"    高档 " + IntToWStr(g_state.hardC) + L"/" + IntToWStr(g_state.hardT)}
+        {statsLabels[3], FormatTime(g_state.quizEnd)}
     };
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 4; ++i) {
         int y = sy + i * 42;
         FillRoundRect(g, (float)(cx + 54), (float)y, (float)(cw - 108), 34, 10, GdiColor(CLR_SOFT));
         TextLeft(g, statsValues[i][0], body, GdiColor(CLR_MUTED), cx + 76, y + 7, 140, 22);
@@ -1301,9 +1234,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     g_state.page = PAGE_RESULT;
                     UpdateEditForState();
                 } else {
-                    int nextDifficulty = NextDifficulty();
                     ++g_state.qNum;
-                    if (!StartQuestion(nextDifficulty)) {
+                    if (!StartQuestion()) {
                         --g_state.qNum;
                         MessageBoxW(hwnd, CFG_ERR_NO_QUESTIONS, CFG_DLG_ERR, MB_OK | MB_ICONERROR);
                     }
