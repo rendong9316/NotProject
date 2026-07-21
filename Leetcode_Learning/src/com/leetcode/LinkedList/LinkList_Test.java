@@ -22,6 +22,12 @@ public class LinkList_Test {
         // 4. 打印结果
         System.out.print("删除后: ");
         printList(result);
+
+
+        ReverseLinkedList reverseLinkedList = new ReverseLinkedList();
+        ListNode resullt2 = reverseLinkedList.reverseList(head);
+        System.out.println("反转链表后：");
+        printList(resullt2);
     }
 
     // 辅助方法：打印链表

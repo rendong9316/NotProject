@@ -45,10 +45,61 @@ using namespace Gdiplus;
 // --- 各题型固定答题数量 ---
 static const int QUESTION_COUNT_SINGLE = 5;
 static const int QUESTION_COUNT_MULTIPLE = 5;
-static const int QUESTION_COUNT_FILL = 5;
+static const int QUESTION_COUNT_FILL = 2;
+static const int FILL_SCORE_OPTION_COUNT = 6;
+static const int FILL_SCORE_OPTIONS[FILL_SCORE_OPTION_COUNT] = {10, 20, 30, 40, 50, 60};
+static const int NO_SCORE = 0;
+static const int NO_TIME_SECONDS = 0;
 
 // --- 每题限时（秒） ---
 static const int QUESTION_TIME_LIMIT_SECONDS = 30;
+static const int SCORE_SELECT_CARD_WIDTH = 760;
+static const int SCORE_SELECT_CARD_HEIGHT = 430;
+static const int SCORE_SELECT_BUTTON_WIDTH = 210;
+static const int SCORE_SELECT_BUTTON_HEIGHT = 58;
+static const int SCORE_SELECT_BUTTON_GAP = 24;
+static const int SCORE_SELECT_COLUMNS = 3;
+static const int SCORE_SELECT_ROWS = 2;
+static const int SCORE_SELECT_CARD_Y = 120;
+static const int SCORE_SELECT_TITLE_Y = 34;
+static const int SCORE_SELECT_BUTTON_Y = 150;
+static const int SCORE_SELECT_BUTTON_ROW_STEP = 90;
+static const int UI_CENTER_DIVISOR = 2;
+static const int PAGE_HORIZONTAL_MARGIN = 80;
+static const int SCORE_SELECT_CARD_RADIUS = 24;
+static const int SCORE_SELECT_TITLE_FONT_SIZE = 25;
+static const int SCORE_SELECT_HINT_FONT_SIZE = 14;
+static const int SCORE_SELECT_TITLE_HEIGHT = 42;
+static const int SCORE_SELECT_HINT_Y = 88;
+static const int SCORE_SELECT_HINT_HEIGHT = 30;
+static const int QUIZ_METRIC_GAP = 12;
+static const int QUIZ_METRIC_SIDE_PADDING = 22;
+static const int QUIZ_METRIC_COUNT_UNTIMED = 2;
+static const int QUIZ_METRIC_COUNT_TIMED_NO_TOTAL = 3;
+static const int QUIZ_METRIC_COUNT_TIMED_WITH_TOTAL = 4;
+static const int CHOICE_OPTION_COUNT = 4;
+static const int QUESTION_TEXT_OFFSET_X = 34;
+static const int QUESTION_TEXT_OFFSET_Y = 20;
+static const int QUESTION_TEXT_WIDTH_INSET = 68;
+static const int QUESTION_TEXT_HEIGHT = 78;
+static const int QUESTION_FONT_MAX_SIZE = 18;
+static const int QUESTION_FONT_MIN_SIZE = 13;
+static const int QUESTION_FONT_STEP = 1;
+static const int QUESTION_MEASURE_HEIGHT = 1000;
+static const int QUESTION_HINT_OFFSET_Y = 100;
+static const int QUESTION_HINT_HEIGHT = 24;
+static const int CHOICE_OPTION_START_OFFSET_Y = 132;
+static const int CHOICE_OPTION_LEFT_INSET = 34;
+static const int CHOICE_OPTION_WIDTH_INSET = 68;
+static const int CHOICE_OPTION_HEIGHT = 60;
+static const int CHOICE_OPTION_STEP_Y = 64;
+static const int CHOICE_OPTION_TEXT_OFFSET_X = 62;
+static const int CHOICE_OPTION_TEXT_OFFSET_Y = 8;
+static const int CHOICE_OPTION_TEXT_WIDTH_INSET = 78;
+static const int CHOICE_OPTION_TEXT_HEIGHT = 44;
+static const int CHOICE_FEEDBACK_GAP_Y = 10;
+static_assert(FILL_SCORE_OPTION_COUNT == SCORE_SELECT_COLUMNS * SCORE_SELECT_ROWS,
+              "Fill score options must match the button grid.");
 
 // --- 窗口类名 ---
 static const wchar_t* CFG_CLASS_NAME = L"JusticeQuizAppClass";
@@ -86,16 +137,16 @@ static const wchar_t* CFG_APP_TITLE = L"法律知识答题竞赛系统";
 static const wchar_t* CFG_APP_TAGLINE = L"V1.0.0";
 static const wchar_t* CFG_APP_PAGE_SUBTITLE = L"请选择答题模式";
 static const wchar_t* CFG_APP_CARD_TITLE = L"法律知识答题";
-static const wchar_t* CFG_APP_CARD_DESC = L"系统根据答题情况动态调整难度。";
+static const wchar_t* CFG_APP_CARD_DESC = L"系统随机抽题，不同模式采用独立的答题规则。";
 
 // --- 答题规则 ---
 static const wchar_t* CFG_RULES_TITLE = L"答题规则";
 static const wchar_t* CFG_RULES[] = {
     L"1. 单选题只能选择一个答案；多选题可选择多个答案；填空题请直接输入答案。",
     L"2. 多选题须与标准答案完全一致，漏选或多选均不得分。",
-    L"3. 填空题答案不区分大小写与首尾空格，与标准答案或备选答案一致即判正确。",
-    L"4. 每题限时30秒；超时后本题锁定并按错误结算。",
-    L"5. 超时不会自动跳题，请点击\"下一题\"继续作答。",
+    L"3. 填空/简答题提交后展示参考答案，不进行正误判定和分值计算。",
+    L"4. 单选题和多选题每题限时30秒；填空/简答题不限时。",
+    L"5. 单选题和多选题超时后本题锁定，请点击\"下一题\"继续作答。",
     L"6. 答题过程中可点击右上角\"返回主页\"按钮放弃本次答题，需二次确认。"
 };
 static const int CFG_RULES_COUNT = 6;
@@ -103,7 +154,7 @@ static const int CFG_RULES_COUNT = 6;
 // --- 按钮文案 ---
 static const wchar_t* CFG_BTN_SINGLE = L"单选题模式";
 static const wchar_t* CFG_BTN_MULTIPLE = L"多选题模式";
-static const wchar_t* CFG_BTN_FILL = L"填空题模式";
+static const wchar_t* CFG_BTN_FILL = L"填空/简答模式";
 static const wchar_t* CFG_BTN_RETURN_HOME = L"返回主页";
 static const wchar_t* CFG_BTN_CONFIRM = L"确认答案";
 static const wchar_t* CFG_BTN_NEXT = L"下一题";
@@ -113,7 +164,7 @@ static const wchar_t* CFG_BTN_RESTART = L"再次答题";
 // --- 题型提示 ---
 static const wchar_t* CFG_HINT_SINGLE = L"请选择一个正确答案后确认";
 static const wchar_t* CFG_HINT_MULTIPLE = L"请选择所有正确答案后确认";
-static const wchar_t* CFG_HINT_FILL = L"请在下方输入框中填写答案后确认（不区分大小写与首尾空格）";
+static const wchar_t* CFG_HINT_FILL = L"请在下方输入框中填写答案，提交后显示参考答案";
 
 // --- 难度名称 ---
 // 移除难度概念，保留常量供兼容
@@ -133,14 +184,16 @@ static const wchar_t* CFG_METRIC_DIFF_STATS = L"难度统计";
 // --- 结果页 ---
 static const wchar_t* CFG_RESULT_TITLE = L"答题结果";
 static const wchar_t* CFG_RESULT_SCORE_LABEL = L"总分";
+static const wchar_t* CFG_METRIC_SELECTED_SCORE = L"选择分值";
+static const wchar_t* CFG_SCORE_SELECT_TITLE = L"请选择本次答题分值";
+static const wchar_t* CFG_SCORE_SELECT_HINT = L"选择分值后进入填空/简答题";
+static const wchar_t* CFG_SCORE_SUFFIX = L"分";
 
 // --- 反馈文案 ---
 static const wchar_t* CFG_FEEDBACK_CORRECT = L"回答正确。";
 static const wchar_t* CFG_FEEDBACK_TIMEOUT = L"答题超时，本题按错误结算。";
 static const wchar_t* CFG_FEEDBACK_WRONG_PREFIX = L"回答错误，正确答案：";
-static const wchar_t* CFG_FEEDBACK_FILL_CORRECT = L"回答正确。";
-static const wchar_t* CFG_FEEDBACK_FILL_TIMEOUT = L"答题超时，本题按错误结算。正确答案：";
-static const wchar_t* CFG_FEEDBACK_FILL_WRONG = L"回答错误，正确答案：";
+static const wchar_t* CFG_FEEDBACK_FILL_REFERRAL = L"参考答案：";
 static const wchar_t* CFG_FEEDBACK_SUFFIX = L"。";
 
 // --- 填空题 ---
@@ -161,6 +214,8 @@ static const wchar_t* CFG_CONFIRM_MESSAGE = L"确定要放弃本次答题并返�
 static const int SOUND_CORRECT_ID = 1001;
 static const int SOUND_WRONG_ID = 1002;
 static const int SOUND_TIMEOUT_ID = 1003;
+static const COLORREF CLR_SCORE_BUTTON_SECONDARY = RGB(0, 112, 56);
+static const COLORREF CLR_BACK_BUTTON_SECONDARY = RGB(160, 30, 30);
 
 // ======================== 配置常量区结束 ========================
 
@@ -182,7 +237,7 @@ struct QuestionBank {
     int size() const { return (int)all.size(); }
 };
 
-enum Page { PAGE_HOME, PAGE_QUIZ, PAGE_RESULT };
+enum Page { PAGE_HOME, PAGE_FILL_SCORE_SELECT, PAGE_QUIZ, PAGE_RESULT };
 enum QuizMode { MODE_SINGLE, MODE_MULTIPLE, MODE_FILL };
 
 struct QuizState {
@@ -192,6 +247,7 @@ struct QuizState {
     int total = 10;
     int correct = 0;
     int wrong = 0;
+    int selectedScore = NO_SCORE;
     bool answered = false;
     bool lastCorrect = false;
     bool timedOut = false;
@@ -210,6 +266,7 @@ struct QuizState {
         qNum = 0;
         correct = 0;
         wrong = 0;
+        selectedScore = NO_SCORE;
         answered = false;
         lastCorrect = false;
         timedOut = false;
@@ -531,6 +588,10 @@ void AdjustFont(float delta) {
 
 struct UIRect { int x, y, w, h; };
 
+UIRect FillScoreButtonRect(int idx);
+bool IsTimedMode();
+bool TracksTotalTime();
+
 UIRect HomeButtonRect(int idx) {
     int cw = std::min(g_w - 80, 880);
     int cx = (g_w - cw) / 2, cy = 110;
@@ -541,13 +602,29 @@ UIRect HomeButtonRect(int idx) {
     return {btnStartX + idx * (btnW + btnGap), btnY, btnW, 56};
 }
 
+UIRect FillScoreButtonRect(int idx) {
+    int cardW = std::min(g_w - PAGE_HORIZONTAL_MARGIN, SCORE_SELECT_CARD_WIDTH);
+    int cardX = (g_w - cardW) / UI_CENTER_DIVISOR;
+    int totalButtonW = SCORE_SELECT_BUTTON_WIDTH * SCORE_SELECT_COLUMNS
+                     + SCORE_SELECT_BUTTON_GAP * (SCORE_SELECT_COLUMNS - 1);
+    int startX = cardX + (cardW - totalButtonW) / UI_CENTER_DIVISOR;
+    int column = idx % SCORE_SELECT_COLUMNS;
+    int row = idx / SCORE_SELECT_COLUMNS;
+    return {
+        startX + column * (SCORE_SELECT_BUTTON_WIDTH + SCORE_SELECT_BUTTON_GAP),
+        SCORE_SELECT_CARD_Y + SCORE_SELECT_BUTTON_Y + row * SCORE_SELECT_BUTTON_ROW_STEP,
+        SCORE_SELECT_BUTTON_WIDTH,
+        SCORE_SELECT_BUTTON_HEIGHT
+    };
+}
+
 UIRect ReturnHomeButtonRect() {
     return {g_w - 300, 14, 138, 36};
 }
 
 UIRect FillEditRect() {
     int cardX = 38, cardY = 236, cardW = g_w - 76;
-    int boxY = cardY + 110;
+    int boxY = cardY + CHOICE_OPTION_START_OFFSET_Y;
     return {cardX + 34, boxY, cardW - 68, 56};
 }
 
@@ -692,6 +769,34 @@ void TextLeft(Graphics& g, const std::wstring& text, Font* font, Color color, fl
     g.DrawString(text.c_str(), -1, font, rect, &fmt, &brush);
 }
 
+void TextWrap(Graphics& g, const std::wstring& text, Font* font, Color color,
+              float x, float y, float w, float h) {
+    RectF rect(x, y, w, h);
+    StringFormat fmt;
+    fmt.SetFormatFlags(StringFormatFlagsLineLimit);
+    fmt.SetTrimming(StringTrimmingNone);
+    fmt.SetLineAlignment(StringAlignmentCenter);
+    SolidBrush brush(color);
+    g.DrawString(text.c_str(), -1, font, rect, &fmt, &brush);
+}
+
+Font* MakeFittingQuestionFont(Graphics& g, const std::wstring& text,
+                              float width, float height) {
+    StringFormat fmt;
+    fmt.SetFormatFlags(StringFormatFlagsLineLimit);
+    RectF layout(0.0f, 0.0f, width, (REAL)QUESTION_MEASURE_HEIGHT);
+    for (int fontSize = QUESTION_FONT_MAX_SIZE;
+         fontSize >= QUESTION_FONT_MIN_SIZE;
+         fontSize -= QUESTION_FONT_STEP) {
+        Font* font = MakeFont((float)fontSize, FontStyleBold);
+        RectF bounds;
+        Status status = g.MeasureString(text.c_str(), -1, font, layout, &fmt, &bounds);
+        if (status == Ok && bounds.Height <= height) return font;
+        delete font;
+    }
+    return MakeFont((float)QUESTION_FONT_MIN_SIZE, FontStyleBold);
+}
+
 void DrawBackground(Graphics& g) {
     LinearGradientBrush bg(RectF(0, 0, (REAL)g_w, (REAL)g_h), Color(255, 240, 244, 249), Color(255, 226, 233, 243), LinearGradientModeVertical);
     g.FillRectangle(&bg, 0, 0, g_w, g_h);
@@ -782,6 +887,37 @@ void DrawHomePage(Graphics& g) {
     delete title; delete sub; delete h; delete body;
 }
 
+void DrawFillScoreSelectPage(Graphics& g) {
+    DrawBackground(g);
+    DrawHeader(g, CFG_SCORE_SELECT_TITLE);
+    DrawFontControls(g);
+
+    int cardW = std::min(g_w - PAGE_HORIZONTAL_MARGIN, SCORE_SELECT_CARD_WIDTH);
+    int cardX = (g_w - cardW) / UI_CENTER_DIVISOR;
+    DrawCard(g, (float)cardX, (float)SCORE_SELECT_CARD_Y, (float)cardW,
+             (float)SCORE_SELECT_CARD_HEIGHT, SCORE_SELECT_CARD_RADIUS);
+
+    Font* title = MakeFont(SCORE_SELECT_TITLE_FONT_SIZE, FontStyleBold);
+    Font* hint = MakeFont(SCORE_SELECT_HINT_FONT_SIZE);
+    TextCenter(g, CFG_SCORE_SELECT_TITLE, title, GdiColor(CLR_NAVY), cardX,
+               SCORE_SELECT_CARD_Y + SCORE_SELECT_TITLE_Y, cardW, SCORE_SELECT_TITLE_HEIGHT);
+    TextCenter(g, CFG_SCORE_SELECT_HINT, hint, GdiColor(CLR_MUTED), cardX,
+               SCORE_SELECT_CARD_Y + SCORE_SELECT_HINT_Y, cardW, SCORE_SELECT_HINT_HEIGHT);
+
+    for (int i = NO_SCORE; i < FILL_SCORE_OPTION_COUNT; ++i) {
+        UIRect button = FillScoreButtonRect(i);
+        std::wstring label = IntToWStr(FILL_SCORE_OPTIONS[i]) + CFG_SCORE_SUFFIX;
+        DrawButton(g, button.x, button.y, button.w, button.h, label,
+                   CLR_GREEN, CLR_SCORE_BUTTON_SECONDARY);
+    }
+
+    UIRect backRect = ReturnHomeButtonRect();
+    DrawButton(g, backRect.x, backRect.y, backRect.w, backRect.h,
+               CFG_BTN_RETURN_HOME, CLR_RED, CLR_BACK_BUTTON_SECONDARY, true);
+    delete title;
+    delete hint;
+}
+
 QuestionBank& ActiveBank() {
     if (g_state.mode == MODE_MULTIPLE) return g_banks[1];
     if (g_state.mode == MODE_FILL) return g_banks[2];
@@ -791,9 +927,17 @@ QuestionBank& ActiveBank() {
 std::wstring ModeName() {
     switch (g_state.mode) {
         case MODE_MULTIPLE: return L"多选题模式";
-        case MODE_FILL: return L"填空题模式";
+        case MODE_FILL: return L"填空/简答模式";
         default: return L"单选题模式";
     }
+}
+
+bool IsTimedMode() {
+    return g_state.mode == MODE_SINGLE || g_state.mode == MODE_MULTIPLE;
+}
+
+bool TracksTotalTime() {
+    return g_state.mode == MODE_SINGLE;
 }
 
 const Question* CurrentQuestion() {
@@ -840,11 +984,30 @@ void StartQuiz(QuizMode mode) {
     StartQuestion();
 }
 
+void OpenFillScoreSelect() {
+    g_state.mode = MODE_FILL;
+    g_state.resetQuiz(ActiveBank());
+    g_state.total = QUESTION_COUNT_FILL;
+    g_state.page = PAGE_FILL_SCORE_SELECT;
+}
+
+void StartFillQuiz(int selectedScore) {
+    g_state.mode = MODE_FILL;
+    g_state.resetQuiz(ActiveBank());
+    g_state.selectedScore = selectedScore;
+    g_state.total = QUESTION_COUNT_FILL;
+    g_state.page = PAGE_QUIZ;
+    g_state.qNum = 1;
+    g_state.quizStart = std::chrono::system_clock::now();
+    StartQuestion();
+}
+
 int QuestionElapsedSeconds() {
     return std::max(0, (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - g_state.questionStart).count());
 }
 
 int QuestionRemainingSeconds() {
+    if (!IsTimedMode()) return NO_TIME_SECONDS;
     int elapsed = g_state.answered ? g_state.settledSeconds : QuestionElapsedSeconds();
     return std::max(0, QUESTION_TIME_LIMIT_SECONDS - elapsed);
 }
@@ -873,20 +1036,23 @@ void SettleCurrentQuestion(HWND hwnd, bool timeout) {
     if (g_state.answered) return;
     const Question* question = CurrentQuestion();
     if (!question) return;
-    int seconds = timeout ? QUESTION_TIME_LIMIT_SECONDS : std::min(QUESTION_TIME_LIMIT_SECONDS, std::max(1, QuestionElapsedSeconds()));
-    g_state.questionSeconds.push_back(seconds);
+    int seconds = NO_TIME_SECONDS;
+    if (IsTimedMode()) {
+        seconds = timeout ? QUESTION_TIME_LIMIT_SECONDS : std::min(QUESTION_TIME_LIMIT_SECONDS, std::max(1, QuestionElapsedSeconds()));
+        g_state.questionSeconds.push_back(seconds);
+    }
     g_state.settledSeconds = seconds;
     g_state.answered = true;
     g_state.timedOut = timeout;
     g_state.flashVisible = false;
     KillTimer(hwnd, 2);
-    bool ok;
     if (g_state.mode == MODE_FILL) {
-        if (!timeout) ReadEditIntoState();
-        ok = !timeout && CheckFillAnswer(g_state.userFill, *question);
-    } else {
-        ok = !timeout && SelectedAnswers() == question->answers;
+        ReadEditIntoState();
+        g_state.lastCorrect = false;
+        return;
     }
+    bool ok;
+    ok = !timeout && SelectedAnswers() == question->answers;
     g_state.lastCorrect = ok;
     if (timeout) {
         PlayEmbeddedSound(SOUND_TIMEOUT_ID);
@@ -902,7 +1068,10 @@ void SettleCurrentQuestion(HWND hwnd, bool timeout) {
 void DrawQuizPage(Graphics& g) {
     DrawBackground(g);
     int remaining = QuestionRemainingSeconds();
-    int totalElapsed = (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - g_state.quizStart).count();
+    int totalElapsed = NO_TIME_SECONDS;
+    if (TracksTotalTime()) {
+        totalElapsed = (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - g_state.quizStart).count();
+    }
     DrawHeader(g, ModeName());
     DrawFontControls(g);
 
@@ -913,52 +1082,90 @@ void DrawQuizPage(Graphics& g) {
     DrawCard(g, (float)topX, (float)topY, (float)topW, (float)topH, 18);
     Font* meta = MakeFont(14, FontStyleBold);
     Font* meta2 = MakeFont(13);
-    int metricW = (topW - 66) / 4;  // 4列，留出3个间隙(22px)
-    bool shouldFlash = remaining <= 5 && g_state.flashVisible;
-    DrawMetric(g, topX + 22, topY + 18, metricW, 70, CFG_METRIC_PROGRESS, L"第 " + IntToWStr(g_state.qNum) + L" / " + IntToWStr(g_state.total) + L" 题", CLR_BLUE);
-    DrawMetric(g, topX + 34 + metricW, topY + 18, metricW, 70, CFG_METRIC_MODE, ModeName(), CLR_NAVY);
-    DrawMetric(g, topX + 46 + metricW * 2, topY + 18, metricW, 70, CFG_METRIC_REMAINING, FormatDuration(remaining), shouldFlash ? CLR_RED : (remaining <= 30 ? CLR_GOLD : CLR_BLUE));
-    DrawMetric(g, topX + 58 + metricW * 3, topY + 18, metricW, 70, CFG_METRIC_TOTAL_TIME, FormatDuration(totalElapsed), CLR_RED);
+    int metricCount = TracksTotalTime() ? QUIZ_METRIC_COUNT_TIMED_WITH_TOTAL
+                    : (IsTimedMode() ? QUIZ_METRIC_COUNT_TIMED_NO_TOTAL : QUIZ_METRIC_COUNT_UNTIMED);
+    int metricW = (topW - QUIZ_METRIC_SIDE_PADDING * UI_CENTER_DIVISOR
+                  - QUIZ_METRIC_GAP * (metricCount - 1)) / metricCount;
+    bool shouldFlash = IsTimedMode() && remaining <= 5 && g_state.flashVisible;
+    int metricX = topX + QUIZ_METRIC_SIDE_PADDING;
+    DrawMetric(g, metricX, topY + 18, metricW, 70, CFG_METRIC_PROGRESS,
+               L"第 " + IntToWStr(g_state.qNum) + L" / " + IntToWStr(g_state.total) + L" 题", CLR_BLUE);
+    metricX += metricW + QUIZ_METRIC_GAP;
+    DrawMetric(g, metricX, topY + 18, metricW, 70, CFG_METRIC_MODE, ModeName(), CLR_NAVY);
+    if (IsTimedMode()) {
+        metricX += metricW + QUIZ_METRIC_GAP;
+        DrawMetric(g, metricX, topY + 18, metricW, 70, CFG_METRIC_REMAINING,
+                   FormatDuration(remaining), shouldFlash ? CLR_RED : CLR_GOLD);
+    }
+    if (TracksTotalTime()) {
+        metricX += metricW + QUIZ_METRIC_GAP;
+        DrawMetric(g, metricX, topY + 18, metricW, 70, CFG_METRIC_TOTAL_TIME,
+                   FormatDuration(totalElapsed), CLR_RED);
+    }
     FillRoundRect(g, (float)(topX + 24), (float)(topY + 96), (float)(topW - 48), 10, 5, Color(255, 219, 227, 238));
     COLORREF progressBarColor = shouldFlash ? CLR_RED : CLR_BLUE;
     FillRoundRect(g, (float)(topX + 24), (float)(topY + 96), (float)((topW - 48) * g_state.qNum / g_state.total), 10, 5, GdiColor(progressBarColor));
 
     int cardX = 38, cardY = 236, cardW = g_w - 76, cardH = g_h - 336;
     DrawCard(g, (float)cardX, (float)cardY, (float)cardW, (float)cardH, 22);
-    Font* qFont = MakeFont(18, FontStyleBold);
+    std::wstring questionText = IntToWStr(g_state.qNum) + L". " + q->q;
+    Font* qFont = MakeFittingQuestionFont(
+        g, questionText, (float)(cardW - QUESTION_TEXT_WIDTH_INSET),
+        (float)QUESTION_TEXT_HEIGHT);
     Font* optFont = MakeFont(16);
-    TextLeft(g, IntToWStr(g_state.qNum) + L". " + q->q, qFont, GdiColor(CLR_INK), cardX + 34, cardY + 22, cardW - 68, 58);
+    TextWrap(g, questionText, qFont, GdiColor(CLR_INK),
+             cardX + QUESTION_TEXT_OFFSET_X,
+             cardY + QUESTION_TEXT_OFFSET_Y,
+             cardW - QUESTION_TEXT_WIDTH_INSET,
+             QUESTION_TEXT_HEIGHT);
 
     UIRect backRect = ReturnHomeButtonRect();
     DrawButton(g, backRect.x, backRect.y, backRect.w, backRect.h, CFG_BTN_RETURN_HOME, CLR_RED, RGB(160, 30, 30), true);
 
     if (g_state.mode == MODE_FILL) {
-        TextLeft(g, CFG_HINT_FILL, meta2, GdiColor(CLR_MUTED), cardX + 34, cardY + 78, cardW - 68, 24);
+        TextLeft(g, CFG_HINT_FILL, meta2, GdiColor(CLR_MUTED),
+                 cardX + QUESTION_TEXT_OFFSET_X,
+                 cardY + QUESTION_HINT_OFFSET_Y,
+                 cardW - QUESTION_TEXT_WIDTH_INSET,
+                 QUESTION_HINT_HEIGHT);
 
         UIRect editRect = FillEditRect();
         if (g_state.answered) {
-            bool ok = g_state.lastCorrect;
-            Color fill = ok ? Color(255, 231, 248, 238) : Color(255, 254, 226, 226);
-            Color border = ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED);
-            FillRoundRectBorder(g, (float)editRect.x, (float)editRect.y, (float)editRect.w, (float)editRect.h, 14, fill, border, 2.4f);
+            Color fill = Color(255, 244, 248, 253);
+            Color border = GdiColor(CLR_LINE);
+            FillRoundRectBorder(g, (float)editRect.x, (float)editRect.y,
+                                (float)editRect.w, (float)editRect.h, 14, fill, border, 1.5f);
             std::wstring shown = g_state.userFill.empty() ? CFG_FILL_UNANSWERED : g_state.userFill;
-            TextLeft(g, CFG_FILL_USER_ANSWER_LABEL + shown, optFont, ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), editRect.x + 18, editRect.y + 16, editRect.w - 36, 28);
+            TextLeft(g, CFG_FILL_USER_ANSWER_LABEL + shown, optFont, GdiColor(CLR_INK),
+                     editRect.x + 18, editRect.y + 16, editRect.w - 36, 28);
         }
 
         if (g_state.answered) {
             int fy = editRect.y + editRect.h + 14;
-            bool ok = g_state.lastCorrect;
-            FillRoundRectBorder(g, (float)(cardX + 34), (float)fy, (float)(cardW - 68), 82, 14, ok ? Color(255, 231, 248, 238) : Color(255, 254, 226, 226), ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), 2.0f);
-            std::wstring fb = ok ? CFG_FEEDBACK_FILL_CORRECT : (g_state.timedOut ? CFG_FEEDBACK_FILL_TIMEOUT : CFG_FEEDBACK_FILL_WRONG) + q->fillAnswer + CFG_FEEDBACK_SUFFIX;
-            TextLeft(g, fb, meta, ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), cardX + 54, fy + 12, cardW - 108, 26);
-            if (!q->exp.empty()) TextLeft(g, q->exp, meta2, GdiColor(CLR_INK), cardX + 54, fy + 44, cardW - 108, 30);
+            FillRoundRectBorder(g, (float)(cardX + 34), (float)fy,
+                                (float)(cardW - 68), 98, 14,
+                                Color(255, 244, 248, 253), GdiColor(CLR_LINE), 1.5f);
+            TextLeft(g, CFG_FEEDBACK_FILL_REFERRAL, meta, GdiColor(CLR_NAVY),
+                     cardX + 54, fy + 10, cardW - 108, 24);
+            std::wstring reference = q->fillAnswer;
+            for (const auto& alt : q->fillAlts) reference += L" / " + alt;
+            TextWrap(g, reference, meta2, GdiColor(CLR_INK),
+                     cardX + 54, fy + 36, cardW - 108, 52);
         }
     } else {
-        TextLeft(g, g_state.mode == MODE_MULTIPLE ? CFG_HINT_MULTIPLE : CFG_HINT_SINGLE, meta2, GdiColor(CLR_MUTED), cardX + 34, cardY + 78, cardW - 68, 24);
+        TextLeft(g, g_state.mode == MODE_MULTIPLE ? CFG_HINT_MULTIPLE : CFG_HINT_SINGLE,
+                 meta2, GdiColor(CLR_MUTED),
+                 cardX + QUESTION_TEXT_OFFSET_X,
+                 cardY + QUESTION_HINT_OFFSET_Y,
+                 cardW - QUESTION_TEXT_WIDTH_INSET,
+                 QUESTION_HINT_HEIGHT);
 
-        int optY = cardY + 110;
-        for (int i = 0; i < 4; ++i) {
-            int ox = cardX + 34, oy = optY + i * 64, ow = cardW - 68, oh = 52;
+        int optY = cardY + CHOICE_OPTION_START_OFFSET_Y;
+        for (int i = 0; i < CHOICE_OPTION_COUNT; ++i) {
+            int ox = cardX + CHOICE_OPTION_LEFT_INSET;
+            int oy = optY + i * CHOICE_OPTION_STEP_Y;
+            int ow = cardW - CHOICE_OPTION_WIDTH_INSET;
+            int oh = CHOICE_OPTION_HEIGHT;
             bool selected = g_state.selected[i];
             bool correctAnswer = std::find(q->answers.begin(), q->answers.end(), i) != q->answers.end();
             bool showCorrect = g_state.answered && correctAnswer;
@@ -973,12 +1180,17 @@ void DrawQuizPage(Graphics& g) {
             FillRoundRect(g, (float)(ox + 14), (float)(oy + 10), 32, 32, 16, GdiColor(letterColor));
             Font* lf = MakeFont(13, FontStyleBold);
             TextCenter(g, letter, lf, Color(255, 255, 255, 255), ox + 14, oy + 10, 32, 32);
-            TextLeft(g, q->opts[i].size() > 2 ? q->opts[i].substr(2) : q->opts[i], optFont, GdiColor(CLR_INK), ox + 62, oy + 12, ow - 78, 32);
+            std::wstring optionText = q->opts[i].size() > 2 ? q->opts[i].substr(2) : q->opts[i];
+            TextWrap(g, optionText, optFont, GdiColor(CLR_INK),
+                     ox + CHOICE_OPTION_TEXT_OFFSET_X,
+                     oy + CHOICE_OPTION_TEXT_OFFSET_Y,
+                     ow - CHOICE_OPTION_TEXT_WIDTH_INSET,
+                     CHOICE_OPTION_TEXT_HEIGHT);
             delete lf;
         }
 
         if (g_state.answered) {
-            int fy = optY + 4 * 64 + 10;
+            int fy = optY + CHOICE_OPTION_COUNT * CHOICE_OPTION_STEP_Y + CHOICE_FEEDBACK_GAP_Y;
             bool ok = g_state.lastCorrect;
             FillRoundRectBorder(g, (float)(cardX + 34), (float)fy, (float)(cardW - 68), 82, 14, ok ? Color(255, 231, 248, 238) : Color(255, 254, 226, 226), ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), 2.0f);
             std::wstring fb = ok ? CFG_FEEDBACK_CORRECT : (g_state.timedOut ? CFG_FEEDBACK_TIMEOUT : CFG_FEEDBACK_WRONG_PREFIX) + AnswerLetters(*q) + CFG_FEEDBACK_SUFFIX;
@@ -1002,8 +1214,13 @@ void DrawResultPage(Graphics& g) {
     DrawHeader(g, ModeName());
     DrawFontControls(g);
 
-    int score = (int)((double)g_state.correct / g_state.total * 100.0 + 0.5);
-    int totalSeconds = (int)std::chrono::duration_cast<std::chrono::seconds>(g_state.quizEnd - g_state.quizStart).count();
+    bool fillMode = g_state.mode == MODE_FILL;
+    int score = fillMode ? g_state.selectedScore
+                         : (int)((double)g_state.correct / g_state.total * 100.0 + 0.5);
+    int totalSeconds = NO_TIME_SECONDS;
+    if (TracksTotalTime()) {
+        totalSeconds = (int)std::chrono::duration_cast<std::chrono::seconds>(g_state.quizEnd - g_state.quizStart).count();
+    }
     int cw = std::min(g_w - 80, 760), ch = 500;
     int cx = (g_w - cw) / 2, cy = 120;
     DrawCard(g, (float)cx, (float)cy, (float)cw, (float)ch, 24);
@@ -1013,22 +1230,33 @@ void DrawResultPage(Graphics& g) {
     Font* stat = MakeFont(16, FontStyleBold);
     Font* body = MakeFont(13);
     TextCenter(g, CFG_RESULT_TITLE, title, GdiColor(CLR_NAVY), cx, cy + 28, cw, 40);
-    TextCenter(g, IntToWStr(score), scoreFont, score >= 80 ? GdiColor(CLR_GREEN) : score >= 60 ? GdiColor(CLR_GOLD) : GdiColor(CLR_RED), cx, cy + 78, cw, 70);
-    TextCenter(g, CFG_RESULT_SCORE_LABEL, body, GdiColor(CLR_MUTED), cx, cy + 142, cw, 24);
+    std::wstring scoreText = IntToWStr(score) + (fillMode ? CFG_SCORE_SUFFIX : L"");
+    Color scoreColor = fillMode ? GdiColor(CLR_GREEN)
+                                : (score >= 80 ? GdiColor(CLR_GREEN)
+                                               : score >= 60 ? GdiColor(CLR_GOLD) : GdiColor(CLR_RED));
+    TextCenter(g, scoreText, scoreFont, scoreColor, cx, cy + 78, cw, 70);
+    TextCenter(g, fillMode ? CFG_METRIC_SELECTED_SCORE : CFG_RESULT_SCORE_LABEL,
+               body, GdiColor(CLR_MUTED), cx, cy + 142, cw, 24);
 
     int sy = cy + 190;
-    std::wstring statsLabels[] = {CFG_METRIC_MODE, CFG_METRIC_CORRECT_TOTAL, CFG_METRIC_DURATION, CFG_METRIC_END_TIME};
-    std::wstring statsValues[][2] = {
-        {statsLabels[0], ModeName()},
-        {statsLabels[1], IntToWStr(g_state.correct) + L" / " + IntToWStr(g_state.total)},
-        {statsLabels[2], FormatDuration(totalSeconds)},
-        {statsLabels[3], FormatTime(g_state.quizEnd)}
-    };
-    for (int i = 0; i < 4; ++i) {
-        int y = sy + i * 42;
-        FillRoundRect(g, (float)(cx + 54), (float)y, (float)(cw - 108), 34, 10, GdiColor(CLR_SOFT));
-        TextLeft(g, statsValues[i][0], body, GdiColor(CLR_MUTED), cx + 76, y + 7, 140, 22);
-        TextLeft(g, statsValues[i][1], stat, GdiColor(CLR_INK), cx + 220, y + 5, cw - 310, 24);
+    if (fillMode) {
+        FillRoundRect(g, (float)(cx + 54), (float)sy, (float)(cw - 108), 34, 10, GdiColor(CLR_SOFT));
+        TextLeft(g, CFG_METRIC_MODE, body, GdiColor(CLR_MUTED), cx + 76, sy + 7, 140, 22);
+        TextLeft(g, ModeName(), stat, GdiColor(CLR_INK), cx + 220, sy + 5, cw - 310, 24);
+    } else {
+        int row = 0;
+        auto drawStat = [&](const std::wstring& label, const std::wstring& value) {
+            int y = sy + row * 42;
+            FillRoundRect(g, (float)(cx + 54), (float)y, (float)(cw - 108), 34, 10, GdiColor(CLR_SOFT));
+            TextLeft(g, label, body, GdiColor(CLR_MUTED), cx + 76, y + 7, 140, 22);
+            TextLeft(g, value, stat, GdiColor(CLR_INK), cx + 220, y + 5, cw - 310, 24);
+            ++row;
+        };
+        drawStat(CFG_METRIC_MODE, ModeName());
+        drawStat(CFG_METRIC_CORRECT_TOTAL,
+                 IntToWStr(g_state.correct) + L" / " + IntToWStr(g_state.total));
+        if (TracksTotalTime()) drawStat(CFG_METRIC_DURATION, FormatDuration(totalSeconds));
+        drawStat(CFG_METRIC_END_TIME, FormatTime(g_state.quizEnd));
     }
 
     DrawButton(g, cx + cw / 2 - 210, cy + ch - 82, 190, 48, CFG_BTN_RESTART, CLR_BLUE, RGB(30, 64, 175));
@@ -1077,6 +1305,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     return TRUE;
                 }
             }
+        } else if (g_state.page == PAGE_FILL_SCORE_SELECT) {
+            UIRect backRect = ReturnHomeButtonRect();
+            if (Hit(mx, my, backRect.x, backRect.y, backRect.w, backRect.h)) {
+                SetCursor(LoadCursorW(nullptr, IDC_HAND));
+                return TRUE;
+            }
+            for (int i = NO_SCORE; i < FILL_SCORE_OPTION_COUNT; ++i) {
+                UIRect scoreRect = FillScoreButtonRect(i);
+                if (Hit(mx, my, scoreRect.x, scoreRect.y, scoreRect.w, scoreRect.h)) {
+                    SetCursor(LoadCursorW(nullptr, IDC_HAND));
+                    return TRUE;
+                }
+            }
         } else if (g_state.page == PAGE_QUIZ) {
             UIRect backRect = ReturnHomeButtonRect();
             if (Hit(mx, my, backRect.x, backRect.y, backRect.w, backRect.h)) {
@@ -1084,9 +1325,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 return TRUE;
             }
             if (g_state.mode != MODE_FILL) {
-                int cardX = 38, cardY = 236, cardW = g_w - 76, optY = cardY + 110;
-                for (int i = 0; i < 4; ++i) {
-                    int ox = cardX + 34, oy = optY + i * 64, ow = cardW - 68, oh = 52;
+                int cardX = 38, cardY = 236, cardW = g_w - 76;
+                int optY = cardY + CHOICE_OPTION_START_OFFSET_Y;
+                for (int i = 0; i < CHOICE_OPTION_COUNT; ++i) {
+                    int ox = cardX + CHOICE_OPTION_LEFT_INSET;
+                    int oy = optY + i * CHOICE_OPTION_STEP_Y;
+                    int ow = cardW - CHOICE_OPTION_WIDTH_INSET;
+                    int oh = CHOICE_OPTION_HEIGHT;
                     if (!g_state.answered && Hit(mx, my, ox, oy, ow, oh)) {
                         SetCursor(LoadCursorW(nullptr, IDC_HAND));
                         return TRUE;
@@ -1146,7 +1391,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         break;
     }
     case WM_TIMER: {
-        if (g_state.page == PAGE_QUIZ && !g_state.answered) {
+        if (g_state.page == PAGE_QUIZ && IsTimedMode() && !g_state.answered) {
             int remaining = QuestionRemainingSeconds();
             if (remaining <= 0) {
                 SettleCurrentQuestion(hwnd, true);
@@ -1174,9 +1419,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             for (int i = 0; i < 3; ++i) {
                 UIRect r = HomeButtonRect(i);
                 if (Hit(mx, my, r.x, r.y, r.w, r.h)) {
-                    StartQuiz(i == 0 ? MODE_SINGLE : (i == 1 ? MODE_MULTIPLE : MODE_FILL));
+                    if (i == 2) OpenFillScoreSelect();
+                    else StartQuiz(i == 0 ? MODE_SINGLE : MODE_MULTIPLE);
                     UpdateEditForState();
-                    if (g_state.mode == MODE_FILL && g_hwndEdit) SetFocus(g_hwndEdit);
+                    if (g_state.page == PAGE_QUIZ && g_state.mode == MODE_FILL && g_hwndEdit) {
+                        SetFocus(g_hwndEdit);
+                    }
+                    InvalidateRect(hwnd, nullptr, FALSE);
+                    return 0;
+                }
+            }
+        } else if (g_state.page == PAGE_FILL_SCORE_SELECT) {
+            UIRect backRect = ReturnHomeButtonRect();
+            if (Hit(mx, my, backRect.x, backRect.y, backRect.w, backRect.h)) {
+                g_state.resetQuiz(ActiveBank());
+                g_state.page = PAGE_HOME;
+                UpdateEditForState();
+                InvalidateRect(hwnd, nullptr, FALSE);
+                return 0;
+            }
+            for (int i = NO_SCORE; i < FILL_SCORE_OPTION_COUNT; ++i) {
+                UIRect scoreRect = FillScoreButtonRect(i);
+                if (Hit(mx, my, scoreRect.x, scoreRect.y, scoreRect.w, scoreRect.h)) {
+                    StartFillQuiz(FILL_SCORE_OPTIONS[i]);
+                    UpdateEditForState();
+                    if (g_hwndEdit) SetFocus(g_hwndEdit);
                     InvalidateRect(hwnd, nullptr, FALSE);
                     return 0;
                 }
@@ -1196,11 +1463,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 InvalidateRect(hwnd, nullptr, FALSE);
                 return 0;
             }
-            if (!g_state.answered && QuestionRemainingSeconds() <= 0) SettleCurrentQuestion(hwnd, true);
+            if (IsTimedMode() && !g_state.answered && QuestionRemainingSeconds() <= 0) {
+                SettleCurrentQuestion(hwnd, true);
+            }
             if (g_state.mode != MODE_FILL) {
-                int cardX = 38, cardY = 236, cardW = g_w - 76, optY = cardY + 110;
-                for (int i = 0; i < 4; ++i) {
-                    int ox = cardX + 34, oy = optY + i * 64, ow = cardW - 68, oh = 52;
+                int cardX = 38, cardY = 236, cardW = g_w - 76;
+                int optY = cardY + CHOICE_OPTION_START_OFFSET_Y;
+                for (int i = 0; i < CHOICE_OPTION_COUNT; ++i) {
+                    int ox = cardX + CHOICE_OPTION_LEFT_INSET;
+                    int oy = optY + i * CHOICE_OPTION_STEP_Y;
+                    int ow = cardW - CHOICE_OPTION_WIDTH_INSET;
+                    int oh = CHOICE_OPTION_HEIGHT;
                     if (!g_state.answered && Hit(mx, my, ox, oy, ow, oh)) {
                         if (g_state.mode == MODE_SINGLE) {
                             g_state.selected[0] = g_state.selected[1] = g_state.selected[2] = g_state.selected[3] = false;
@@ -1247,9 +1520,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         } else if (g_state.page == PAGE_RESULT) {
             int cw = std::min(g_w - 80, 760), ch = 500, cx = (g_w - cw) / 2, cy = 120;
             if (Hit(mx, my, cx + cw / 2 - 210, cy + ch - 82, 190, 48)) {
-                StartQuiz(g_state.mode);
+                if (g_state.mode == MODE_FILL) OpenFillScoreSelect();
+                else StartQuiz(g_state.mode);
                 UpdateEditForState();
-                if (g_state.mode == MODE_FILL && g_hwndEdit) SetFocus(g_hwndEdit);
+                if (g_state.page == PAGE_QUIZ && g_state.mode == MODE_FILL && g_hwndEdit) {
+                    SetFocus(g_hwndEdit);
+                }
             } else if (Hit(mx, my, cx + cw / 2 + 20, cy + ch - 82, 190, 48)) {
                 g_state.resetQuiz(ActiveBank());
                 g_state.page = PAGE_HOME;
@@ -1276,6 +1552,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         memGfx.SetCompositingQuality(CompositingQualityHighQuality);
         memGfx.ScaleTransform(g_fontScale, g_fontScale);
         if (g_state.page == PAGE_HOME) DrawHomePage(memGfx);
+        else if (g_state.page == PAGE_FILL_SCORE_SELECT) DrawFillScoreSelectPage(memGfx);
         else if (g_state.page == PAGE_QUIZ) DrawQuizPage(memGfx);
         else DrawResultPage(memGfx);
         BitBlt(hdc, 0, 0, clientW, clientH, g_hdcMem, 0, 0, SRCCOPY);
