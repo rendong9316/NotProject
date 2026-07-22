@@ -1171,7 +1171,7 @@ void DrawQuizPage(Graphics& g) {
 
     int cardX = 38, cardY = 236, cardW = g_w - 76, cardH = g_h - 336;
     DrawCard(g, (float)cardX, (float)cardY, (float)cardW, (float)cardH, 22);
-    std::wstring questionText = IntToWStr(g_state.qNum) + L". " + q->q;
+    std::wstring questionText = IntToWStr(g_state.qNum) + L". " + q->q + L" (题库第" + IntToWStr(q->id) + L"题)";
     Font* qFont = nullptr;
     Font* optFont = nullptr;
     int questionHeight = QUESTION_TEXT_HEIGHT;
