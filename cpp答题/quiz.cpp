@@ -116,10 +116,10 @@ static const wchar_t* CFG_CLASS_NAME = L"JusticeQuizAppClass";
 // --- 字体 ---
 static const wchar_t* CFG_FONT_FAMILY = L"Microsoft YaHei";
 
-// --- 题库文件路径 ---
-static const wchar_t* CFG_FILE_SINGLE = L"questions.json";
-static const wchar_t* CFG_FILE_MULTIPLE = L"multiple_questions_from_xlsx.json";
-static const wchar_t* CFG_FILE_FILL = L"fill_questions.json";
+// --- 题库资源 ID ---
+static const int RES_ID_SINGLE = 2001;
+static const int RES_ID_MULTIPLE = 2002;
+static const int RES_ID_FILL = 2003;
 
 // --- 错误提示 ---
 static const wchar_t* CFG_ERR_LOAD_FAILED = L"题库加载失败";
@@ -467,26 +467,27 @@ struct JsonParser {
     }
 };
 
-bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& bank, std::wstring& error) {
-    HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (file == INVALID_HANDLE_VALUE) {
-        error = CFG_ERR_FILE_NOT_FOUND + path;
+bool LoadQuestionBank(int resourceId, QuizMode mode, QuestionBank& bank, std::wstring& error) {
+    HMODULE hInst = GetModuleHandleW(nullptr);
+    HRSRC hRes = FindResourceW(hInst, MAKEINTRESOURCEW(resourceId), L"RC_DATA");
+    if (!hRes) {
+        error = CFG_ERR_FILE_NOT_FOUND;
         return false;
     }
-    LARGE_INTEGER fileSize;
-    if (!GetFileSizeEx(file, &fileSize) || fileSize.QuadPart > 0x7fffffff) {
-        CloseHandle(file);
-        error = CFG_ERR_FILE_READ + path;
+    HGLOBAL hData = LoadResource(hInst, hRes);
+    if (!hData) {
+        error = CFG_ERR_FILE_READ;
         return false;
     }
-    std::string text((size_t)fileSize.QuadPart, '\0');
-    DWORD bytesRead = 0;
-    bool readOk = text.empty() || ReadFile(file, &text[0], (DWORD)text.size(), &bytesRead, nullptr);
-    CloseHandle(file);
-    if (!readOk || bytesRead != text.size()) {
-        error = CFG_ERR_FILE_READ + path;
+    DWORD size = SizeofResource(hInst, hRes);
+    LPVOID pData = LockResource(hData);
+    if (!pData || size == 0) {
+        UnlockResource(hData);
+        error = CFG_ERR_FILE_READ;
         return false;
     }
+    std::string text((const char*)pData, size);
+    UnlockResource(hData);
     if (text.size() >= 3 && (unsigned char)text[0] == 0xEF && (unsigned char)text[1] == 0xBB && (unsigned char)text[2] == 0xBF) text.erase(0, 3);
 
     QuestionBank loaded;
@@ -545,7 +546,7 @@ bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& ban
             valid = !q.q.empty() && validOptions && validAnswers && validCount;
         }
         if (!valid) {
-            error = CFG_ERR_INVALID_Q + path + CFG_ERR_Q_ID + IntToWStr(q.id) + L")。";
+            error = CFG_ERR_INVALID_Q + IntToWStr(q.id) + L")。";
             return false;
         }
         loaded.all.push_back(q);
@@ -553,11 +554,11 @@ bool LoadQuestionBank(const std::wstring& path, QuizMode mode, QuestionBank& ban
     }
 
     if (!loaded.ready()) {
-        error = L"题库文件为空：" + path;
+        error = L"题库资源为空";
         return false;
     }
     if (loaded.size() < 10) {
-        error = CFG_ERR_MIN_QUESTIONS + path;
+        error = CFG_ERR_MIN_QUESTIONS;
         return false;
     }
     bank = loaded;
@@ -1687,9 +1688,9 @@ int main() {
         if (setDpiAware) setDpiAware();
     }
     std::wstring error;
-    if (!LoadQuestionBank(JoinPath(ExeDir(), CFG_FILE_SINGLE), MODE_SINGLE, g_banks[0], error) ||
-        !LoadQuestionBank(JoinPath(ExeDir(), CFG_FILE_MULTIPLE), MODE_MULTIPLE, g_banks[1], error) ||
-        !LoadQuestionBank(JoinPath(ExeDir(), CFG_FILE_FILL), MODE_FILL, g_banks[2], error)) {
+    if (!LoadQuestionBank(RES_ID_SINGLE, MODE_SINGLE, g_banks[0], error) ||
+        !LoadQuestionBank(RES_ID_MULTIPLE, MODE_MULTIPLE, g_banks[1], error) ||
+        !LoadQuestionBank(RES_ID_FILL, MODE_FILL, g_banks[2], error)) {
         MessageBoxW(nullptr, error.c_str(), CFG_ERR_LOAD_FAILED, MB_OK | MB_ICONERROR);
         return 1;
     }
