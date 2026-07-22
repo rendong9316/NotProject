@@ -270,6 +270,7 @@ struct QuizState {
     std::chrono::steady_clock::time_point questionStart;
     std::vector<int> questionSeconds;
     bool flashVisible = false;
+    int fillBucket = -1;  // 填空题分值桶编号 0-5
 
     void resetQuiz(const QuestionBank& bank) {
         qNum = 0;
@@ -286,6 +287,11 @@ struct QuizState {
         settledSeconds = 0;
         questionSeconds.clear();
         used.assign(bank.all.size(), false);
+        if (mode == MODE_FILL && fillBucket >= 0) {
+            int base = fillBucket * 3;
+            for (int i = base; i < base + 3 && i < (int)used.size(); ++i)
+                used[i] = false;
+        }
     }
 };
 
@@ -980,8 +986,14 @@ const Question* CurrentQuestion() {
 // 随机从未使用题目中选一道
 int PickRandomUnused() {
     const auto& bank = ActiveBank();
+    int startIdx = 0, endIdx = (int)bank.all.size();
+    // 填空题按桶限制范围
+    if (g_state.mode == MODE_FILL && g_state.fillBucket >= 0 && g_state.fillBucket < FILL_SCORE_OPTION_COUNT) {
+        startIdx = g_state.fillBucket * 3;
+        endIdx = std::min(startIdx + 3, (int)bank.all.size());
+    }
     std::vector<int> available;
-    for (int i = 0; i < (int)bank.all.size(); ++i) {
+    for (int i = startIdx; i < endIdx; ++i) {
         if (!g_state.used[i]) available.push_back(i);
     }
     if (available.empty()) return -1;
@@ -1028,8 +1040,9 @@ void OpenFillScoreSelect() {
     g_state.page = PAGE_FILL_SCORE_SELECT;
 }
 
-void StartFillQuiz(int selectedScore) {
+void StartFillQuiz(int selectedScore, int scoreIdx) {
     g_state.mode = MODE_FILL;
+    g_state.fillBucket = scoreIdx;
     g_state.resetQuiz(ActiveBank());
     g_state.selectedScore = selectedScore;
     g_state.total = QUESTION_COUNT_FILL;
@@ -1546,7 +1559,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             for (int i = NO_SCORE; i < FILL_SCORE_OPTION_COUNT; ++i) {
                 UIRect scoreRect = FillScoreButtonRect(i);
                 if (Hit(mx, my, scoreRect.x, scoreRect.y, scoreRect.w, scoreRect.h)) {
-                    StartFillQuiz(FILL_SCORE_OPTIONS[i]);
+                    StartFillQuiz(FILL_SCORE_OPTIONS[i], i);
                     UpdateEditForState();
                     if (g_hwndEdit) SetFocus(g_hwndEdit);
                     InvalidateRect(hwnd, nullptr, FALSE);
