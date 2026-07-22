@@ -603,6 +603,7 @@ int g_choiceOptionRectCount = 0;
 UIRect FillScoreButtonRect(int idx);
 bool IsTimedMode();
 bool TracksTotalTime();
+void ReadEditIntoState();
 
 UIRect HomeButtonRect(int idx) {
     int cw = std::min(g_w - 80, 880);
@@ -692,6 +693,8 @@ void UpdateEditForState() {
                       && g_state.mode == MODE_FILL
                       && !g_state.answered;
     if (shouldShow) {
+        // save current input to prevent zoom from losing typed text
+        ReadEditIntoState();
         UIRect r = FillEditRect();
         SetWindowPos(g_hwndEdit, HWND_TOP,
                      ScaleCoord(r.x), ScaleCoord(r.y),
@@ -703,6 +706,10 @@ void UpdateEditForState() {
             SetWindowTextW(g_hwndEdit, g_state.userFill.c_str());
         }
     } else {
+        // do not clear userFill while showing answer feedback (answered==true)
+        if (g_state.page != PAGE_QUIZ || !g_state.answered) {
+            g_state.userFill.clear();
+        }
         ShowWindow(g_hwndEdit, SW_HIDE);
     }
 }
@@ -991,6 +998,10 @@ bool StartQuestion() {
     g_state.selected[0] = g_state.selected[1] = g_state.selected[2] = g_state.selected[3] = false;
     g_state.userFill.clear();
     g_state.answered = false;
+    // 清除 edit 控件残留的上题文字，避免下一题显示旧文本
+    if (g_hwndEdit) {
+        SetWindowTextW(g_hwndEdit, L"");
+    }
     g_state.timedOut = false;
     g_state.settledSeconds = 0;
     g_state.questionStart = std::chrono::steady_clock::now();
