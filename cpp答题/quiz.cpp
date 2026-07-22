@@ -525,7 +525,8 @@ bool LoadQuestionBank(int resourceId, QuizMode mode, QuestionBank& bank, std::ws
                 for (int k = 0; k < 4 && k < (int)arr.size(); ++k) q.opts[k] = arr[k];
             }
             else if (key == "answer") {
-                q.answers.assign(1, p.number());
+                auto _arr = p.intArray();
+                if (!_arr.empty()) q.answers = std::move(_arr);
                 hasAnswer = true;
             }
             else if (key == "answers") {
