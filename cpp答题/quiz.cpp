@@ -19,6 +19,7 @@
 #include <cmath>
 #include <mmsystem.h>
 #include <random>
+#include <unordered_set>
 #pragma comment(lib, "winmm.lib")
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
@@ -125,6 +126,7 @@ static const int RES_ID_FILL = 2003;
 static const wchar_t* CFG_ERR_LOAD_FAILED = L"题库加载失败";
 static const wchar_t* CFG_NO_SELECTION = L"请先选择答案。";
 static const wchar_t* CFG_ERR_NO_QUESTIONS = L"题库没有足够的未使用题目。";
+static const wchar_t* CFG_ERR_SINGLE_EXHAUSTED = L"本次启动下单选题已全部抽完，请重新启动程序。";
 
 // --- 对话框标题 ---
 static const wchar_t* CFG_DLG_TITLE = L"提示";
@@ -325,6 +327,9 @@ static const COLORREF CLR_SOFT = RGB(244, 248, 253);
 
 // 全局随机数引擎
 std::mt19937 rng;
+
+// 单选题 session 级去重（程序启动后整个生命周期有效，永不重置）
+static std::unordered_set<int> g_sessionSingleAnsweredIds;
 
 std::wstring Utf8ToWide(const std::string& s) {
     if (s.empty()) return L"";
@@ -994,7 +999,11 @@ int PickRandomUnused() {
     }
     std::vector<int> available;
     for (int i = startIdx; i < endIdx; ++i) {
-        if (!g_state.used[i]) available.push_back(i);
+        if (g_state.used[i]) continue;
+        // 仅单选题做 session 级去重
+        if (g_state.mode == MODE_SINGLE && g_sessionSingleAnsweredIds.count(bank.all[i].id))
+            continue;
+        available.push_back(i);
     }
     if (available.empty()) return -1;
     std::uniform_int_distribution<int> dist(0, (int)available.size() - 1);
@@ -1008,6 +1017,9 @@ bool StartQuestion() {
     if (idx < 0) return false;
     g_state.curQIdx = idx;
     g_state.used[idx] = true;
+    // 单选题 session 去重标记
+    if (g_state.mode == MODE_SINGLE)
+        g_sessionSingleAnsweredIds.insert(ActiveBank().all[idx].id);
     g_state.selected[0] = g_state.selected[1] = g_state.selected[2] = g_state.selected[3] = false;
     g_state.userFill.clear();
     g_state.answered = false;
@@ -1625,7 +1637,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     ++g_state.qNum;
                     if (!StartQuestion()) {
                         --g_state.qNum;
-                        MessageBoxW(hwnd, CFG_ERR_NO_QUESTIONS, CFG_DLG_ERR, MB_OK | MB_ICONERROR);
+                        MessageBoxW(hwnd, CFG_ERR_SINGLE_EXHAUSTED, CFG_DLG_ERR, MB_OK | MB_ICONERROR);
                     }
                     UpdateEditForState();
                     if (g_state.mode == MODE_FILL && g_hwndEdit) SetFocus(g_hwndEdit);
