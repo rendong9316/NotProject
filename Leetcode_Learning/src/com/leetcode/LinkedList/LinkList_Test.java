@@ -23,9 +23,9 @@ public class LinkList_Test {
         System.out.print("删除后: ");
         printList(result);
 
-
+        // 反转链表
         ReverseLinkedList reverseLinkedList = new ReverseLinkedList();
-        ListNode resullt2 = reverseLinkedList.reverseList(head);
+        ListNode resullt2 = reverseLinkedList.reverseList_digui(head);
         System.out.println("反转链表后：");
         printList(resullt2);
     }
