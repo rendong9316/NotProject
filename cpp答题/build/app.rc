@@ -1,0 +1,15 @@
+#define IDI_ICON 101
+#define IDS_SOUND_CORRECT 1001
+#define IDS_SOUND_WRONG 1002
+#define IDS_SOUND_TIMEOUT 1003
+#define IDR_QUESTIONS_SINGLE 2001
+#define IDR_QUESTIONS_MULTIPLE 2002
+#define IDR_QUESTIONS_FILL 2003
+
+IDI_ICON ICON "../media/app_icon.ico"
+IDS_SOUND_CORRECT WAVE "../media/sound_correct.wav"
+IDS_SOUND_WRONG WAVE "../media/sound_wrong.wav"
+IDS_SOUND_TIMEOUT WAVE "../media/sound_timeout.wav"
+IDR_QUESTIONS_SINGLE RC_DATA "../data/questions.json"
+IDR_QUESTIONS_MULTIPLE RC_DATA "../data/multiple_questions_from_xlsx.json"
+IDR_QUESTIONS_FILL RC_DATA "../data/fill_questions.json"
