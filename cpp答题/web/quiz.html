@@ -1234,27 +1234,18 @@ function restartQuiz() {
 // ===== Return Home Button =====
 function addReturnBtn() {
   if(homeBtn) { if(homeBtn.parentNode) return; }
-  // For score page, insert after score card
-  var hdr = document.querySelector('#page-score .score-card, #page-quiz .hdr-bar');
+  // Insert into the header bar for all quiz/score pages
+  var hdr = document.querySelector('.hdr-controls');
   if(!hdr) return;
   homeBtn=document.createElement('button');
   homeBtn.className='home-btn';
   homeBtn.textContent='返回主页';
-  homeBtn.style.marginLeft='auto';
-  homeBtn.style.height='36px';
   homeBtn.onclick=function() {
     if(confirm('确定要放弃本次答题并返回主页吗？\n本次答题记录将被丢弃，无法恢复。')) {
       goHome();
     }
   };
-  if(state.page === 'score') {
-    // Insert after the back-home-btn on score page
-    var existingBack = document.querySelector('#page-score .score-back');
-    if(existingBack) existingBack.parentNode.insertBefore(homeBtn, existingBack.nextSibling);
-    else hdr.appendChild(homeBtn);
-  } else {
-    hdr.appendChild(homeBtn);
-  }
+  hdr.appendChild(homeBtn);
 }
 
 // ===== Timer =====
