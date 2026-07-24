@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>法律知识答题竞赛系统</title>
+<title>鸡东县行政执法及监督人员业务大比武暨鸡东县第二届法律知识竞赛</title>
 <style>
 /* ===== Colors matching C++ app ===== */
 :root {
@@ -32,7 +32,7 @@ body { position: relative; display: flex; flex-direction: column; }
 
 /* ===== Header ===== */
 .hdr-bar { position: relative; z-index: 10; height: 88px; display: flex; align-items: center; padding: 0 34px; background: linear-gradient(180deg, rgba(246,249,253,1) 0%, rgba(246,249,253,0.9) 100%); border-bottom: 3px solid var(--clr-gold); flex-shrink: 0; }
-.hdr-title { font-size: 24px; font-weight: 700; color: var(--clr-text); letter-spacing: 1px; }
+.hdr-title { font-size: clamp(14px, 2.4vw, 24px); font-weight: 700; color: var(--clr-text); letter-spacing: 1px; white-space: nowrap; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .hdr-version { font-size: 13px; font-weight: 700; color: var(--clr-text); margin-left: 24px; letter-spacing: 1px; }
 .hdr-center-info { position: absolute; left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 700; color: var(--clr-muted); letter-spacing: 2px; }
 .hdr-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; }
@@ -173,7 +173,7 @@ body { position: relative; display: flex; flex-direction: column; }
 
 <!-- Header -->
 <div class="hdr-bar">
-  <div class="hdr-title">法律知识答题竞赛系统<span class="hdr-version">V1.0.0</span></div>
+  <div class="hdr-title">鸡东县行政执法及监督人员业务大比武暨鸡东县第二届法律知识竞赛<span class="hdr-version">V1.0.0</span></div>
   <div id="quiz_mode_label" class="hdr-center-info"></div>
   <div class="hdr-controls">
     <button class="font-btn" onclick="fontDown()">A-</button>
@@ -1493,7 +1493,15 @@ function adjust(d) {
   fontScale+=d;
   if(fontScale<1)fontScale=1;
   if(fontScale>3)fontScale=3;
-  document.documentElement.style.fontSize = (fontScale*100)+'%';
+  // 应用整体缩放：以 fontScale=2 为基准（zoom=1），范围 0.5~1.5
+  // 优先用 zoom（Chrome/Edge 完美支持，会同步重新计算布局），不支持时回退到 transform
+  var zoom = fontScale / 2;
+  if ('zoom' in document.body.style) {
+    document.body.style.zoom = zoom;
+  } else {
+    document.body.style.transform = 'scale(' + zoom + ')';
+    document.body.style.transformOrigin = 'top left';
+  }
 }
 
 // ===== Init =====
