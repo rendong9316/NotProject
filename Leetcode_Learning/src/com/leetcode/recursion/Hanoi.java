@@ -1,4 +1,4 @@
-package com.leetcode.array.recursion;
+package com.leetcode.recursion;
 
 import com.sun.jdi.PathSearchingVirtualMachine;
 
