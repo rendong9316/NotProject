@@ -267,6 +267,28 @@ Font* MakeFittingQuestionFont(Graphics& g, const std::wstring& text,
                                                          // 全部放不下就用最小字号的版本
 }                                                     // } 结束 MakeFittingQuestionFont
 
+/**
+ * 为顶栏标题自适应字号：在指定宽度内选择最大能装下（单行、不截断）的字号。
+ * 从 maxSize 起逐档缩小，直到文字宽度 ≤ availWidth；最小回退到 minSize。
+ * 用于解决"鸡东县行政执法...法律知识竞赛"这种长标题在固定 500 宽度内被省略号截断的问题。
+ */
+Font* MakeFittingHeaderFont(Graphics& g, const std::wstring& text,
+                            float availWidth, float maxSize, float minSize) {
+    StringFormat fmt;                                   // 默认格式（允许换行但不影响单行测量）
+    RectF layout(0.0f, 0.0f, availWidth, (REAL)QUESTION_MEASURE_HEIGHT);
+                                                         // 用 QUESTION_MEASURE_HEIGHT 作为足够大的虚拟高度
+    for (float sz = maxSize; sz >= minSize; sz -= 1.0f) {  // 从最大字号起，每次减 1pt
+        Font* font = MakeFont(sz, FontStyleBold);       // 创建候选粗体字体（调用者负责 delete）
+        RectF bounds;                                   // 接收 MeasureString 的实际占用矩形
+        Status status = g.MeasureString(text.c_str(), -1, font, layout, &fmt, &bounds);
+                                                         // 测量文字在给定 layout 内的尺寸
+        if (status == Ok && bounds.Width <= availWidth) return font;
+                                                         // 宽度足够：当前字号可用，直接返回（从大到小遍历故为最大可用字号）
+        delete font;                                    // 仍然太宽：销毁后继续尝试更小字号
+    }
+    return MakeFont(minSize, FontStyleBold);            // 全部都放不下：用最小字号兜底
+}                                                     // } 结束 MakeFittingHeaderFont
+
 // ============================================================================
 // 通用页面组件绘制
 // ============================================================================
@@ -294,10 +316,22 @@ void DrawBackground(Graphics& g) {
 
 /** 绘制页面顶栏：应用名、版本号、可选右侧文字 */
 void DrawHeader(Graphics& g, const std::wstring& rightText) {
-    Font* title = MakeFont(24, FontStyleBold);         // 创建粗体标题字体（24pt）
+    // 计算标题可用宽度：从 x=34 起，到 rightText 起点 (g_w-370) 之前 10px 间距处结束
+    //   - 若 rightText 为空，则延伸到右侧 A-/A+ 按钮区前（约 g_w-170）
+    //   - 至少保留 220 逻辑像素，避免极小窗口下宽度为负
+    float titleX = 34.0f;
+    float titleAvail;
+    if (rightText.empty()) {
+        titleAvail = (float)std::max(220, g_w - 180);   // 无右侧文字：留出 A-/A+ 按钮空间
+    } else {
+        titleAvail = (float)std::max(220, g_w - 380);   // 有右侧文字：留出 rightText 区域
+    }
+    // 标题字号自适应：从 24pt 起逐档缩小到能在 titleAvail 内单行装下，最小回退到 14pt
+    //   这样 CFG_APP_TITLE（30 个汉字的长标题）在任何窗口宽度下都能完整显示，不再被省略号截断
+    Font* title = MakeFittingHeaderFont(g, CFG_APP_TITLE, titleAvail, 24.0f, 14.0f);
     Font* sub = MakeFont(13, FontStyleBold);           // 创建粗体副标题字体（13pt）
-    TextLeft(g, CFG_APP_TITLE, title, GdiColor(CLR_INK), 34, 14, 500, 34);
-                                                         // 左上大字（34,14），宽 500，高 34
+    TextLeft(g, CFG_APP_TITLE, title, GdiColor(CLR_INK), titleX, 14, titleAvail, 34);
+                                                         // 左上大字（titleX,14），宽 titleAvail，高 34
     TextLeft(g, CFG_APP_TAGLINE, sub, GdiColor(CLR_INK), 36, 52, 390, 24);
                                                          // 左上小字（36,52），宽 390，高 24
     if (!rightText.empty()) TextLeft(g, rightText, sub, GdiColor(CLR_INK), g_w - 370, 34, 330, 26);
