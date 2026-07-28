@@ -440,6 +440,22 @@ const Question* CurrentQuestion() {
     return &ActiveBank().all[g_state.curQIdx];          // &：取地址运算符（&all[idx] 返回 Question*）
 }                                                     // } 结束 CurrentQuestion
 
+/** 规范化题干空白，用作风险题整轮去重键。 */
+static std::wstring NormalizeQuestionKey(const std::wstring& text) {
+    std::wstring normalized;
+    bool pendingSpace = false;
+    for (wchar_t ch : text) {
+        if (iswspace(ch)) {
+            pendingSpace = !normalized.empty();
+            continue;
+        }
+        if (pendingSpace) normalized.push_back(L' ');
+        normalized.push_back(ch);
+        pendingSpace = false;
+    }
+    return normalized;
+}
+
 /**
  * 从未使用的题目中随机选取一道题。
  * 考虑不同模式的特殊约束：
@@ -457,6 +473,12 @@ int PickRandomUnused() {
     for (int i = startIdx; i < endIdx; ++i) {           // 从 startIdx 到 endIdx-1 遍历
         if (g_state.used[i]) continue;                  // continue：跳过本次循环的剩余部分，直接进入下一轮
                                                          // used[i] 为 true 说明这题已经被答过了
+        if (g_state.mode == MODE_RISK) {
+            std::wstring key = NormalizeQuestionKey(bank.all[i].q);
+            if (std::find(g_state.riskQuestionKeysUsed.begin(),
+                          g_state.riskQuestionKeysUsed.end(), key)
+                != g_state.riskQuestionKeysUsed.end()) continue;
+        }
         // 单选题模式：跳过本次启动以来已经答过的题目（会话级去重）
         if (g_state.mode == MODE_SINGLE && g_sessionSingleAnsweredIds.count(bank.all[i].id))
                                                          // count(key)：unordered_set 的成员函数，key 存在返回 1，否则 0
@@ -485,6 +507,10 @@ bool StartQuestion() {
                                                          // < 小于运算符
     g_state.curQIdx = idx;                              // 设置当前题目索引（在 all[] 中的位置）
     g_state.used[idx] = true;                           // 将该题标记为已使用（used 数组中对应位置设为 true）
+    if (g_state.mode == MODE_RISK) {
+        g_state.riskQuestionKeysUsed.push_back(
+            NormalizeQuestionKey(ActiveBank().all[idx].q));
+    }
 
     // 单选题模式：记录本题 ID 到会话去重集合
     if (g_state.mode == MODE_SINGLE)                    // 检查是否处于单选题模式

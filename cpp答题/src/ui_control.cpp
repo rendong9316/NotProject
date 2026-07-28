@@ -267,7 +267,7 @@ static void HandleFillScoreSelectClick(int mx, int my, HWND hwnd) {
     if (Hit(mx, my, backRect.x, backRect.y, backRect.w, backRect.h)) {
                                                          // 判断是否点击了返回按钮
         g_state.resetQuiz(ActiveBank());               // resetQuiz 重置全部状态（计数、used 数组等）
-        g_state.resetRiskScoreUsage();                 // 返回主页后重新开放全部风险题分值
+        g_state.resetRiskRoundUsage();                 // 返回主页后重置风险题分值与整轮题目
                                                          // ActiveBank() 根据当前模式返回对应题库的引用
         g_state.page = PAGE_HOME;                      // 切换回主页
         UpdateEditForState();                          // 更新编辑框可见性
@@ -307,7 +307,7 @@ static void HandleQuizPageClick(int mx, int my, HWND hwnd) {
                                                          // MessageBoxW 返回值：IDYES 或 IDCANCEL（用户点的）
         if (rc == IDYES) {                             // IDYES：宏定义，代表"Yes"按钮的返回值
             g_state.resetQuiz(ActiveBank());           // 完全重置答题状态
-            g_state.resetRiskScoreUsage();             // 返回主页后重新开放全部风险题分值
+            g_state.resetRiskRoundUsage();             // 返回主页后重置风险题分值与整轮题目
             g_state.page = PAGE_HOME;                  // 切换到主页
             UpdateEditForState();
             SetFocus(hwnd);                            // 焦点回到主窗口本身
@@ -410,7 +410,7 @@ static void HandleResultPageClick(int mx, int my, HWND hwnd) {
         UIRect homeRect = ResultHomeButtonRect();
         if (!Hit(mx, my, homeRect.x, homeRect.y, homeRect.w, homeRect.h)) return;
         g_state.resetQuiz(ActiveBank());               // 完全重置状态
-        g_state.resetRiskScoreUsage();                 // 返回主页后重新开放全部风险题分值
+        g_state.resetRiskRoundUsage();                 // 返回主页后重置风险题分值与整轮题目
         g_state.page = PAGE_HOME;                      // 切换到主页
         UpdateEditForState();
     }                                                 // } 结束 if(home button)

@@ -23,6 +23,7 @@ struct QuizState {                                      // struct：答题会话
     int wrong = 0;                                      //   累计答错的题数
     int selectedScore = 0;                              //   用户在风险题分值选择中点击的分值（10/20/30/40/50/60）
     bool riskScoreUsed[FILL_SCORE_OPTION_COUNT] = {};   //   当前风险题会话中已经完成过选择的分值档位
+    std::vector<std::wstring> riskQuestionKeysUsed;     //   风险题整轮已经抽取过的规范化题干
 
     bool answered = false;                              //   标记当前题是否已经提交并结算（true=已答，false=未答）
     bool lastCorrect = false;                           //   上一题的对错结果（用于反馈面板的颜色：绿=对，红=错）
@@ -68,9 +69,10 @@ struct QuizState {                                      // struct：答题会话
                                                          //       此时所有题目都标记为"未被使用过"
     }                                                    //     } 结束 resetQuiz 函数定义
 
-    // 只有返回主页时调用；“再次答题”返回分值页时保留已用档位。
-    void resetRiskScoreUsage() {
+    // 只有返回主页时调用；“再次答题”保留已用档位和已抽题目。
+    void resetRiskRoundUsage() {
         for (int i = 0; i < FILL_SCORE_OPTION_COUNT; ++i) riskScoreUsed[i] = false;
+        riskQuestionKeysUsed.clear();
     }
 };                                                       // } 结束 struct QuizState 定义
 
