@@ -40,7 +40,7 @@ struct QuizState {                                      // struct：答题会话
     std::wstring userFill;                               //   填空题用户的输入内容（从 EDIT 控件读取）
 
     int settledSeconds = 0;                              //   本题实际用时（秒）。限时模式下，答题后记录到该变量
-    bool questionTimerStarted = true;                    //   本题倒计时是否已启动；抢答题和风险题均需手动启动
+    bool questionTimerStarted = true;                    //   本题倒计时是否已启动；三种答题模式均需手动启动
     std::chrono::system_clock::time_point quizStart;      //   本轮答题开始的时间点（系统时钟，可被用户修改影响）
     std::chrono::system_clock::time_point quizEnd;        //   本轮答题结束的时间点（用户点"提交结果"时设置）
     std::chrono::steady_clock::time_point questionStart;  //   当前题目的开始时间（单调时钟，不受系统时间调整影响）
@@ -63,7 +63,7 @@ struct QuizState {                                      // struct：答题会话
         flashVisible = false;                            //     清空"倒计时闪烁"标记
         userFill.clear();                                //     clear() 是 std::wstring 的成员方法，清空字符串内容为空
         settledSeconds = 0;                              //     清空本题用时记录
-        questionTimerStarted = true;                     //     默认即时计时，抽取抢答题或风险题时再进入待机
+        questionTimerStarted = true;                     //     StartQuestion 会按当前模式切换到待机状态
         questionSeconds.clear();                         //     clear() 清空 vector，释放所有元素但保留容量
         used.assign(bank.all.size(), false);             //     assign() 是 vector 的成员方法：重新分配 size 个元素，全部为 false
                                                          //       此时所有题目都标记为"未被使用过"
@@ -110,8 +110,8 @@ QuestionBank& ActiveBank();                             // 根据 g_state.mode �
                                                          // & 返回值：返回的是引用（不是拷贝），可以直接修改题库内容
 std::wstring ModeName();                                // 返回当前答题模式的中文名称字符串
 bool IsTimedMode();                                     // 判断当前是否为限时模式（三种模式均为 true）
-bool RequiresAnswerStart();                             // 抢答题和风险题每题都需点击“开始答题”
-bool TracksTotalTime();                                 // 判断当前是否跟踪总耗时（true=单选，false=其他模式）
+bool RequiresAnswerStart();                             // 三种模式每题都需点击“开始答题”
+bool TracksTotalTime();                                 // 判断当前是否跟踪整轮总耗时（当前各模式均不跟踪）
 const Question* CurrentQuestion();                      // 返回当前正在作答的题目指针（返回 nullptr 表示无有效题目）
 int PickRandomUnused();                                 // 从未使用的题目中随机选取一个（返回 -1 表示用完）
 bool StartQuestion();                                   // 开始回答下一道题（true=成功，false=无更多可用题）

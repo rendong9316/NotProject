@@ -420,14 +420,16 @@ bool IsTimedMode() {
                                                          // == 比较运算符, || 逻辑或
 }                                                     // } 结束 IsTimedMode
 
-// 抢答题和风险题共用逐题待机、手动启动倒计时逻辑。
+// 三种答题模式共用逐题待机、手动启动倒计时逻辑。
 bool RequiresAnswerStart() {
-    return g_state.mode == MODE_MULTIPLE || g_state.mode == MODE_RISK;
+    return g_state.mode == MODE_SINGLE
+        || g_state.mode == MODE_MULTIPLE
+        || g_state.mode == MODE_RISK;
 }
 
-// 判断当前模式是否累计总用时（只有单选题在结果页显示总用时统计）
+// 各模式只保留逐题倒计时，不再累计或显示整轮总用时。
 bool TracksTotalTime() {
-    return g_state.mode == MODE_SINGLE;                // 只有单选模式跟踪总用时
+    return false;
 }                                                     // } 结束 TracksTotalTime
 
 // 返回当前正在作答的题目指针
@@ -525,7 +527,7 @@ bool StartQuestion() {
     g_state.timedOut = false;                           // 标记未超时
     g_state.settledSeconds = 0;                         // 清除上次用时
     g_state.flashVisible = false;                       // 清除倒计时闪烁标志
-    // 抢答题和风险题的每一道题都先待机，点击“开始答题”后才记录计时起点。
+    // 三种模式的每一道题都先待机，点击“开始答题”后才记录计时起点。
     g_state.questionTimerStarted = !RequiresAnswerStart();
     if (g_state.questionTimerStarted)
         g_state.questionStart = std::chrono::steady_clock::now();
