@@ -45,14 +45,14 @@ int main() {                                           // int main()：标准 C+
                                                          //     简写形式，等价于：if (setDpiAware != nullptr) { setDpiAware(); }
     }                                                 // } 结束 if(user32) 块
 
-    // 加载三个题库资源（单��、多选、填空）
+    // 加载三套独立题库资源（单选、抢答多选、风险多选）
     std::wstring error;                               //   std::wstring error：宽字符字符串变量，用于接收错误信息
                                                          //   如果 LoadQuestionBank 失败，error 会被填充错误描述
     if (!LoadQuestionBank(RES_ID_SINGLE, MODE_SINGLE, g_banks[0], error) || // || 是短路逻辑或运算符
                                                          //   !LoadQuestionBank(...)：取反，true 表示"加载失败"
                                                          //   || 保证第一个为 true 时不再计算后面的
         !LoadQuestionBank(RES_ID_MULTIPLE, MODE_MULTIPLE, g_banks[1], error) ||
-        !LoadQuestionBank(RES_ID_FILL, MODE_FILL, g_banks[2], error)) { // g_banks[0/1/2]：三个全局题库数组
+        !LoadQuestionBank(RES_ID_RISK, MODE_MULTIPLE, g_banks[2], error)) { // 风险题也按多选题结构校验
                                                          //   RES_ID_SINGLE = 2001：单选题题库的资源编号
         MessageBoxW(nullptr, error.c_str(), CFG_ERR_LOAD_FAILED, MB_OK | MB_ICONERROR);
                                                          //   MessageBoxW：弹出标准 Windows 对话框

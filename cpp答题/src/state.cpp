@@ -30,7 +30,7 @@ std::mt19937 rng;                                     //   在 main() 中用系�
 
 // Global state                                        // 三个题库实例和答题会话状态
 QuizState g_state;                                    //   当前答题会话的唯一状态对象
-QuestionBank g_banks[3];                              //   [0]=单选题库, [1]=多选题库, [2]=填空题库
+QuestionBank g_banks[3];                              //   [0]=单选题库, [1]=抢答多选题库, [2]=风险多选题库
 
 // Session-level dedup for single-choice               // 会话级去重：记录本次启动已答过的单选题 ID
 static std::unordered_set<int> g_sessionSingleAnsweredIds; // 程序生命周期内永不重置，确保单选模式题目不重复
@@ -369,12 +369,8 @@ bool LoadQuestionBank(int resourceId, QuizMode mode, QuestionBank& bank, std::ws
                                                          // 循环检查四个选项都不为空
         bool validCount = mode == MODE_SINGLE ? q.answers.size() == 1 : q.answers.size() >= 2;
                                                          // ?: 三元运算符
-        bool valid;
-        if (mode == MODE_FILL) {                        // 填空题只需要题干 + 答案（无选项要求）
-            valid = !q.q.empty() && hasFillAnswer;
-        } else {                                        // 选择题需要题干 + 四个选项 + 合法答案 + 正确数量的答案
-            valid = !q.q.empty() && validOptions && validAnswers && validCount;
-        }                                               // } 结束 if(mode==FILL)
+        // 当前三种模式均为选择题结构：题干、四个选项及合法答案缺一不可。
+        bool valid = !q.q.empty() && validOptions && validAnswers && validCount;
         if (!valid) {                                   // !valid：valid 为 false 时进入
             error = CFG_ERR_INVALID_Q + IntToWStr(q.id) + L")。";
                                                          // + 运算符连接宽字符串
@@ -402,7 +398,7 @@ bool LoadQuestionBank(int resourceId, QuizMode mode, QuestionBank& bank, std::ws
 QuestionBank& ActiveBank() {
                                                          // & 返回值引用：调用方直接操作返回的题库
     if (g_state.mode == MODE_MULTIPLE) return g_banks[1]; // ==：相等比较运算符
-    if (g_state.mode == MODE_FILL) return g_banks[2];    // 返回对应索引的题库引用
+    if (g_state.mode == MODE_RISK) return g_banks[2];    // 风险题使用独立的多选题库
     return g_banks[0];                                   // 默认返回单选题库（MODE_SINGLE）
 }                                                     // } 结束 ActiveBank
 
@@ -411,16 +407,23 @@ std::wstring ModeName() {
     switch (g_state.mode) {                            // switch：根据枚举值选择分支
                                                          // break：跳出 switch（防止 fall-through）
         case MODE_MULTIPLE: return L"多选题模式";       // case 后接常量和冒号
-        case MODE_FILL:     return L"填空/简答模式";
+        case MODE_RISK:     return L"风险题模式";
         default:            return L"单选题模式";       // default：其他所有情况
     }                                                   // } 结束 switch
 }                                                     // } 结束 ModeName
 
-// 判断当前是否为限时模式（单选和多选题每题限时30秒，填空题不限时）
+// 判断当前是否为限时模式（三种模式均为每题30秒）
 bool IsTimedMode() {
-    return g_state.mode == MODE_SINGLE || g_state.mode == MODE_MULTIPLE;
+    return g_state.mode == MODE_SINGLE
+        || g_state.mode == MODE_MULTIPLE
+        || g_state.mode == MODE_RISK;
                                                          // == 比较运算符, || 逻辑或
 }                                                     // } 结束 IsTimedMode
+
+// 抢答题和风险题共用逐题待机、手动启动倒计时逻辑。
+bool RequiresAnswerStart() {
+    return g_state.mode == MODE_MULTIPLE || g_state.mode == MODE_RISK;
+}
 
 // 判断当前模式是否累计总用时（只有单选题在结果页显示总用时统计）
 bool TracksTotalTime() {
@@ -448,15 +451,6 @@ int PickRandomUnused() {
     const auto& bank = ActiveBank();                    // auto 类型推导：推断 bank 为 const QuestionBank&
                                                          // const &：常量引用（只读，不拷贝）
     int startIdx = 0, endIdx = (int)bank.all.size();    // 初始化范围：默认[0, size)
-
-    // 填空题受分值桶限制：从对应区间的 3 道题中选
-    if (g_state.mode == MODE_FILL && g_state.fillBucket >= 0 && g_state.fillBucket < FILL_SCORE_OPTION_COUNT) {
-                                                         // && 逻辑与
-        startIdx = g_state.fillBucket * 3;               // * 乘法：每个桶有 3 道题
-        endIdx = std::min(startIdx + 3, (int)bank.all.size());
-                                                         // std::min(a, b)：返回 a 和 b 中较小者
-                                                         // 确保 endIdx 不超过题库边界
-    }                                                   // } 结束 if(FILL mode bucket)
 
     // 收集所有可用的（未使用的）题目索引
     std::vector<int> available;                         // 创建空的 vector<int> 动态数组
@@ -505,8 +499,8 @@ bool StartQuestion() {
     g_state.timedOut = false;                           // 标记未超时
     g_state.settledSeconds = 0;                         // 清除上次用时
     g_state.flashVisible = false;                       // 清除倒计时闪烁标志
-    // 抢答题的每一道题都先进入待机状态，点击“开始答题”后才记录计时起点。
-    g_state.questionTimerStarted = g_state.mode != MODE_MULTIPLE;
+    // 抢答题和风险题的每一道题都先待机，点击“开始答题”后才记录计时起点。
+    g_state.questionTimerStarted = !RequiresAnswerStart();
     if (g_state.questionTimerStarted)
         g_state.questionStart = std::chrono::steady_clock::now();
                                                          // steady_clock::now()：获取单调递增的系统时钟
@@ -521,7 +515,7 @@ void StartQuiz(QuizMode mode) {
     // 根据模式分配不同的总题数
     if (mode == MODE_MULTIPLE) g_state.total = QUESTION_COUNT_MULTIPLE;
                                                          // 条件赋值
-    else if (mode == MODE_FILL) g_state.total = QUESTION_COUNT_FILL;
+    else if (mode == MODE_RISK) g_state.total = QUESTION_COUNT_RISK;
     else g_state.total = QUESTION_COUNT_SINGLE;          // else：兜底，即 MODE_SINGLE
 
     g_state.page = PAGE_QUIZ;                          // 切换到答题页
@@ -530,26 +524,25 @@ void StartQuiz(QuizMode mode) {
     StartQuestion();                                   // 抽取第一道题
 }                                                     // } 结束 StartQuiz
 
-/** 打开填空题的分值选择页面 */
-void OpenFillScoreSelect() {
-    g_state.mode = MODE_FILL;                          // 设置为填空题模式
+/** 打开风险题的分值选择页面 */
+void OpenRiskScoreSelect() {
+    g_state.mode = MODE_RISK;                          // 设置为风险题模式
     g_state.resetQuiz(ActiveBank());                   // 重置状态
-    g_state.total = QUESTION_COUNT_FILL;               // 设总数为 2 题
+    g_state.total = QUESTION_COUNT_RISK;               // 设总数为 2 题
     g_state.page = PAGE_FILL_SCORE_SELECT;             // 切换到分值选择页
-}                                                     // } 结束 OpenFillScoreSelect
+}                                                     // } 结束 OpenRiskScoreSelect
 
-/** 从分值选择页确认后启动填空答题 */
-void StartFillQuiz(int selectedScore, int scoreIdx) {
-    g_state.mode = MODE_FILL;                          // 设置模式
-    g_state.fillBucket = scoreIdx;                     // 记录分值桶，用于限制抽题范围
+/** 从分值选择页确认后启动风险题 */
+void StartRiskQuiz(int selectedScore) {
+    g_state.mode = MODE_RISK;                          // 设置风险题模式
     g_state.resetQuiz(ActiveBank());
     g_state.selectedScore = selectedScore;             // 保存用户选择的分值（10/20/.../60）
-    g_state.total = QUESTION_COUNT_FILL;
+    g_state.total = QUESTION_COUNT_RISK;
     g_state.page = PAGE_QUIZ;                          // 进入答题页
     g_state.qNum = 1;
     g_state.quizStart = std::chrono::system_clock::now();
     StartQuestion();
-}                                                     // } 结束 StartFillQuiz
+}                                                     // } 结束 StartRiskQuiz
 
 /** 计算当前题目已过去的秒数（单调时钟，不受系统时间调整影响） */
 int QuestionElapsedSeconds() {
@@ -569,10 +562,9 @@ int QuestionElapsedSeconds() {
 
 /** 计算当前题目剩余秒数 */
 int QuestionRemainingSeconds() {
-    if (!IsTimedMode()) return NO_TIME_SECONDS;        // 填空不限时，返回 0 标记
+    if (!IsTimedMode()) return NO_TIME_SECONDS;        // 非限时模式的兼容分支
     if (!g_state.questionTimerStarted) return QUESTION_TIME_LIMIT_SECONDS;
-                                                         // !IsTimedMode()：如果当前不是限时模式（即填空模式）
-                                                         // NO_TIME_SECONDS 是配置常量，通常设为 0 表示"不限时"
+                                                         // 当前三种答题模式均会进入限时逻辑
     // 已作答：用 settledSeconds（不含超时情况）；否则：实时计算
     int elapsed = g_state.answered ? g_state.settledSeconds : QuestionElapsedSeconds();
                                                          // ?: 三元运算符
@@ -666,12 +658,6 @@ void SettleCurrentQuestion(HWND hwnd, bool timeout) {
     g_state.flashVisible = false;     // 停止倒计时闪烁效果
     // 不再调用 KillTimer —— WM_TIMER case 里的 !g_state.answered 检查会自动跳过已答完的题目
     // 保留定时器持续运行，保证所有题目的倒计时都正常刷新
-
-    if (g_state.mode == MODE_FILL) {
-        // 填空题不做对错判定，仅记录未作答，由 ui_control 读取编辑框后设置 lastCorrect
-        g_state.lastCorrect = false;    // 填空题的正确答案判定交给 UI 层的文本比较逻辑
-        return;                         // 填空题结算到此为止，不进入下面的选择题判分逻辑
-    }
 
     // 选择题：比对选中和标准答案
     bool ok = !timeout && SelectedAnswers() == question->answers;

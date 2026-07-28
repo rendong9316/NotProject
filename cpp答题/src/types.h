@@ -21,7 +21,7 @@ enum Page {                                            // enum：定义枚举类
 enum QuizMode {                                        // enum：定义枚举类型 QuizMode，表示当前的答题模式
     MODE_SINGLE,                                       //   MODE_SINGLE = 0，单选题模式（每题一个正确答案，限时30秒）
     MODE_MULTIPLE,                                     //   MODE_MULTIPLE = 1，多选题模式（每题多个正确答案，必须全对才得分）
-    MODE_FILL                                          //   MODE_FILL = 2，填空/简答题模式（自由输入答案，不限时）
+    MODE_RISK                                          //   MODE_RISK = 2，风险题模式（独立多选题库，限时30秒）
 };                                                     // } 结束 enum 定义
 
 struct Question {                                      // struct：定义结构体 Question，存储一道题目的完整数据

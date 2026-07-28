@@ -12,7 +12,7 @@ static const int QUESTION_COUNT_SINGLE = 3;            // 单选题每轮答题�
                                                          // static：在本翻译单元（.cpp 文件）内可见，不导出为符号
                                                          // const：编译期常量，值不能修改
 static const int QUESTION_COUNT_MULTIPLE = 10;         // 多选题每轮答题固定 10 道题
-static const int QUESTION_COUNT_FILL = 2;              // 填空题/风险题每轮答题固定 2 道题
+static const int QUESTION_COUNT_RISK = 2;              // 风险题每轮答题固定 2 道题
 
 // 风险题分值选项配置
 static const int FILL_SCORE_OPTION_COUNT = 6;          // 风险题有 6 个分值可选（10/20/30/40/50/60）
@@ -20,7 +20,7 @@ static const int FILL_SCORE_OPTIONS[FILL_SCORE_OPTION_COUNT] = {10, 20, 30, 40, 
                                                          // 初始化列表：FILL_SCORE_OPTIONS[0]=10, [1]=20 ... [5]=60
                                                          // 数组长度由 FILL_SCORE_OPTION_COUNT 决定为 6
 static const int NO_SCORE = 0;                         // 占位值，对应上述数组的索引 0（实际值为 10）
-static const int NO_TIME_SECONDS = 0;                  // 表示"不限时"的标记值（填空题没有倒计时）
+static const int NO_TIME_SECONDS = 0;                  // 通用的零秒初始值
 
 // --- 每题限时（秒） ---
 static const int QUESTION_TIME_LIMIT_SECONDS = 30;     // 单选题和多选题每题限时 30 秒
@@ -106,7 +106,7 @@ static const wchar_t* CFG_FONT_FAMILY = L"Microsoft YaHei";
 // --- 题库资源 ID ---
 static const int RES_ID_SINGLE = 2001;                 // 单选题题库 JSON 在资源文件 (.rc) 中对应的资源编号
 static const int RES_ID_MULTIPLE = 2002;               // 多选题库 JSON 的资源编号
-static const int RES_ID_FILL = 2003;                   // 填空题题库 JSON 的资源编号
+static const int RES_ID_RISK = 2003;                   // 风险题独立多选题库 JSON 的资源编号
                                                          // 编译时这些资源会被嵌入 .exe 文件中
 
 // --- 错误提示 ---
@@ -131,7 +131,7 @@ static const wchar_t* CFG_ERR_MIN_QUESTIONS = L"题库至少需要 10 道有效�
 
 // --- 应用标识 ---
 static const wchar_t* CFG_APP_TITLE = L"鸡东县行政执法及监督人员业务大比武暨鸡东县第二届法律知识竞赛"; // 窗口标题栏和应用名
-static const wchar_t* CFG_APP_TAGLINE = L"V1.0.9";           // 版本号，显示在主页顶部
+static const wchar_t* CFG_APP_TAGLINE = L"V1.0.10";          // 版本号，显示在主页顶部
 static const wchar_t* CFG_APP_PAGE_SUBTITLE = L"请选择答题模式";
 static const wchar_t* CFG_APP_CARD_TITLE = L"参赛须知";
 static const wchar_t* CFG_APP_CARD_DESC = L"系统随机抽题，不同模式采用独立的答题规则。";
@@ -139,11 +139,11 @@ static const wchar_t* CFG_APP_CARD_DESC = L"系统随机抽题，不同模式采
 // --- 答题规则 ---
 static const wchar_t* CFG_RULES_TITLE = L"答题规则";
 static const wchar_t* CFG_RULES[] = {                              // 字符串数组：6 条答题规则
-    L"1. 单选题只能选择一个答案；多选题可选择多个答案；填空题请直接输入答案。",
+    L"1. 必答题只能选择一个答案；抢答题和风险题可选择多个答案。",
     L"2. 多选题须与标准答案完全一致，漏选或多选均不得分。",
-    L"3. 填空/简答题提交后展示参考答案，不进行正误判定和分值计算。",
-    L"4. 单选题和多选题每题限时30秒；填空/简答题不限时。",
-    L"5. 单选题和多选题超时后本题锁定，请点击\"下一题\"继续作答。",
+    L"3. 风险题先选择分值，结果页显示所选分值。",
+    L"4. 必答题、抢答题和风险题每题限时30秒。",
+    L"5. 限时题超时后本题锁定，请点击\"下一题\"继续作答。",
     L"6. 答题过程中可点击右上角\"返回主页\"按钮放弃本次答题，需二次确认。"
 };                                                              // } 结束数组初始化
 static const int CFG_RULES_COUNT = 6;                           // 规则总数（用于 for 循环边界）
@@ -163,7 +163,7 @@ static const wchar_t* CFG_BTN_RESTART = L"再次答题";            // 结果页
 static const wchar_t* CFG_HINT_SINGLE = L"请选择一个正确答案后确认";  // 单选题页面上的引导文字
 static const wchar_t* CFG_HINT_MULTIPLE = L"请选择所有正确答案后确认";
 static const wchar_t* CFG_HINT_MULTIPLE_WAITING = L"点击“开始答题”后开始30秒倒计时";
-static const wchar_t* CFG_HINT_FILL = L"请在下方输入框中填写答案，提交后显示参考答案";
+static const wchar_t* CFG_HINT_RISK = L"请选择所有正确答案后确认，漏选或多选均不得分";
 
 // --- 难度名称 ---
 static const wchar_t* CFG_DIFF_NAMES[] = {L"简单题", L"中档题", L"高档题"};
@@ -184,7 +184,7 @@ static const wchar_t* CFG_RESULT_TITLE = L"答题结果";
 static const wchar_t* CFG_RESULT_SCORE_LABEL = L"总分";
 static const wchar_t* CFG_METRIC_SELECTED_SCORE = L"选择分值";
 static const wchar_t* CFG_SCORE_SELECT_TITLE = L"请选择本次答题分值";
-static const wchar_t* CFG_SCORE_SELECT_HINT = L"选择分值后进入填空/简答题";
+static const wchar_t* CFG_SCORE_SELECT_HINT = L"选择分值后进入风险题";
 static const wchar_t* CFG_SCORE_SUFFIX = L"分";                 // 分数值的后缀（如"30分"）
 
 // --- 反馈文案 ---

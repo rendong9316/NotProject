@@ -454,7 +454,7 @@ void DrawHomePage(Graphics& g) {
                                                          // IntToWStr() 将 int 转为宽字符串
     TextCenter(g, IntToWStr(QUESTION_COUNT_MULTIPLE) + L" 题", countFont, GdiColor(CLR_NAVY),
                btnStartX + btnW + btnGap, btnY + 58, btnW, 24);
-    TextCenter(g, IntToWStr(QUESTION_COUNT_FILL) + L" 题", countFont, GdiColor(CLR_GREEN),
+    TextCenter(g, IntToWStr(QUESTION_COUNT_RISK) + L" 题", countFont, GdiColor(CLR_GREEN),
                btnStartX + (btnW + btnGap) * 2, btnY + 58, btnW, 24);
     // L" 题"：L 宽字符前缀 + "题" 中文字符
     delete countFont;                                   // 释放所有 font
@@ -667,18 +667,7 @@ void DrawQuizPage(Graphics& g) {
     int optionStartY = CHOICE_OPTION_START_OFFSET_Y;     // 选项区起始 Y 偏移（默认值）
     int optionHeights[CHOICE_OPTION_COUNT] = {};         // 每个选项的高度（初始化为 0）
 
-    // ==================== 填空题分支 ====================
-    if (g_state.mode == MODE_FILL) {
-                                                         // 填空题不需要选项面板，只需题干字体
-        qFont = MakeFittingQuestionFont(
-            g, questionText, (float)(cardW - QUESTION_TEXT_WIDTH_INSET),
-                                                         // (float) 强制类型转换
-            (float)QUESTION_TEXT_HEIGHT);                // 适配字体的题干字体
-                                                         // auto type deduction via 'auto' keyword in newer compilers
-        optFont = MakeFont(CHOICE_OPTION_FONT_MAX_SIZE); // 选项字体（填空题不需要，但保留以防后续扩展）
-        g_choiceOptionRectCount = 0;                     // 填空题无选项区域，计数器设为 0
-    } else {
-        // ==================== 选择题布局自适应 ====================
+    // ==================== 选择题布局自适应 ====================
         // 预留反馈面板空间（已答则留出，未答不留）
         int feedbackReserve = g_state.answered
                             ? CHOICE_FEEDBACK_HEIGHT + CHOICE_FEEDBACK_GAP_Y
@@ -751,7 +740,6 @@ void DrawQuizPage(Graphics& g) {
                     + CHOICE_DYNAMIC_QUESTION_HINT_GAP; // hint 位于题干下方
         optionStartY = hintOffsetY + QUESTION_HINT_HEIGHT
                      + CHOICE_DYNAMIC_HINT_OPTION_GAP; // 选项区域位于提示下方
-    }                                                   // } 结束 else(选择题)
 
     // 绘制题干文本（支持自动换行）
     TextWrap(g, questionText, qFont, GdiColor(CLR_INK),
@@ -765,49 +753,12 @@ void DrawQuizPage(Graphics& g) {
     DrawButton(g, backRect.x, backRect.y, backRect.w, backRect.h, CFG_BTN_RETURN_HOME,
                CLR_RED, RGB(160, 30, 30), true);        // 红色空心按钮
 
-    // ==================== 填空题渲染 ====================
-    if (g_state.mode == MODE_FILL) {
-        // 显示填空题提示文字
-        TextLeft(g, CFG_HINT_FILL, meta2, GdiColor(CLR_MUTED),
-                 cardX + QUESTION_TEXT_OFFSET_X,
-                 cardY + QUESTION_HINT_OFFSET_Y,
-                 cardW - QUESTION_TEXT_WIDTH_INSET,
-                 QUESTION_HINT_HEIGHT);
-
-        UIRect editRect = FillEditRect();               // 获取编辑框区域
-        if (g_state.answered) {                         // 已提交：显示静态文本框替代输入框
-            Color fill = Color(255, 244, 248, 253);     // 柔和的白色填充
-            Color border = GdiColor(CLR_LINE);          // 淡灰边框
-            FillRoundRectBorder(g, (float)editRect.x, (float)editRect.y,
-                                (float)editRect.w, (float)editRect.h, 14, fill, border, 1.5f);
-                                                         // 绘制一个静态文本框替代编辑框
-            std::wstring shown = g_state.userFill.empty() ? CFG_FILL_UNANSWERED : g_state.userFill;
-            // userFill.empty() 为空返回 "（未作答）"，否则显示用户输入
-            TextLeft(g, CFG_FILL_USER_ANSWER_LABEL + shown, optFont, GdiColor(CLR_INK),
-                     editRect.x + 18, editRect.y + 16, editRect.w - 36, 28);
-        }                                               // } 结束 if(answered)
-
-        // 显示参考答案面板（仅已答时展示）
-        if (g_state.answered) {
-            int fy = editRect.y + editRect.h + 14;      // 参考面板起始 Y = 编辑框底 + 间隙
-            FillRoundRectBorder(g, (float)(cardX + 34), (float)fy,
-                                (float)(cardW - 68), 98, 14,
-                                Color(255, 244, 248, 253), GdiColor(CLR_LINE), 1.5f);
-            TextLeft(g, CFG_FEEDBACK_FILL_REFERRAL, meta, GdiColor(CLR_NAVY),
-                     cardX + 54, fy + 10, cardW - 108, 24);
-            // 拼接标准答案和备选答案（用 "/" 分隔多个答案）
-            std::wstring reference = q->fillAnswer;     // q->fillAnswer：箭头运算符
-            for (const auto& alt : q->fillAlts) reference += L" / " + alt;
-                                                         // for(const auto& alt : ...)：range-based for 循环
-                                                         // const auto&：常量引用
-            TextWrap(g, reference, meta2, GdiColor(CLR_INK),
-                     cardX + 54, fy + 36, cardW - 108, 52);
-        }                                               // } 结束 if(answered, fill mode)
-    } else {
-        // ==================== 选择题渲染 ====================
-        const wchar_t* choiceHint = g_state.mode == MODE_MULTIPLE && !g_state.questionTimerStarted
+    // ==================== 选择题渲染 ====================
+        const wchar_t* choiceHint = RequiresAnswerStart() && !g_state.questionTimerStarted
                                   ? CFG_HINT_MULTIPLE_WAITING
-                                  : (g_state.mode == MODE_MULTIPLE ? CFG_HINT_MULTIPLE : CFG_HINT_SINGLE);
+                                  : (g_state.mode == MODE_RISK ? CFG_HINT_RISK
+                                                              : (g_state.mode == MODE_MULTIPLE
+                                                                 ? CFG_HINT_MULTIPLE : CFG_HINT_SINGLE));
         TextLeft(g, choiceHint,
                  meta2, GdiColor(CLR_MUTED),
                  cardX + QUESTION_TEXT_OFFSET_X,
@@ -896,13 +847,12 @@ void DrawQuizPage(Graphics& g) {
             if (!q->exp.empty()) TextLeft(g, q->exp, meta2, GdiColor(CLR_INK), cardX + 54, fy + 44, cardW - 108, 30);
             // q->exp：答案解释字段，箭头运算符
         }                                               // } 结束 if(answered)
-    }                                                   // } 结束 else(选择题)
 
     // ==================== 确认/下一题/提交按钮 ====================
     bool finalQ = g_state.answered && g_state.qNum >= g_state.total;
     // finalQ：是否为最后一题且已答完
                                                          // ?: 三元运算符：最后一题 → 绿色"提交"，否则 → 蓝色"确认"或"下一题"
-    bool waitingToStart = g_state.mode == MODE_MULTIPLE
+    bool waitingToStart = RequiresAnswerStart()
                        && !g_state.answered
                        && !g_state.questionTimerStarted;
     COLORREF cBtn = (finalQ || waitingToStart) ? CLR_GREEN : CLR_BLUE;
@@ -929,14 +879,14 @@ void DrawResultPage(Graphics& g) {
     DrawHeader(g, ModeName());                          // 页面顶栏 + 答题模式名
     DrawFontControls(g);                                // A- / A+ 按钮
 
-    // 计算分数：填空题直接显示选择的分值，选择题计算百分制
-    bool fillMode = g_state.mode == MODE_FILL;
-    int score = fillMode ? g_state.selectedScore
+    // 风险题保持原规则，只展示进入答题前选择的分值；其他模式按百分制计算。
+    bool riskMode = g_state.mode == MODE_RISK;
+    int score = riskMode ? g_state.selectedScore
                          : (int)((double)g_state.correct / g_state.total * 100.0 + 0.5);
     // (int)：强制类型转换
     // (double)：将 correct 转为 double（避免整数除法截断）
     // +0.5：四舍五入技巧
-    // 结果：如果 fillMode 为 true 取 selectedScore，否则 correct/total*100 四舍五入
+    // 结果：风险题显示所选分值，其他模式按正确率计算百分制。
 
     // 计算总用时（仅单选题计入）
     int totalSeconds = NO_TIME_SECONDS;
@@ -959,24 +909,24 @@ void DrawResultPage(Graphics& g) {
     // 卡片标题："答题结果"
     TextCenter(g, CFG_RESULT_TITLE, title, GdiColor(CLR_NAVY), cx, cy + 28, cw, 40);
     // 分数显示 — 颜色按分值变化：及格绿、不及格红
-    std::wstring scoreText = IntToWStr(score) + (fillMode ? CFG_SCORE_SUFFIX : L"");
+    std::wstring scoreText = IntToWStr(score) + (riskMode ? CFG_SCORE_SUFFIX : L"");
     // Ternary operator ?:
-    Color scoreColor = fillMode ? GdiColor(CLR_GREEN)
+    Color scoreColor = riskMode ? GdiColor(CLR_GREEN)
                                : (score >= 80 ? GdiColor(CLR_GREEN)     // >= 大于等于
                                          : (score >= 60 ? GdiColor(CLR_GOLD) : GdiColor(CLR_RED)));
                                                          // ?: 三元运算符嵌套（及格线 80/60）
     TextCenter(g, scoreText, scoreFont, scoreColor, cx, cy + 78, cw, 70);
     // 分数下方的说明文字（"总分"或"选择分值"）
-    TextCenter(g, fillMode ? CFG_METRIC_SELECTED_SCORE : CFG_RESULT_SCORE_LABEL,
+    TextCenter(g, riskMode ? CFG_METRIC_SELECTED_SCORE : CFG_RESULT_SCORE_LABEL,
                body, GdiColor(CLR_MUTED), cx, cy + 142, cw, 24);
 
     // 统计信息行
     int sy = cy + 190;                                   // 统计区域起始 Y 坐标
-    if (fillMode) {                                     // 填空题只显示模式名
+    if (riskMode) {                                    // 风险题保持原结果页，仅显示模式名
         FillRoundRect(g, (float)(cx + 54), (float)sy, (float)(cw - 108), 34, 10, GdiColor(CLR_SOFT));
         TextLeft(g, CFG_METRIC_MODE, body, GdiColor(CLR_MUTED), cx + 76, sy + 7, 140, 22);
         TextLeft(g, ModeName(), stat, GdiColor(CLR_INK), cx + 220, sy + 5, cw - 310, 24);
-    } else {                                            // 选择题显示模式、对错数、总耗时、结束时间
+    } else {                                           // 其他选择题显示模式、对错数和结束时间
         int row = 0;                                    // 当前行号计数器
         auto drawStat = [&](const std::wstring& label, const std::wstring& value) {
                                                          // [=]：捕获外部变量（按值捕获，包括 this）
@@ -996,7 +946,7 @@ void DrawResultPage(Graphics& g) {
         if (TracksTotalTime()) drawStat(CFG_METRIC_DURATION, FormatDuration(totalSeconds));
         drawStat(CFG_METRIC_END_TIME, FormatTime(g_state.quizEnd));
         // FormatTime 将 quizEnd 转成人类可读时间字符串
-    }                                                   // } 结束 else(选择题)
+    }                                                   // } 结束统计信息
 
     // 底部两个操作按钮：再次答题 / 返回主页
     DrawButton(g, cx + cw / 2 - 210, cy + ch - 82, 190, 48, CFG_BTN_RESTART, CLR_BLUE, RGB(30, 64, 175));

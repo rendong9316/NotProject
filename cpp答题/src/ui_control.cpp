@@ -113,9 +113,7 @@ void EnsureEditControl(HWND parent) {                  // 参数 parent 是父�
  */
 void UpdateEditForState() {                             // 无参函数：根据 g_state 的状态来管理编辑框
     if (!g_hwndEdit) return;                           // 如果编辑框控件根本没创建过就跳过不执行
-    bool shouldShow = g_state.page == PAGE_QUIZ        // 检查当前页面是不是答题页
-                      && g_state.mode == MODE_FILL     // 并且答题模式是不是填空题模式
-                      && !g_state.answered;            // 并且本题是否还没有被提交（未作答才显示输入框）
+    bool shouldShow = false;                           // 当前所有模式均为选择题，不再显示文本输入框
                                                          // &&：逻辑与运算符，所有条件都满足才返回 true
     if (shouldShow) {                                  // 如果所有条件都满足则显示编辑框
         ReadEditIntoState();                            // 先把编辑框里之前用户输入的文本读回到状态变量中
@@ -248,15 +246,12 @@ static void HandleHomePageClick(int mx, int my, HWND hwnd) {
                                                          //   ++i 是前缀自增：先 i = i + 1 再将结果用作表达式值
         UIRect r = HomeButtonRect(i);                  // HomeButtonRect(i) 返回第 i 个按钮的矩形区域
         if (Hit(mx, my, r.x, r.y, r.w, r.h)) {        // 判断点击是否在某个模式按钮的范围内
-            if (i == 2) OpenFillScoreSelect();         // 如果是第三个按钮（i == 2），打开分值选择页
+            if (i == 2) OpenRiskScoreSelect();         // 如果是第三个按钮（i == 2），打开风险题分值选择页
                                                          // else 是前两个：i == 0 → 单选题, i == 1 → 多选题
             else StartQuiz(i == 0 ? MODE_SINGLE : MODE_MULTIPLE);
                                                          // ?: 是三元运算符（条件 ? 真值 : 假值）
                                                          //   i == 0 为真 → 用 MODE_SINGLE，为假 → 用 MODE_MULTIPLE
             UpdateEditForState();                       // 根据新页面状态更新编辑框可见性
-            if (g_state.page == PAGE_QUIZ && g_state.mode == MODE_FILL && g_hwndEdit) {
-                SetFocus(g_hwndEdit);                  // SetFocus：将键盘焦点聚焦到编辑控件
-            }                                           // } 结束 if
             InvalidateRect(hwnd, nullptr, FALSE);       // InvalidateRect：通知窗口"客户区需要重绘"
                                                          // nullptr：重绘整个客户区
                                                          // FALSE：不擦除背景（因为我们自己绘制）
@@ -285,11 +280,11 @@ static void HandleFillScoreSelectClick(int mx, int my, HWND hwnd) {
                                                          // FillScoreButtonRect(i) 返回 UIRect 结构体
         if (Hit(mx, my, scoreRect.x, scoreRect.y, scoreRect.w, scoreRect.h)) {
                                                          // 判断鼠标是否在这个分值按钮范围内
-            StartFillQuiz(FILL_SCORE_OPTIONS[i], i);   // 启动对应分值的答题
+            StartRiskQuiz(FILL_SCORE_OPTIONS[i]);      // 启动对应分值的风险题
                                                          // FILL_SCORE_OPTIONS[i]：取出分值数字（10/20/.../60）
                                                          // i：按钮索引（0~5）
             UpdateEditForState();                       // 更新编辑框可见性
-            if (g_hwndEdit) SetFocus(g_hwndEdit);      // 如果有编辑框则将焦点设过去
+            SetFocus(hwnd);                            // 焦点回到主窗口
             InvalidateRect(hwnd, nullptr, FALSE);       // 触发重绘
             return;                                    // 已处理，return 跳出
         }                                             // } 结束 if(Hit)
@@ -325,16 +320,15 @@ static void HandleQuizPageClick(int mx, int my, HWND hwnd) {
         SettleCurrentQuestion(hwnd, true);             // true= 表示超时而结算（而非用户主动提交）
     }                                                 // } 结束 if
 
-    // === 3. 选项点击（仅选择题有效，填空题无选项面板） ===
-    if (g_state.mode != MODE_FILL) {                   // != 不等于运算符
-        for (int i = NO_SCORE; i < g_choiceOptionRectCount; ++i) {
+    // === 3. 选项点击（三种模式均为选择题） ===
+    for (int i = NO_SCORE; i < g_choiceOptionRectCount; ++i) {
                                                          // 遍历所有可点击的选项矩形区域
                                                          // g_choiceOptionRectCount：由 DrawQuizPage 填充的选项数量
             const UIRect& optionRect = g_choiceOptionRects[i];
                                                          // const UIRect&：常量引用（只读访问，避免拷贝）
                                                          // g_choiceOptionRects[] 在 DrawQuizPage 中被填充
             if (!g_state.answered                       // 已结算的不可再改（防误触）
-                && (g_state.mode != MODE_MULTIPLE || g_state.questionTimerStarted)
+                && (!RequiresAnswerStart() || g_state.questionTimerStarted)
                 && Hit(mx, my, optionRect.x, optionRect.y,
                        optionRect.w, optionRect.h)) {  // 且鼠标点击在该选项范围内
                 if (g_state.mode == MODE_SINGLE) {
@@ -350,14 +344,13 @@ static void HandleQuizPageClick(int mx, int my, HWND hwnd) {
                 InvalidateRect(hwnd, nullptr, FALSE);   // 选项选中状态变了需要重绘
                 return;                                // 已处理，直接 return
             }                                         // } 结束 if(!answered && Hit)
-        }                                             // } 结束 for 选项
-    }                                                 // } 结束 if(mode != FILL)
+    }                                                 // } 结束 for 选项
 
     // === 4. 确认/下一题/提交按钮 ===
     UIRect confirmRect = ConfirmButtonRect();          // 获取按钮区域
     if (Hit(mx, my, confirmRect.x, confirmRect.y, confirmRect.w, confirmRect.h)) {
                                                          // 判断点击是否在按钮范围内
-        if (g_state.mode == MODE_MULTIPLE && !g_state.answered
+        if (RequiresAnswerStart() && !g_state.answered
             && !g_state.questionTimerStarted) {
             g_state.questionTimerStarted = true;
             g_state.questionStart = std::chrono::steady_clock::now();
@@ -366,16 +359,7 @@ static void HandleQuizPageClick(int mx, int my, HWND hwnd) {
             return;
         }
         if (!g_state.answered) {                       // 情况 A：用户尚未作答
-            // Just confirmed — read input then settle
-            if (g_state.mode == MODE_FILL) {           // 如果是填空题模式
-                ReadEditIntoState();                   // 先将编辑框内容读入 g_state.userFill
-                if (TrimString(g_state.userFill).empty()) {
-                                                         // TrimString 去空白后判断是否为空
-                    MessageBoxW(hwnd, CFG_FILL_PROMPT, CFG_DLG_TITLE, MB_OK | MB_ICONINFORMATION);
-                                                         // 弹出提示："请先在输入框中填写答案"
-                    return;                            // 不允许空答案提交
-                }                                     // } 结束 if(empty)
-            } else if (!HasSelection()) {              // 如果是选择题但没选中任何选项
+            if (!HasSelection()) {                     // 如果没选中任何选项
                 MessageBoxW(hwnd, CFG_NO_SELECTION, CFG_DLG_TITLE, MB_OK | MB_ICONINFORMATION);
                                                          // HasSelection() 遍历 selected[4] 数组检查
                 return;                                // 不允许空选提交
@@ -405,8 +389,6 @@ static void HandleQuizPageClick(int mx, int my, HWND hwnd) {
                                                          // 显示错误："单选题已全部抽完，请重新启动程序"
             }                                         // } 结束 if(!StartQuestion)
             UpdateEditForState();                      // 更新编辑框状态
-            if (g_state.mode == MODE_FILL && g_hwndEdit) SetFocus(g_hwndEdit);
-                                                         // 如果是填空题且编辑框存在，聚焦到编辑框
         }                                             // } 结束 else
         InvalidateRect(hwnd, nullptr, FALSE);          // 无论哪种情况都要重绘
     }                                                 // } 结束 if(Hit button)
@@ -423,13 +405,10 @@ static void HandleResultPageClick(int mx, int my, HWND hwnd) {
     // 左侧按钮：再次答题
     if (Hit(mx, my, cx + cw / 2 - 210, cy + ch - 82, 190, 48)) {
                                                          // cw / 2：整数除法，cw 的一半
-        if (g_state.mode == MODE_FILL) OpenFillScoreSelect();
-                                                         // 填空题需要先进入分值选择页
+        if (g_state.mode == MODE_RISK) OpenRiskScoreSelect();
+                                                         // 风险题需要先进入分值选择页
         else StartQuiz(g_state.mode);                   // 其他模式直接进入答题
         UpdateEditForState();
-        if (g_state.page == PAGE_QUIZ && g_state.mode == MODE_FILL && g_hwndEdit) {
-            SetFocus(g_hwndEdit);                      // 聚焦到编辑框
-        }                                             // } 结束 if
     }                                                 // } 结束 if(restart button)
     // 右侧按钮：返回主页
     else if (Hit(mx, my, cx + cw / 2 + 20, cy + ch - 82, 190, 48)) {
@@ -496,18 +475,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 SetCursor(LoadCursorW(nullptr, IDC_HAND));
                 return TRUE;
             }                                         // } 结束 if
-            if (g_state.mode != MODE_FILL) {           // 只显示可交互选项的手型光标
-                for (int i = NO_SCORE; i < g_choiceOptionRectCount; ++i) {
+            for (int i = NO_SCORE; i < g_choiceOptionRectCount; ++i) {
                     const UIRect& optionRect = g_choiceOptionRects[i];
                     if (!g_state.answered              // && 短路：已答不可再选，无需手型
-                        && (g_state.mode != MODE_MULTIPLE || g_state.questionTimerStarted)
+                        && (!RequiresAnswerStart() || g_state.questionTimerStarted)
                         && Hit(mx, my, optionRect.x, optionRect.y,
                                optionRect.w, optionRect.h)) {
                         SetCursor(LoadCursorW(nullptr, IDC_HAND));
                         return TRUE;
                     }                                 // } 结束 if
-                }                                     // } 结束 for
-            }                                         // } 结束 if(mode != FILL)
+            }                                         // } 结束 for
             UIRect confirmRect = ConfirmButtonRect();
             if (Hit(mx, my, confirmRect.x, confirmRect.y, confirmRect.w, confirmRect.h)) {
                 SetCursor(LoadCursorW(nullptr, IDC_HAND));
@@ -534,7 +511,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         ApplyTitleBarStyle(hwnd);                      // 应用深色标题栏样式
         SetTimer(hwnd, 1, 1000, nullptr);              // 创建定时器：ID=1，间隔 1000ms（1 秒）
                                                          // SetTimer 每隔一秒触发一次 WM_TIMER 消息
-        EnsureEditControl(hwnd);                      // 创建填空题编辑框
+        // 当前三种模式均使用选项作答，不再创建文本输入控件。
 
         HINSTANCE hInst = GetModuleHandleW(nullptr);   // 再次获取模块实例（用于 LoadImageW）
         // 设置窗口图标（大图标和小图标），提升任务栏美观度
