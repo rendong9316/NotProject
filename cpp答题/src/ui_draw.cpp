@@ -309,9 +309,9 @@ void DrawBackground(Graphics& g) {
                            LinearGradientModeVertical); // 第四个参数：渐变方向（垂直）
     g.FillRectangle(&bg, 0, 0, g_w, g_h);              // 用渐变刷填充整个页面
     SolidBrush header(Color(255, 246, 249, 253));      // 创建顶部白色横条的纯色刷
-    g.FillRectangle(&header, 0, 0, g_w, 84);           // 填充 y=0 到 y=84 的区域（标题栏）
+    g.FillRectangle(&header, 0, 0, g_w, 60);           // 压缩页面标题栏高度
     SolidBrush gold(Color(255, 214, 143, 28));         // 金色分隔线（接近橙色/琥珀色）
-    g.FillRectangle(&gold, 0, 82, g_w, 3);             // 标题条下方 3 像素高
+    g.FillRectangle(&gold, 0, 58, g_w, 3);             // 标题条下方 3 像素高
 }                                                     // } 结束 DrawBackground
 
 /** 绘制页面顶栏：应用名、版本号、可选右侧文字 */
@@ -326,15 +326,12 @@ void DrawHeader(Graphics& g, const std::wstring& rightText) {
     } else {
         titleAvail = (float)std::max(220, g_w - 380);   // 有右侧文字：留出 rightText 区域
     }
-    // 标题字号自适应：从 24pt 起逐档缩小到能在 titleAvail 内单行装下，最小回退到 14pt
+    // 标题字号自适应：使用更紧凑的 18pt 上限，宽度不足时继续缩小
     //   这样 CFG_APP_TITLE（30 个汉字的长标题）在任何窗口宽度下都能完整显示，不再被省略号截断
-    Font* title = MakeFittingHeaderFont(g, CFG_APP_TITLE, titleAvail, 24.0f, 14.0f);
+    Font* title = MakeFittingHeaderFont(g, CFG_APP_TITLE, titleAvail, 18.0f, 12.0f);
     Font* sub = MakeFont(13, FontStyleBold);           // 创建粗体副标题字体（13pt）
-    TextLeft(g, CFG_APP_TITLE, title, GdiColor(CLR_INK), titleX, 14, titleAvail, 34);
-                                                         // 左上大字（titleX,14），宽 titleAvail，高 34
-    TextLeft(g, CFG_APP_TAGLINE, sub, GdiColor(CLR_INK), 36, 52, 390, 24);
-                                                         // 左上小字（36,52），宽 390，高 24
-    if (!rightText.empty()) TextLeft(g, rightText, sub, GdiColor(CLR_INK), g_w - 370, 34, 330, 26);
+    TextLeft(g, CFG_APP_TITLE, title, GdiColor(CLR_INK), titleX, 12, titleAvail, 32);
+    if (!rightText.empty()) TextLeft(g, rightText, sub, GdiColor(CLR_INK), g_w - 370, 18, 330, 24);
                                                          // 右上方显示文字（如答题模式名）
                                                          // g_w - 370：从右往左 370px 处开始
     delete title;                                       // 用完记得释放（new 创建的必须 delete）
@@ -344,16 +341,16 @@ void DrawHeader(Graphics& g, const std::wstring& rightText) {
 /** 绘制单个指标卡片：白色圆角框 + 左侧彩色竖条 + 标签和数值 */
 void DrawMetric(Graphics& g, int x, int y, int w, int h, const std::wstring& label,
                 const std::wstring& value, COLORREF accent) {
-    FillRoundRectBorder(g, (float)x, (float)y, (float)w, (float)h, 16,
+    FillRoundRectBorder(g, (float)x, (float)y, (float)w, (float)h, 10,
                         Color(255, 255, 255, 255), GdiColor(CLR_LINE), 1.2f);
                                                          // 白色卡片 + 淡灰边框
-    FillRoundRect(g, (float)x, (float)y, 8, (float)h, 4, GdiColor(accent));
-                                                         // 左侧彩色标记条（宽 8px，圆角 4px）
+    FillRoundRect(g, (float)x, (float)y, 6, (float)h, 3, GdiColor(accent));
+                                                         // 左侧紧凑彩色标记条
                                                          // (float)x：强制转换为浮点数，因为 GDI+ 使用 float
-    Font* lf = MakeFont(12, FontStyleBold);   // 小号标签字体
-    Font* vf = MakeFont(18, FontStyleBold);   // 大号数值字体
-    TextLeft(g, label, lf, GdiColor(CLR_MUTED), x + 22, y + 10, w - 32, 22);
-    TextLeft(g, value, vf, GdiColor(accent), x + 22, y + 34, w - 32, 30);
+    Font* lf = MakeFont(9, FontStyleBold);              // 紧凑标签字体
+    Font* vf = MakeFont(15, FontStyleBold);             // 保持数值远距离可辨识
+    TextLeft(g, label, lf, GdiColor(CLR_MUTED), x + 14, y + 3, w - 20, 16);
+    TextLeft(g, value, vf, GdiColor(accent), x + 14, y + 18, w - 20, h - 20);
     delete lf;                                          // 释放字体对象
     delete vf;
 }                                                     // } 结束 DrawMetric
@@ -390,13 +387,13 @@ void DrawButton(Graphics& g, int x, int y, int w, int h, const std::wstring& tex
 void DrawFontControls(Graphics& g) {
     Font* f = MakeFont(12, FontStyleBold);            // 创建 12pt 粗体字体
                                                          // 两个按钮都使用相同的金色边框配色
-    FillRoundRectBorder(g, (float)(g_w - 154), 16, 48, 32, 10,
+    FillRoundRectBorder(g, (float)(g_w - 154), 12, 48, 30, 10,
                         Color(255, 255, 255, 255), GdiColor(CLR_GOLD), 1.6f);
-    FillRoundRectBorder(g, (float)(g_w - 98), 16, 48, 32, 10,
+    FillRoundRectBorder(g, (float)(g_w - 98), 12, 48, 30, 10,
                         Color(255, 255, 255, 255), GdiColor(CLR_GOLD), 1.6f);
-    TextCenter(g, L"A-", f, GdiColor(CLR_NAVY), (float)(g_w - 154), 17, 48, 30);
+    TextCenter(g, L"A-", f, GdiColor(CLR_NAVY), (float)(g_w - 154), 12, 48, 30);
                                                          // L"A-"：L 前缀表示宽字符字符串字面量
-    TextCenter(g, L"A+", f, GdiColor(CLR_NAVY), (float)(g_w - 98), 17, 48, 30);
+    TextCenter(g, L"A+", f, GdiColor(CLR_NAVY), (float)(g_w - 98), 12, 48, 30);
     delete f;                                           // 释放字体
 }                                                     // } 结束 DrawFontControls
 
@@ -551,7 +548,7 @@ UIRect FillScoreButtonRect(int idx) {
 
 /** 右上角返回主页按钮的位置 */
 UIRect ReturnHomeButtonRect() {
-    return {g_w - 300, 14, 138, 36};                    // {x, y, w, h} 返回括号列表初始化的 UIRect
+    return {g_w - 300, 10, 138, 34};                    // 适配压缩后的页面标题栏
 }                                                     // } 结束 ReturnHomeButtonRect
 
 /** 填空题编辑框位置（答题页） */
@@ -563,9 +560,25 @@ UIRect FillEditRect() {
 
 /** 确认/下一题/提交按钮位置 */
 UIRect ConfirmButtonRect() {
-    return {g_w / 2 - 116, g_h - 78, 232, 54};         // {x, y, w, h} = 底部居中
-                                                         // g_w/2 - 116：按钮宽度 232 的一半 = (g_w-232)/2 实现水平居中
+    return {g_w / 2 - QUIZ_ACTION_BUTTON_WIDTH / 2,
+            g_h - QUIZ_ACTION_BUTTON_BOTTOM - QUIZ_ACTION_BUTTON_HEIGHT,
+            QUIZ_ACTION_BUTTON_WIDTH, QUIZ_ACTION_BUTTON_HEIGHT};
 }                                                     // } 结束 ConfirmButtonRect
+
+/** 结果页“再次答题”按钮；风险题隐藏返回按钮后保持居中。 */
+UIRect ResultRestartButtonRect() {
+    int cw = std::min(g_w - 80, 760), ch = 500;
+    int cx = (g_w - cw) / 2, cy = 120;
+    int x = g_state.mode == MODE_RISK ? cx + cw / 2 - 95 : cx + cw / 2 - 210;
+    return {x, cy + ch - 82, 190, 48};
+}
+
+/** 结果页“返回主页”按钮；风险题结果页不绘制也不响应。 */
+UIRect ResultHomeButtonRect() {
+    int cw = std::min(g_w - 80, 760), ch = 500;
+    int cx = (g_w - cw) / 2, cy = 120;
+    return {cx + cw / 2 + 20, cy + ch - 82, 190, 48};
+}
 
 // ============================================================================
 // 页面绘制：答题页 — 程序最核心的页面
@@ -594,11 +607,12 @@ void DrawQuizPage(Graphics& g) {
                                                          // !q：指针为空时条件为真（nullptr 的布尔值为 false）
 
     // ==================== 顶部指标卡片栏 ====================
-    int topX = 38, topY = 104, topW = g_w - 76, topH = 112;
-    DrawCard(g, (float)topX, (float)topY, (float)topW, (float)topH, 18);
+    int topX = QUIZ_PAGE_MARGIN_X, topY = QUIZ_METRIC_Y;
+    int topW = g_w - QUIZ_PAGE_MARGIN_X * 2, topH = QUIZ_METRIC_BAR_HEIGHT;
+    DrawCard(g, (float)topX, (float)topY, (float)topW, (float)topH, 12);
 
-    Font* meta = MakeFont(14, FontStyleBold);           // 指标中的标题用 14pt 粗体
-    Font* meta2 = MakeFont(13);                         // 指标中的值用 13pt 常规
+    Font* meta = MakeFont(12, FontStyleBold);           // 紧凑反馈标题
+    Font* meta2 = MakeFont(11);                         // 紧凑提示与解析文字
 
     // 根据模式确定指标卡片数量（不限时=2，限时=3或4）
     int metricCount = TracksTotalTime() ? QUIZ_METRIC_COUNT_TIMED_WITH_TOTAL
@@ -615,46 +629,47 @@ void DrawQuizPage(Graphics& g) {
     // flashVisible：true=可见，false=隐藏。每 1 秒翻转一次
 
     int metricX = topX + QUIZ_METRIC_SIDE_PADDING;     // 第一个指标卡片的 X 坐标
-    DrawMetric(g, metricX, topY + 18, metricW, 70, CFG_METRIC_PROGRESS,
+    DrawMetric(g, metricX, topY + 5, metricW, 43, CFG_METRIC_PROGRESS,
                L"第 " + IntToWStr(g_state.qNum) + L" / " + IntToWStr(g_state.total) + L" 题", CLR_BLUE);
                                                          // L"" 宽字符字符串字面量拼接
                                                          // + 运算符连接多个 wstring
     metricX += metricW + QUIZ_METRIC_GAP;              // 移动到下一个卡片的 X 位置
                                                          // += 复合赋值运算符：metricX = metricX + metricW + gap
 
-    DrawMetric(g, metricX, topY + 18, metricW, 70, CFG_METRIC_MODE, ModeName(), CLR_NAVY);
+    DrawMetric(g, metricX, topY + 5, metricW, 43, CFG_METRIC_MODE, ModeName(), CLR_NAVY);
                                                          // 绘制第二个指标：当前模式名
     if (IsTimedMode()) {
         metricX += metricW + QUIZ_METRIC_GAP;
-        DrawMetric(g, metricX, topY + 18, metricW, 70, CFG_METRIC_REMAINING,
+        DrawMetric(g, metricX, topY + 5, metricW, 43, CFG_METRIC_REMAINING,
                    FormatDuration(remaining), shouldFlash ? CLR_RED : CLR_GOLD);
                                                          // shouldFlash ? CLR_RED : CLR_GOLD：倒计时≤5秒时显示红色
     }                                                   // } 结束 if(IsTimedMode)
     if (TracksTotalTime()) {
         metricX += metricW + QUIZ_METRIC_GAP;
-        DrawMetric(g, metricX, topY + 18, metricW, 70, CFG_METRIC_TOTAL_TIME,
+        DrawMetric(g, metricX, topY + 5, metricW, 43, CFG_METRIC_TOTAL_TIME,
                    FormatDuration(totalElapsed), CLR_RED);
                                                          // CLR_RED：总用时用红色标记
     }                                                   // } 结束 if(TracksTotalTime)
 
     // 进度条轨道（灰色底）
-    FillRoundRect(g, (float)(topX + 24), (float)(topY + 96), (float)(topW - 48), 10, 5,
+    FillRoundRect(g, (float)(topX + 10), (float)(topY + 53), (float)(topW - 20), 4, 2,
                   Color(255, 219, 227, 238));            // Color(alpha, r, g, b)
                                                          // Color：GDI+ 颜色类，前四位是透明度
     // 进度条填充色（倒计时≤5秒时变红）
     COLORREF progressBarColor = shouldFlash ? CLR_RED : CLR_BLUE;
                                                          // ?: 三元运算符
-    FillRoundRect(g, (float)(topX + 24), (float)(topY + 96),
-                  (float)((topW - 48) * g_state.qNum / g_state.total), 10, 5,
+    FillRoundRect(g, (float)(topX + 10), (float)(topY + 53),
+                  (float)((topW - 20) * g_state.qNum / g_state.total), 4, 2,
                   GdiColor(progressBarColor));
                                                          // 填充宽度 = (topW-48) * 已完成/总题数
                                                          // g_state.qNum/g_state.total：当前进度比例（整数除法）
                                                          // * (topW-48)：按比例缩放进度条宽度
 
     // ==================== 主体题目卡片 ====================
-    int cardX = 38, cardY = 236, cardW = g_w - 76, cardH = g_h - 336;
-                                                         // cardH = g_h - 336：减去顶栏(112)+底部按钮(54+28)+边距 ≈ g_h - 336
-    DrawCard(g, (float)cardX, (float)cardY, (float)cardW, (float)cardH, 22);
+    int cardX = QUIZ_PAGE_MARGIN_X, cardY = QUIZ_CARD_Y;
+    int cardW = g_w - QUIZ_PAGE_MARGIN_X * 2;
+    int cardH = g_h - QUIZ_CARD_Y - QUIZ_BOTTOM_ACTION_SPACE;
+    DrawCard(g, (float)cardX, (float)cardY, (float)cardW, (float)cardH, 14);
 
     // 题干文本（含题号和题库 ID）
     std::wstring questionText = IntToWStr(g_state.qNum) + L". " + q->q +
@@ -812,12 +827,12 @@ void DrawQuizPage(Graphics& g) {
                                                          // (wchar_t)(L'A' + i)：将 'A'+0='A', 'A'+1='B' 等转为字符
             // 徽章颜色：正确答案绿，错误选红，选中蓝，默认深蓝色
             COLORREF letterColor = showCorrect ? CLR_GREEN : showWrong ? CLR_RED : selected ? CLR_BLUE : CLR_NAVY;
-            int letterY = oy + (oh - 32) / UI_CENTER_DIVISOR;
+            int letterY = oy + (oh - 36) / UI_CENTER_DIVISOR;
             // 徽章垂直居中于选项卡片内
-            FillRoundRect(g, (float)(ox + 14), (float)letterY, 32, 32, 16, GdiColor(letterColor));
+            FillRoundRect(g, (float)(ox + 12), (float)letterY, 36, 36, 18, GdiColor(letterColor));
                                                          // 绘制圆形徽章（圆角矩形半径=一半边长=16）
-            Font* lf = MakeFont(13, FontStyleBold);
-            TextCenter(g, letter, lf, Color(255, 255, 255, 255), ox + 14, letterY, 32, 32);
+            Font* lf = MakeFont(15, FontStyleBold);
+            TextCenter(g, letter, lf, Color(255, 255, 255, 255), ox + 12, letterY, 36, 36);
             // 徽章内居中绘制字母 A/B/C/D
             TextWrap(g, q->opts[i], optFont, GdiColor(CLR_INK),
                      ox + CHOICE_OPTION_TEXT_OFFSET_X,
@@ -837,16 +852,19 @@ void DrawQuizPage(Graphics& g) {
 
             // 面板背景色：对=绿色系，错=红色系
             bool ok = g_state.lastCorrect;              // lastCorrect：上一题的对错结果
-            FillRoundRectBorder(g, (float)(cardX + 34), (float)fy, (float)(cardW - 68), 82, 14,
+            FillRoundRectBorder(g, (float)(cardX + 20), (float)fy, (float)(cardW - 40),
+                                CHOICE_FEEDBACK_HEIGHT, 10,
                                 ok ? Color(255, 231, 248, 238) : Color(255, 254, 226, 226),
                                 ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), 2.0f);
             std::wstring fb = ok ? CFG_FEEDBACK_CORRECT
                    : (g_state.timedOut ? CFG_FEEDBACK_TIMEOUT
                                        : CFG_FEEDBACK_WRONG_PREFIX) + AnswerLetters(*q) + CFG_FEEDBACK_SUFFIX;
             // ?: 三元运算符嵌套：ok ? "正确" : (timedOut ? "超时" : "错误"+正确答案)
-            TextLeft(g, fb, meta, ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED), cardX + 54, fy + 12, cardW - 108, 26);
+            TextLeft(g, fb, meta, ok ? GdiColor(CLR_GREEN) : GdiColor(CLR_RED),
+                     cardX + 36, fy + 6, cardW - 72, 22);
             // 答案解析（如果有）
-            if (!q->exp.empty()) TextLeft(g, q->exp, meta2, GdiColor(CLR_INK), cardX + 54, fy + 44, cardW - 108, 30);
+            if (!q->exp.empty()) TextLeft(g, q->exp, meta2, GdiColor(CLR_INK),
+                                         cardX + 36, fy + 32, cardW - 72, 22);
             // q->exp：答案解释字段，箭头运算符
         }                                               // } 结束 if(answered)
 
@@ -950,12 +968,14 @@ void DrawResultPage(Graphics& g) {
         // FormatTime 将 quizEnd 转成人类可读时间字符串
     }                                                   // } 结束统计信息
 
-    // 底部两个操作按钮：再次答题 / 返回主页
-    DrawButton(g, cx + cw / 2 - 210, cy + ch - 82, 190, 48, CFG_BTN_RESTART, CLR_BLUE, RGB(30, 64, 175));
-    // 左侧按钮："再次答题"（蓝色实心）
-    DrawButton(g, cx + cw / 2 + 20, cy + ch - 82, 190, 48, CFG_BTN_RETURN_HOME,
-               CLR_NAVY, RGB(34, 70, 118), true);       // 右侧按钮："返回主页"（红色空心）
-                                                         // true：空心模式
+    UIRect restartRect = ResultRestartButtonRect();
+    DrawButton(g, restartRect.x, restartRect.y, restartRect.w, restartRect.h,
+               CFG_BTN_RESTART, CLR_BLUE, RGB(30, 64, 175));
+    if (!riskMode) {
+        UIRect homeRect = ResultHomeButtonRect();
+        DrawButton(g, homeRect.x, homeRect.y, homeRect.w, homeRect.h,
+                   CFG_BTN_RETURN_HOME, CLR_NAVY, RGB(34, 70, 118), true);
+    }
 
     delete title;                                       // 释放所有字体（配对 delete）
     delete scoreFont;

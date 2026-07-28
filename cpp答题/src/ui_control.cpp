@@ -221,12 +221,12 @@ void ApplyTitleBarStyle(HWND hwnd) {                   // 参数 hwnd：要设�
 // ============================================================================
 void HandleGlobalClick(int mx, int my) {               // 处理全局范围的点击区域（不区分页面）
     bool changed = false;                              // 标记是否有变化发生
-    if (Hit(mx, my, g_w - 154, 16, 48, 32)) {        // 检查鼠标位置是否在 A- 按钮区域内
+    if (Hit(mx, my, g_w - 154, 12, 48, 30)) {        // 检查鼠标位置是否在 A- 按钮区域内
                                                          // g_w - 154：A- 按钮的左边缘 x 坐标
         AdjustFont(-0.06f);                            // 缩小字体（负数 = 缩小）
         changed = true;                                // 设置变化标记为 true
     }                                                 // } 结束 if A-
-    if (Hit(mx, my, g_w - 98, 16, 48, 32)) {         // 检查鼠标位置是否在 A+ 按钮区域内
+    if (Hit(mx, my, g_w - 98, 12, 48, 30)) {         // 检查鼠标位置是否在 A+ 按钮区域内
         AdjustFont(0.06f);                             // 放大字体（正数 = 放大）
         changed = true;                                // 设置变化标记为 true
     }                                                 // } 结束 if A+
@@ -399,23 +399,16 @@ static void HandleQuizPageClick(int mx, int my, HWND hwnd) {
 
 /** 结果页点击：重新开始 / 返回主页 */
 static void HandleResultPageClick(int mx, int my, HWND hwnd) {
-    int cw = std::min(g_w - 80, 760), ch = 500, cx = (g_w - cw) / 2, cy = 120;
-                                                         // std::min(a, b)：返回 a 和 b 中较小者
-                                                         // cw：结果卡片宽度
-                                                         // ch：结果卡片高度
-                                                         // cx：卡片居中的 x 坐标
-                                                         // cy：卡片 y 坐标
-    // 左侧按钮：再次答题
-    if (Hit(mx, my, cx + cw / 2 - 210, cy + ch - 82, 190, 48)) {
-                                                         // cw / 2：整数除法，cw 的一半
+    UIRect restartRect = ResultRestartButtonRect();
+    if (Hit(mx, my, restartRect.x, restartRect.y, restartRect.w, restartRect.h)) {
         if (g_state.mode == MODE_RISK) OpenRiskScoreSelect();
                                                          // 风险题需要先进入分值选择页
         else StartQuiz(g_state.mode);                   // 其他模式直接进入答题
         UpdateEditForState();
     }                                                 // } 结束 if(restart button)
-    // 右侧按钮：返回主页
-    else if (Hit(mx, my, cx + cw / 2 + 20, cy + ch - 82, 190, 48)) {
-                                                         // cw / 2 + 20：左按钮右边留 20px 空隙
+    else if (g_state.mode != MODE_RISK) {
+        UIRect homeRect = ResultHomeButtonRect();
+        if (!Hit(mx, my, homeRect.x, homeRect.y, homeRect.w, homeRect.h)) return;
         g_state.resetQuiz(ActiveBank());               // 完全重置状态
         g_state.resetRiskScoreUsage();                 // 返回主页后重新开放全部风险题分值
         g_state.page = PAGE_HOME;                      // 切换到主页
@@ -496,12 +489,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 return TRUE;
             }                                         // } 结束 if(confirm)
         } else if (g_state.page == PAGE_RESULT) {
-            int cw = std::min(g_w - 80, 760), ch = 500, cx = (g_w - cw) / 2, cy = 120;
-            if (Hit(mx, my, cx + cw / 2 - 210, cy + ch - 82, 190, 48)) {
+            UIRect restartRect = ResultRestartButtonRect();
+            if (Hit(mx, my, restartRect.x, restartRect.y, restartRect.w, restartRect.h)) {
                 SetCursor(LoadCursorW(nullptr, IDC_HAND));
                 return TRUE;
             }                                         // } 结束 if(restart)
-            if (Hit(mx, my, cx + cw / 2 + 20, cy + ch - 82, 190, 48)) {
+            UIRect homeRect = ResultHomeButtonRect();
+            if (g_state.mode != MODE_RISK
+                && Hit(mx, my, homeRect.x, homeRect.y, homeRect.w, homeRect.h)) {
                 SetCursor(LoadCursorW(nullptr, IDC_HAND));
                 return TRUE;
             }                                         // } 结束 if(home)

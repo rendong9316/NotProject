@@ -55,6 +55,8 @@ UIRect FillScoreButtonRect(int idx);                  // 分值选择页六个�
 UIRect ReturnHomeButtonRect();                        // 返回主页按钮位置（多页共用）
 UIRect FillEditRect();                                // 填空题编辑框位置
 UIRect ConfirmButtonRect();                           // 确认/下一题按钮位置
+UIRect ResultRestartButtonRect();                     // 结果页再次答题按钮位置
+UIRect ResultHomeButtonRect();                        // 结果页返回主页按钮位置
 
 // Drawing functions
 void DrawBackground(Graphics& g);                     // 绘制通用背景（渐变底色 + 顶部横条）

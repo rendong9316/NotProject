@@ -51,47 +51,55 @@ static const int UI_CENTER_DIVISOR = 2;                // 居中计算用除数�
 static const int PAGE_HORIZONTAL_MARGIN = 80;          // 页面内容距离窗口左右边缘的水平安全边距
 
 // --- 答题页指标栏布局 ---
-static const int QUIZ_METRIC_GAP = 12;                 // 指标卡片之间的水平间距（进度、用时等小卡片）
-static const int QUIZ_METRIC_SIDE_PADDING = 22;        // 指标栏区域左右两侧的填充距离
+static const int QUIZ_PAGE_MARGIN_X = 18;              // 答题页水平边距，尽量扩大题目区域
+static const int QUIZ_METRIC_Y = 64;                   // 紧贴压缩后的标题栏
+static const int QUIZ_METRIC_BAR_HEIGHT = 62;          // 紧凑指标栏总高度
+static const int QUIZ_METRIC_GAP = 8;                  // 指标卡片之间的水平间距
+static const int QUIZ_METRIC_SIDE_PADDING = 8;         // 指标栏区域左右两侧的填充距离
+static const int QUIZ_CARD_Y = 132;                    // 题目卡片继续上移，扩大正文空间
+static const int QUIZ_BOTTOM_ACTION_SPACE = 66;        // 底部操作按钮及安全间距
+static const int QUIZ_ACTION_BUTTON_WIDTH = 220;       // 底部操作按钮宽度
+static const int QUIZ_ACTION_BUTTON_HEIGHT = 46;       // 底部操作按钮高度
+static const int QUIZ_ACTION_BUTTON_BOTTOM = 12;       // 操作按钮距窗口底部
 
 static const int QUIZ_METRIC_COUNT_UNTIMED = 2;        // 不限时模式的指标数量：进度 + 模式名
 static const int QUIZ_METRIC_COUNT_TIMED_NO_TOTAL = 3; // 限时但不计总时的指标数量：进度 + 模式 + 剩余时间
 static const int QUIZ_METRIC_COUNT_TIMED_WITH_TOTAL = 4; // 限时且计总时的指标数量：前3个 + 总用时
 
 // --- 题目和选项区域布局 ---
-static const int QUESTION_TEXT_OFFSET_X = 34;          // 题干文本距离卡片左边缘的缩进量
-static const int QUESTION_TEXT_OFFSET_Y = 20;          // 题干文本距离卡片顶部的偏移量
-static const int QUESTION_TEXT_WIDTH_INSET = 68;       // 题干文本区域的总水平内边距（左侧缩进 + 右侧缩进）
+static const int QUESTION_TEXT_OFFSET_X = 20;          // 题干文本距离卡片左边缘的缩进量
+static const int QUESTION_TEXT_OFFSET_Y = 12;          // 题干文本距离卡片顶部的偏移量
+static const int QUESTION_TEXT_WIDTH_INSET = 40;       // 题干文本区域的总水平内边距
 static const int QUESTION_TEXT_HEIGHT = 78;            // 题干文本区域的固定最大高度（多行自动换行）
-static const int QUESTION_FONT_MAX_SIZE = 18;          // 题干文字的最大字号（18pt），文字长时可缩小
-static const int QUESTION_FONT_MIN_SIZE = 10;          // 题干文字的最小字号（10pt），即使很长也不会再小
+static const int QUESTION_FONT_MAX_SIZE = 30;          // 题干文字优先使用 30pt，文字长时自动缩小
+static const int QUESTION_FONT_MIN_SIZE = 13;          // 极长题干的最小字号
 static const int QUESTION_FONT_STEP = 1;               // 字体缩小步长：每次减小 1 号
 static const int QUESTION_MEASURE_HEIGHT = 1000;       // 测量文本高度时使用的虚拟高度（足够大确保不截断）
 static const int QUESTION_HINT_OFFSET_Y = 100;         // 题干下方提示文字的默认Y偏移
-static const int QUESTION_HINT_HEIGHT = 24;            // 提示文字行占用的高度（24像素）
+static const int QUESTION_HINT_HEIGHT = 18;            // 提示文字压缩为紧凑单行
 
 // --- 选项布局 ---
 static const int CHOICE_OPTION_START_OFFSET_Y = 132;   // 选择题选项区域起始 Y 偏移（从卡片顶部算起）
-static const int CHOICE_OPTION_LEFT_INSET = 34;        // 选项卡片的左侧缩进
-static const int CHOICE_OPTION_WIDTH_INSET = 68;       // 选项卡片的总水平内边距（左缩进 + 右缩进）
-static const int CHOICE_OPTION_TEXT_OFFSET_X = 62;     // 选项文字相对选项卡片左边缘的缩进（跳过字母标识圈）
-static const int CHOICE_OPTION_TEXT_WIDTH_INSET = 78;  // 选项文字区域的总水平内边距
+static const int CHOICE_OPTION_LEFT_INSET = 20;        // 选项卡片的左侧缩进
+static const int CHOICE_OPTION_WIDTH_INSET = 40;       // 选项卡片的总水平内边距
+static const int CHOICE_OPTION_TEXT_OFFSET_X = 60;     // 选项文字相对选项卡片左边缘的缩进
+static const int CHOICE_OPTION_TEXT_WIDTH_INSET = 72;  // 选项文字区域的总水平内边距
 
 // --- 动态字体适配 ---
-static const int CHOICE_FEEDBACK_GAP_Y = 10;           // 最后一个选项与答案解析反馈面板之间的垂直间隙
-static const int CHOICE_OPTION_FONT_MAX_SIZE = 16;     // 选项文字的最大字号（可随空间缩小到 10）
-static const int CHOICE_OPTION_FONT_MIN_SIZE = 10;     // 选项文字的最小字号
-static const int CHOICE_FONT_SHRINK_STEPS = 8;         // 题目卡片空间不够时最多尝试缩小 8 档字体
+static const int CHOICE_FEEDBACK_GAP_Y = 6;            // 最后一个选项与反馈面板的紧凑间隙
+static const int CHOICE_OPTION_FONT_MAX_SIZE = 26;     // 选项文字优先使用 26pt
+static const int CHOICE_OPTION_FONT_MIN_SIZE = 13;     // 极长选项的最小字号
+static const int CHOICE_FONT_SHRINK_STEPS = 18;        // 从大字号逐档缩小，直到内容完整放下
 
-static const int CHOICE_DYNAMIC_QUESTION_MIN_HEIGHT = 36; // 题干行的最小高度（防止文字太少时被压扁）
-static const int CHOICE_DYNAMIC_QUESTION_PADDING = 4;    // 题干文字上下各留 4px 内边距
-static const int CHOICE_DYNAMIC_QUESTION_HINT_GAP = 2;   // 题干区域与提示文字之间的间距
-static const int CHOICE_DYNAMIC_HINT_OPTION_GAP = 6;     // 提示文字与第一个选项卡片之间的间距
-static const int CHOICE_DYNAMIC_OPTION_MIN_HEIGHT = 44;  // 每个选项卡的最小高度（保证可点击性）
-static const int CHOICE_DYNAMIC_OPTION_PADDING = 10;     // 选项文字上下各留 10px 内边距
-static const int CHOICE_DYNAMIC_OPTION_GAP = 6;          // 两个相邻选项卡片之间的垂直间距
-static const int CHOICE_DYNAMIC_BOTTOM_PADDING = 12;   // 最后一个选项底部到卡片底边的留白
-static const int CHOICE_FEEDBACK_HEIGHT = 82;          // 答案解析反馈面板的高度（固定 82 像素）
+static const int CHOICE_DYNAMIC_QUESTION_MIN_HEIGHT = 42; // 大字题干的最小高度
+static const int CHOICE_DYNAMIC_QUESTION_PADDING = 2;    // 题干垂直内边距
+static const int CHOICE_DYNAMIC_QUESTION_HINT_GAP = 1;   // 题干与提示文字间距
+static const int CHOICE_DYNAMIC_HINT_OPTION_GAP = 3;     // 提示与第一个选项间距
+static const int CHOICE_DYNAMIC_OPTION_MIN_HEIGHT = 42;  // 每个选项卡的最小点击高度
+static const int CHOICE_DYNAMIC_OPTION_PADDING = 6;      // 选项文字垂直内边距
+static const int CHOICE_DYNAMIC_OPTION_GAP = 4;          // 两个选项之间的间距
+static const int CHOICE_DYNAMIC_BOTTOM_PADDING = 6;      // 最后一个选项到底边的留白
+static const int CHOICE_FEEDBACK_HEIGHT = 62;            // 紧凑答案反馈面板高度
 
 // --- 窗口类名 ---
 static const wchar_t* CFG_CLASS_NAME = L"JusticeQuizAppClass";
@@ -131,7 +139,6 @@ static const wchar_t* CFG_ERR_MIN_QUESTIONS = L"题库至少需要 10 道有效�
 
 // --- 应用标识 ---
 static const wchar_t* CFG_APP_TITLE = L"鸡东县行政执法及监督人员业务大比武暨鸡东县第二届法律知识竞赛"; // 窗口标题栏和应用名
-static const wchar_t* CFG_APP_TAGLINE = L"V1.0.10";          // 版本号，显示在主页顶部
 static const wchar_t* CFG_APP_PAGE_SUBTITLE = L"请选择答题模式";
 static const wchar_t* CFG_APP_CARD_TITLE = L"参赛须知";
 static const wchar_t* CFG_APP_CARD_DESC = L"系统随机抽题，不同模式采用独立的答题规则。";
