@@ -899,14 +899,10 @@ void DrawResultPage(Graphics& g) {
     DrawHeader(g, ModeName());                          // 页面顶栏 + 答题模式名
     DrawFontControls(g);                                // A- / A+ 按钮
 
-    // 风险题保持原规则，只展示进入答题前选择的分值；其他模式按百分制计算。
+    // 三种模式分别按必答题固定分值、抢答题不计分、风险题正负分规则展示。
     bool riskMode = g_state.mode == MODE_RISK;
-    int score = riskMode ? g_state.selectedScore
-                         : (int)((double)g_state.correct / g_state.total * 100.0 + 0.5);
-    // (int)：强制类型转换
-    // (double)：将 correct 转为 double（避免整数除法截断）
-    // +0.5：四舍五入技巧
-    // 结果：风险题显示所选分值，其他模式按正确率计算百分制。
+    bool multipleMode = g_state.mode == MODE_MULTIPLE;
+    int score = FinalScore();
 
     // 计算总用时（仅单选题计入）
     int totalSeconds = NO_TIME_SECONDS;
@@ -928,17 +924,29 @@ void DrawResultPage(Graphics& g) {
 
     // 卡片标题："答题结果"
     TextCenter(g, CFG_RESULT_TITLE, title, GdiColor(CLR_NAVY), cx, cy + 28, cw, 40);
-    // 分数显示 — 颜色按分值变化：及格绿、不及格红
-    std::wstring scoreText = IntToWStr(score) + (riskMode ? CFG_SCORE_SUFFIX : L"");
-    // Ternary operator ?:
-    Color scoreColor = riskMode ? GdiColor(CLR_GREEN)
-                               : (score >= 80 ? GdiColor(CLR_GREEN)     // >= 大于等于
-                                         : (score >= 60 ? GdiColor(CLR_GOLD) : GdiColor(CLR_RED)));
-                                                         // ?: 三元运算符嵌套（及格线 80/60）
+    // 抢答题只展示“不计分”；其他模式展示带正负号含义的实际分数。
+    std::wstring scoreText = multipleMode ? CFG_RESULT_NO_SCORE
+                                          : IntToWStr(score) + CFG_SCORE_SUFFIX;
+    Color scoreColor;
+    if (multipleMode) {
+        scoreColor = GdiColor(CLR_NAVY);
+    } else if (riskMode) {
+        scoreColor = score > 0 ? GdiColor(CLR_GREEN)
+                               : (score == 0 ? GdiColor(CLR_GOLD) : GdiColor(CLR_RED));
+    } else {
+        scoreColor = score == QUESTION_COUNT_SINGLE * SINGLE_QUESTION_SCORE
+                   ? GdiColor(CLR_GREEN)
+                   : (score >= 2 * SINGLE_QUESTION_SCORE ? GdiColor(CLR_GOLD)
+                                                         : GdiColor(CLR_RED));
+    }
     TextCenter(g, scoreText, scoreFont, scoreColor, cx, cy + 78, cw, 70);
-    // 分数下方的说明文字（"总分"或"选择分值"）
-    TextCenter(g, riskMode ? CFG_METRIC_SELECTED_SCORE : CFG_RESULT_SCORE_LABEL,
-               body, GdiColor(CLR_MUTED), cx, cy + 142, cw, 24);
+    std::wstring scoreLabel = multipleMode ? CFG_RESULT_NO_SCORE_LABEL
+                              : (riskMode ? std::wstring(CFG_RESULT_RISK_SCORE_LABEL)
+                                           + IntToWStr(g_state.selectedScore) + CFG_SCORE_SUFFIX + L"）"
+                                          : std::wstring(CFG_RESULT_SCORE_LABEL) + L"（满分"
+                                           + IntToWStr(QUESTION_COUNT_SINGLE * SINGLE_QUESTION_SCORE)
+                                           + CFG_SCORE_SUFFIX + L"）");
+    TextCenter(g, scoreLabel, body, GdiColor(CLR_MUTED), cx, cy + 142, cw, 24);
 
     // 统计信息行
     int sy = cy + 190;                                   // 统计区域起始 Y 坐标

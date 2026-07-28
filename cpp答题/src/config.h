@@ -13,6 +13,7 @@ static const int QUESTION_COUNT_SINGLE = 3;            // 单选题每轮答题�
                                                          // const：编译期常量，值不能修改
 static const int QUESTION_COUNT_MULTIPLE = 10;         // 多选题每轮答题固定 10 道题
 static const int QUESTION_COUNT_RISK = 2;              // 风险题每轮答题固定 2 道题
+static const int SINGLE_QUESTION_SCORE = 10;           // 必答题每答对一道计 10 分
 
 // 风险题分值选项配置
 static const int FILL_SCORE_OPTION_COUNT = 6;          // 风险题有 6 个分值可选（10/20/30/40/50/60）
@@ -147,8 +148,8 @@ static const wchar_t* CFG_APP_CARD_DESC = L"系统随机抽题，不同模式采
 static const wchar_t* CFG_RULES_TITLE = L"答题规则";
 static const wchar_t* CFG_RULES[] = {                              // 字符串数组：6 条答题规则
     L"1. 必答题只能选择一个答案；抢答题和风险题可选择多个答案。",
-    L"2. 多选题须与标准答案完全一致，漏选或多选均不得分。",
-    L"3. 风险题先选择分值，结果页显示所选分值。",
+    L"2. 多选题须与标准答案完全一致，漏选或多选均判错。",
+    L"3. 必答题每题10分；抢答题不计分；风险题答对加半档分、答错扣半档分。",
     L"4. 必答题、抢答题和风险题每题限时30秒。",
     L"5. 限时题超时后本题锁定，请点击\"下一题\"继续作答。",
     L"6. 答题过程中可点击右上角\"返回主页\"按钮放弃本次答题，需二次确认。"
@@ -170,7 +171,7 @@ static const wchar_t* CFG_BTN_RESTART = L"再次答题";            // 结果页
 static const wchar_t* CFG_HINT_SINGLE = L"请选择一个正确答案后确认";  // 单选题页面上的引导文字
 static const wchar_t* CFG_HINT_MULTIPLE = L"请选择所有正确答案后确认";
 static const wchar_t* CFG_HINT_MULTIPLE_WAITING = L"点击“开始答题”后开始30秒倒计时";
-static const wchar_t* CFG_HINT_RISK = L"请选择所有正确答案后确认，漏选或多选均不得分";
+static const wchar_t* CFG_HINT_RISK = L"请选择所有正确答案后确认，漏选或多选均判错并扣分";
 
 // --- 难度名称 ---
 static const wchar_t* CFG_DIFF_NAMES[] = {L"简单题", L"中档题", L"高档题"};
@@ -189,7 +190,9 @@ static const wchar_t* CFG_METRIC_END_TIME = L"答题结束";       // 结果页�
 // --- 结果页 ---
 static const wchar_t* CFG_RESULT_TITLE = L"答题结果";
 static const wchar_t* CFG_RESULT_SCORE_LABEL = L"总分";
-static const wchar_t* CFG_METRIC_SELECTED_SCORE = L"选择分值";
+static const wchar_t* CFG_RESULT_NO_SCORE = L"不计分";
+static const wchar_t* CFG_RESULT_NO_SCORE_LABEL = L"仅统计答题结果";
+static const wchar_t* CFG_RESULT_RISK_SCORE_LABEL = L"本轮得分（满分";
 static const wchar_t* CFG_SCORE_SELECT_TITLE = L"请选择本次答题分值";
 static const wchar_t* CFG_SCORE_SELECT_HINT = L"选择分值后进入风险题";
 static const wchar_t* CFG_SCORE_SUFFIX = L"分";                 // 分数值的后缀（如"30分"）

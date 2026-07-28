@@ -432,6 +432,18 @@ bool TracksTotalTime() {
     return false;
 }                                                     // } 结束 TracksTotalTime
 
+// 必答题每题 10 分；抢答题不计分；风险题每题按所选满分的一半加减。
+int FinalScore() {
+    if (g_state.mode == MODE_SINGLE)
+        return g_state.correct * SINGLE_QUESTION_SCORE;
+    if (g_state.mode == MODE_MULTIPLE)
+        return NO_SCORE;
+
+    const int scorePerQuestion = g_state.selectedScore / QUESTION_COUNT_RISK;
+    const int incorrect = g_state.total - g_state.correct;
+    return (g_state.correct - incorrect) * scorePerQuestion;
+}
+
 // 返回当前正在作答的题目指针
 const Question* CurrentQuestion() {
                                                          // const Question*：指向常量的指针

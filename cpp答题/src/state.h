@@ -112,6 +112,7 @@ std::wstring ModeName();                                // 返回当前答题模
 bool IsTimedMode();                                     // 判断当前是否为限时模式（三种模式均为 true）
 bool RequiresAnswerStart();                             // 三种模式每题都需点击“开始答题”
 bool TracksTotalTime();                                 // 判断当前是否跟踪整轮总耗时（当前各模式均不跟踪）
+int FinalScore();                                       // 按当前模式规则计算本轮最终得分
 const Question* CurrentQuestion();                      // 返回当前正在作答的题目指针（返回 nullptr 表示无有效题目）
 int PickRandomUnused();                                 // 从未使用的题目中随机选取一个（返回 -1 表示用完）
 bool StartQuestion();                                   // 开始回答下一道题（true=成功，false=无更多可用题）
