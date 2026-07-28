@@ -6,6 +6,7 @@
 #pragma once
 
 #include "types.h"                                     // 引入 types.h（使用 Page, QuizMode, Question, QuestionBank 等类型）
+#include "config.h"                                    // 风险题分值选项数量
 #include <string>                                      // std::wstring（宽字符字符串）
 #include <chrono>                                      // 时间相关类（system_clock, steady_clock, duration）
 #include <windows.h>                                   // HWND 窗口句柄类型
@@ -21,6 +22,7 @@ struct QuizState {                                      // struct：答题会话
     int correct = 0;                                    //   累计答对的题数
     int wrong = 0;                                      //   累计答错的题数
     int selectedScore = 0;                              //   用户在风险题分值选择中点击的分值（10/20/30/40/50/60）
+    bool riskScoreUsed[FILL_SCORE_OPTION_COUNT] = {};   //   当前风险题会话中已经完成过选择的分值档位
 
     bool answered = false;                              //   标记当前题是否已经提交并结算（true=已答，false=未答）
     bool lastCorrect = false;                           //   上一题的对错结果（用于反馈面板的颜色：绿=对，红=错）
@@ -65,6 +67,11 @@ struct QuizState {                                      // struct：答题会话
         used.assign(bank.all.size(), false);             //     assign() 是 vector 的成员方法：重新分配 size 个元素，全部为 false
                                                          //       此时所有题目都标记为"未被使用过"
     }                                                    //     } 结束 resetQuiz 函数定义
+
+    // 只有返回主页时调用；“再次答题”返回分值页时保留已用档位。
+    void resetRiskScoreUsage() {
+        for (int i = 0; i < FILL_SCORE_OPTION_COUNT; ++i) riskScoreUsed[i] = false;
+    }
 };                                                       // } 结束 struct QuizState 定义
 
 // Global instances (defined in state.cpp)
@@ -108,7 +115,7 @@ int PickRandomUnused();                                 // 从未使用的题目
 bool StartQuestion();                                   // 开始回答下一道题（true=成功，false=无更多可用题）
 void StartQuiz(QuizMode mode);                          // 启动一轮新答题
 void OpenRiskScoreSelect();                             // 打开风险题分值选择页面
-void StartRiskQuiz(int selectedScore);                  // 从分值选择页确认后启动风险题
+void StartRiskQuiz(int scoreIndex);                     // 选择一个尚未使用的分值档位后启动风险题
 int QuestionElapsedSeconds();                           // 计算当前题目已过去的秒数
 int QuestionRemainingSeconds();                         // 计算当前题目还剩多少秒（限时模式下）
 bool HasSelection();                                    // 检查用户是否至少选中了一个选项

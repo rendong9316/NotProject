@@ -267,6 +267,7 @@ static void HandleFillScoreSelectClick(int mx, int my, HWND hwnd) {
     if (Hit(mx, my, backRect.x, backRect.y, backRect.w, backRect.h)) {
                                                          // 判断是否点击了返回按钮
         g_state.resetQuiz(ActiveBank());               // resetQuiz 重置全部状态（计数、used 数组等）
+        g_state.resetRiskScoreUsage();                 // 返回主页后重新开放全部风险题分值
                                                          // ActiveBank() 根据当前模式返回对应题库的引用
         g_state.page = PAGE_HOME;                      // 切换回主页
         UpdateEditForState();                          // 更新编辑框可见性
@@ -278,9 +279,10 @@ static void HandleFillScoreSelectClick(int mx, int my, HWND hwnd) {
                                                          // 遍历 6 个分值按钮（NO_SCORE=0 占位，实际按钮 0~5）
         UIRect scoreRect = FillScoreButtonRect(i);     // 获取第 i 个分值按钮的区域
                                                          // FillScoreButtonRect(i) 返回 UIRect 结构体
-        if (Hit(mx, my, scoreRect.x, scoreRect.y, scoreRect.w, scoreRect.h)) {
+        if (!g_state.riskScoreUsed[i]
+            && Hit(mx, my, scoreRect.x, scoreRect.y, scoreRect.w, scoreRect.h)) {
                                                          // 判断鼠标是否在这个分值按钮范围内
-            StartRiskQuiz(FILL_SCORE_OPTIONS[i]);      // 启动对应分值的风险题
+            StartRiskQuiz(i);                         // 启动对应分值档位的风险题
                                                          // FILL_SCORE_OPTIONS[i]：取出分值数字（10/20/.../60）
                                                          // i：按钮索引（0~5）
             UpdateEditForState();                       // 更新编辑框可见性
@@ -305,6 +307,7 @@ static void HandleQuizPageClick(int mx, int my, HWND hwnd) {
                                                          // MessageBoxW 返回值：IDYES 或 IDCANCEL（用户点的）
         if (rc == IDYES) {                             // IDYES：宏定义，代表"Yes"按钮的返回值
             g_state.resetQuiz(ActiveBank());           // 完全重置答题状态
+            g_state.resetRiskScoreUsage();             // 返回主页后重新开放全部风险题分值
             g_state.page = PAGE_HOME;                  // 切换到主页
             UpdateEditForState();
             SetFocus(hwnd);                            // 焦点回到主窗口本身
@@ -414,6 +417,7 @@ static void HandleResultPageClick(int mx, int my, HWND hwnd) {
     else if (Hit(mx, my, cx + cw / 2 + 20, cy + ch - 82, 190, 48)) {
                                                          // cw / 2 + 20：左按钮右边留 20px 空隙
         g_state.resetQuiz(ActiveBank());               // 完全重置状态
+        g_state.resetRiskScoreUsage();                 // 返回主页后重新开放全部风险题分值
         g_state.page = PAGE_HOME;                      // 切换到主页
         UpdateEditForState();
     }                                                 // } 结束 if(home button)
@@ -464,7 +468,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }                                         // } 结束 if
             for (int i = NO_SCORE; i < FILL_SCORE_OPTION_COUNT; ++i) {
                 UIRect scoreRect = FillScoreButtonRect(i);
-                if (Hit(mx, my, scoreRect.x, scoreRect.y, scoreRect.w, scoreRect.h)) {
+                if (!g_state.riskScoreUsed[i]
+                    && Hit(mx, my, scoreRect.x, scoreRect.y, scoreRect.w, scoreRect.h)) {
                     SetCursor(LoadCursorW(nullptr, IDC_HAND));
                     return TRUE;
                 }                                     // } 结束 if

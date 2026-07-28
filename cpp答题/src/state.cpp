@@ -533,10 +533,13 @@ void OpenRiskScoreSelect() {
 }                                                     // } 结束 OpenRiskScoreSelect
 
 /** 从分值选择页确认后启动风险题 */
-void StartRiskQuiz(int selectedScore) {
+void StartRiskQuiz(int scoreIndex) {
+    if (scoreIndex < 0 || scoreIndex >= FILL_SCORE_OPTION_COUNT
+        || g_state.riskScoreUsed[scoreIndex]) return;
     g_state.mode = MODE_RISK;                          // 设置风险题模式
     g_state.resetQuiz(ActiveBank());
-    g_state.selectedScore = selectedScore;             // 保存用户选择的分值（10/20/.../60）
+    g_state.riskScoreUsed[scoreIndex] = true;          // 本次返回分值页后，该档位将保持禁用
+    g_state.selectedScore = FILL_SCORE_OPTIONS[scoreIndex];
     g_state.total = QUESTION_COUNT_RISK;
     g_state.page = PAGE_QUIZ;                          // 进入答题页
     g_state.qNum = 1;

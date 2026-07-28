@@ -493,8 +493,10 @@ void DrawFillScoreSelectPage(Graphics& g) {
                                                          // FillScoreButtonRect(i) 返回 UIRect{ x, y, w, h }
         std::wstring label = IntToWStr(FILL_SCORE_OPTIONS[i]) + CFG_SCORE_SUFFIX;
                                                          // 拼接分值数字 + "分"后缀
-    DrawButton(g, button.x, button.y, button.w, button.h, label,
-                   CLR_GREEN, CLR_SCORE_BUTTON_SECONDARY);
+        bool disabled = g_state.riskScoreUsed[i];       // 已完成过的分值档位显示灰色
+        DrawButton(g, button.x, button.y, button.w, button.h, label,
+                   disabled ? CLR_DISABLED : CLR_GREEN,
+                   disabled ? CLR_DISABLED_2 : CLR_SCORE_BUTTON_SECONDARY);
                                                          // 绿色渐变（10分→60分都用绿色系）
     }                                                   // } 结束 for
 

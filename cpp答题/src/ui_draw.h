@@ -39,6 +39,8 @@ static const COLORREF CLR_GREEN = RGB(0, 142, 73);    // 答对/成功色
 static const COLORREF CLR_RED = RGB(205, 38, 38);     // 答错/超时/危险色
 static const COLORREF CLR_LINE = RGB(196, 208, 224);  // 分割线和边框的淡灰色
 static const COLORREF CLR_SOFT = RGB(244, 248, 253);  // 辅助卡片的柔和底色
+static const COLORREF CLR_DISABLED = RGB(154, 163, 175); // 已使用分值按钮的灰色
+static const COLORREF CLR_DISABLED_2 = RGB(122, 132, 146); // 已使用分值按钮的深灰色
 
 void UpdateLayoutSize();                              // 根据当前缩放比和客户区大小更新逻辑分辨率
 int ScaleCoord(int v);                                // 将逻辑坐标值缩放到物理像素值
