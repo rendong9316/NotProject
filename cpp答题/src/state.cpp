@@ -505,8 +505,10 @@ bool StartQuestion() {
     g_state.timedOut = false;                           // 标记未超时
     g_state.settledSeconds = 0;                         // 清除上次用时
     g_state.flashVisible = false;                       // 清除倒计时闪烁标志
-    // 记录本题开始的时间戳（单调时钟，不受系统时间调整影响）
-    g_state.questionStart = std::chrono::steady_clock::now();
+    // 抢答题的每一道题都先进入待机状态，点击“开始答题”后才记录计时起点。
+    g_state.questionTimerStarted = g_state.mode != MODE_MULTIPLE;
+    if (g_state.questionTimerStarted)
+        g_state.questionStart = std::chrono::steady_clock::now();
                                                          // steady_clock::now()：获取单调递增的系统时钟
     return true;                                        // 一切就绪，返回 true
 }                                                     // } 结束 StartQuestion
@@ -551,6 +553,7 @@ void StartFillQuiz(int selectedScore, int scoreIdx) {
 
 /** 计算当前题目已过去的秒数（单调时钟，不受系统时间调整影响） */
 int QuestionElapsedSeconds() {
+    if (!g_state.questionTimerStarted) return NO_TIME_SECONDS;
                                                          // std::chrono 库提供跨平台时间测量能力
                                                          // steady_clock::now()：获取当前单调递增的时刻
                                                          // steady_clock 是单调时钟，不会回跳
@@ -567,6 +570,7 @@ int QuestionElapsedSeconds() {
 /** 计算当前题目剩余秒数 */
 int QuestionRemainingSeconds() {
     if (!IsTimedMode()) return NO_TIME_SECONDS;        // 填空不限时，返回 0 标记
+    if (!g_state.questionTimerStarted) return QUESTION_TIME_LIMIT_SECONDS;
                                                          // !IsTimedMode()：如果当前不是限时模式（即填空模式）
                                                          // NO_TIME_SECONDS 是配置常量，通常设为 0 表示"不限时"
     // 已作答：用 settledSeconds（不含超时情况）；否则：实时计算

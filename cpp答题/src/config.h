@@ -154,6 +154,7 @@ static const wchar_t* CFG_BTN_MULTIPLE = L"抢答题";             // 多选模�
 static const wchar_t* CFG_BTN_FILL = L"风险题";                 // 填空模式按钮的文案
 static const wchar_t* CFG_BTN_RETURN_HOME = L"返回主页";        // "返回主页"按钮
 static const wchar_t* CFG_BTN_CONFIRM = L"确认答案";            // 尚未答完最后一题时的按钮文案
+static const wchar_t* CFG_BTN_START_ANSWER = L"开始答题";       // 抢答题倒计时启动按钮
 static const wchar_t* CFG_BTN_NEXT = L"下一题";                 // 已答完本题但还没到最后一题时的按钮文案
 static const wchar_t* CFG_BTN_SUBMIT = L"提交结果";             // 答完最后一题后的按钮文案
 static const wchar_t* CFG_BTN_RESTART = L"再次答题";            // 结果页重新开始的按钮文案
@@ -161,6 +162,7 @@ static const wchar_t* CFG_BTN_RESTART = L"再次答题";            // 结果页
 // --- 题型提示 ---
 static const wchar_t* CFG_HINT_SINGLE = L"请选择一个正确答案后确认";  // 单选题页面上的引导文字
 static const wchar_t* CFG_HINT_MULTIPLE = L"请选择所有正确答案后确认";
+static const wchar_t* CFG_HINT_MULTIPLE_WAITING = L"点击“开始答题”后开始30秒倒计时";
 static const wchar_t* CFG_HINT_FILL = L"请在下方输入框中填写答案，提交后显示参考答案";
 
 // --- 难度名称 ---

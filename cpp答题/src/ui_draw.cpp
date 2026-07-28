@@ -805,7 +805,10 @@ void DrawQuizPage(Graphics& g) {
         }                                               // } 结束 if(answered, fill mode)
     } else {
         // ==================== 选择题渲染 ====================
-        TextLeft(g, g_state.mode == MODE_MULTIPLE ? CFG_HINT_MULTIPLE : CFG_HINT_SINGLE,
+        const wchar_t* choiceHint = g_state.mode == MODE_MULTIPLE && !g_state.questionTimerStarted
+                                  ? CFG_HINT_MULTIPLE_WAITING
+                                  : (g_state.mode == MODE_MULTIPLE ? CFG_HINT_MULTIPLE : CFG_HINT_SINGLE);
+        TextLeft(g, choiceHint,
                  meta2, GdiColor(CLR_MUTED),
                  cardX + QUESTION_TEXT_OFFSET_X,
                  cardY + hintOffsetY,
@@ -899,10 +902,14 @@ void DrawQuizPage(Graphics& g) {
     bool finalQ = g_state.answered && g_state.qNum >= g_state.total;
     // finalQ：是否为最后一题且已答完
                                                          // ?: 三元运算符：最后一题 → 绿色"提交"，否则 → 蓝色"确认"或"下一题"
-    COLORREF cBtn = finalQ ? CLR_GREEN : CLR_BLUE;
-    COLORREF cBtn2 = finalQ ? RGB(0, 112, 56) : RGB(0, 69, 170);
-    const wchar_t* btnText = finalQ ? CFG_BTN_SUBMIT
-              : (g_state.answered ? CFG_BTN_NEXT : CFG_BTN_CONFIRM);
+    bool waitingToStart = g_state.mode == MODE_MULTIPLE
+                       && !g_state.answered
+                       && !g_state.questionTimerStarted;
+    COLORREF cBtn = (finalQ || waitingToStart) ? CLR_GREEN : CLR_BLUE;
+    COLORREF cBtn2 = (finalQ || waitingToStart) ? RGB(0, 112, 56) : RGB(0, 69, 170);
+    const wchar_t* btnText = waitingToStart ? CFG_BTN_START_ANSWER
+              : (finalQ ? CFG_BTN_SUBMIT
+                        : (g_state.answered ? CFG_BTN_NEXT : CFG_BTN_CONFIRM));
                                                          // ?: 三元运算符嵌套
     UIRect confirmRect = ConfirmButtonRect();           // 获取按钮位置
     DrawButton(g, confirmRect.x, confirmRect.y, confirmRect.w, confirmRect.h, btnText, cBtn, cBtn2);

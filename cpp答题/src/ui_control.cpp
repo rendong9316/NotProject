@@ -319,7 +319,8 @@ static void HandleQuizPageClick(int mx, int my, HWND hwnd) {
     }                                                 // } 结束 if(backRect)
 
     // === 2. 限时模式超时后自动提交 ===
-    if (IsTimedMode() && !g_state.answered && QuestionRemainingSeconds() <= 0) {
+    if (IsTimedMode() && g_state.questionTimerStarted
+        && !g_state.answered && QuestionRemainingSeconds() <= 0) {
                                                          // && 是短路逻辑与：前面为假则不再计算后面
         SettleCurrentQuestion(hwnd, true);             // true= 表示超时而结算（而非用户主动提交）
     }                                                 // } 结束 if
@@ -333,6 +334,7 @@ static void HandleQuizPageClick(int mx, int my, HWND hwnd) {
                                                          // const UIRect&：常量引用（只读访问，避免拷贝）
                                                          // g_choiceOptionRects[] 在 DrawQuizPage 中被填充
             if (!g_state.answered                       // 已结算的不可再改（防误触）
+                && (g_state.mode != MODE_MULTIPLE || g_state.questionTimerStarted)
                 && Hit(mx, my, optionRect.x, optionRect.y,
                        optionRect.w, optionRect.h)) {  // 且鼠标点击在该选项范围内
                 if (g_state.mode == MODE_SINGLE) {
@@ -355,6 +357,14 @@ static void HandleQuizPageClick(int mx, int my, HWND hwnd) {
     UIRect confirmRect = ConfirmButtonRect();          // 获取按钮区域
     if (Hit(mx, my, confirmRect.x, confirmRect.y, confirmRect.w, confirmRect.h)) {
                                                          // 判断点击是否在按钮范围内
+        if (g_state.mode == MODE_MULTIPLE && !g_state.answered
+            && !g_state.questionTimerStarted) {
+            g_state.questionTimerStarted = true;
+            g_state.questionStart = std::chrono::steady_clock::now();
+            g_state.flashVisible = false;
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return;
+        }
         if (!g_state.answered) {                       // 情况 A：用户尚未作答
             // Just confirmed — read input then settle
             if (g_state.mode == MODE_FILL) {           // 如果是填空题模式
@@ -490,6 +500,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 for (int i = NO_SCORE; i < g_choiceOptionRectCount; ++i) {
                     const UIRect& optionRect = g_choiceOptionRects[i];
                     if (!g_state.answered              // && 短路：已答不可再选，无需手型
+                        && (g_state.mode != MODE_MULTIPLE || g_state.questionTimerStarted)
                         && Hit(mx, my, optionRect.x, optionRect.y,
                                optionRect.w, optionRect.h)) {
                         SetCursor(LoadCursorW(nullptr, IDC_HAND));
@@ -568,7 +579,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
     // ==================== WM_TIMER：定时器回调 ====================
     case WM_TIMER: {
-        if (g_state.page == PAGE_QUIZ && IsTimedMode() && !g_state.answered) {
+        if (g_state.page == PAGE_QUIZ && IsTimedMode()
+            && g_state.questionTimerStarted && !g_state.answered) {
                                                          // && 全部满足才执行下面逻辑
             int remaining = QuestionRemainingSeconds(); // 获取剩余秒数
             if (remaining <= 0) {                      // <= 小于等于

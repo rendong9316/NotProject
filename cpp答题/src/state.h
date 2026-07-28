@@ -37,6 +37,7 @@ struct QuizState {                                      // struct：答题会话
     std::wstring userFill;                               //   填空题用户的输入内容（从 EDIT 控件读取）
 
     int settledSeconds = 0;                              //   本题实际用时（秒）。限时模式下，答题后记录到该变量
+    bool questionTimerStarted = true;                    //   本题倒计时是否已启动；每道抢答题均需点击“开始答题”后启动
     std::chrono::system_clock::time_point quizStart;      //   本轮答题开始的时间点（系统时钟，可被用户修改影响）
     std::chrono::system_clock::time_point quizEnd;        //   本轮答题结束的时间点（用户点"提交结果"时设置）
     std::chrono::steady_clock::time_point questionStart;  //   当前题目的开始时间（单调时钟，不受系统时间调整影响）
@@ -62,6 +63,7 @@ struct QuizState {                                      // struct：答题会话
         flashVisible = false;                            //     清空"倒计时闪烁"标记
         userFill.clear();                                //     clear() 是 std::wstring 的成员方法，清空字符串内容为空
         settledSeconds = 0;                              //     清空本题用时记录
+        questionTimerStarted = true;                     //     默认保持原有即时计时行为，抽取抢答题时再暂停
         questionSeconds.clear();                         //     clear() 清空 vector，释放所有元素但保留容量
         used.assign(bank.all.size(), false);             //     assign() 是 vector 的成员方法：重新分配 size 个元素，全部为 false
                                                          //       此时所有题目都标记为"未被使用过"
