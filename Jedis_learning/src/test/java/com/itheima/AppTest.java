@@ -1,38 +1,40 @@
 package com.itheima;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import redis.clients.jedis.Jedis;
+
 
 /**
  * Unit test for simple App.
  */
-public class AppTest 
-    extends TestCase
-{
-    /**
-     * Create the test case
-     *
-     * @param testName name of the test case
-     */
-    public AppTest( String testName )
-    {
-        super( testName );
+public class AppTest{
+    private Jedis jedis;
+
+    @BeforeEach
+    //建立连接
+    void setUp() {
+        jedis = new Jedis("127.0.0.1",6379);
+        jedis.auth("1234");
+        jedis.select(0);
     }
 
-    /**
-     * @return the suite of tests being tested
-     */
-    public static Test suite()
-    {
-        return new TestSuite( AppTest.class );
+    @Test
+    //测试连接
+    void testString() {
+        String a = jedis.set("name","rdong");
+        System.out.println(a);
+        String name = jedis.get("name");
+        System.out.println(name);
     }
 
-    /**
-     * Rigourous Test :-)
-     */
-    public void testApp()
-    {
-        assertTrue( true );
+    @AfterEach
+    //释放连接
+    void tearDown() {
+        if(jedis!=null){
+            jedis.close();
+        }
     }
 }
