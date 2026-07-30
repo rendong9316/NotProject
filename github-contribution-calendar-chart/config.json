@@ -1,0 +1,11 @@
+{
+  "scanRoots": [
+    "D:\\"
+  ],
+  "authors": [
+    "rendong9316@163.com"
+  ],
+  "includeAllAuthors": false,
+  "maxScanDepth": 10,
+  "port": 4783
+}
