@@ -1,7 +1,9 @@
 {
-  "scanRoots": [
-    "D:\\"
-  ],
+  "scanAllDrives": true,
+  "scanRoots": [],
+  "cacheDirectory": "data",
+  "scanConcurrency": 12,
+  "gitConcurrency": 10,
   "authors": [
     "rendong9316@163.com"
   ],

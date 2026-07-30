@@ -3,3 +3,4 @@ dist/
 test-artifacts/
 heatmap.log
 heatmap-error.log
+data/

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, GitBranch, RefreshCw, Search, SquareTerminal } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Check, Clock3, FolderSearch, GitBranch, RefreshCw, Search, SquareTerminal } from 'lucide-react';
 
 const DAY_MS = 86_400_000;
 const COLORS = ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'];
@@ -34,6 +34,22 @@ function levelFor(count, max) {
   return Math.min(4, Math.max(1, Math.ceil((count / max) * 4)));
 }
 
+function formatTimestamp(value) {
+  if (!value) return '尚未建立缓存';
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+  }).format(new Date(value));
+}
+
+function operationSummary(operation) {
+  if (!operation) return '';
+  const duration = operation.durationMs < 1000
+    ? `${operation.durationMs} 毫秒`
+    : `${(operation.durationMs / 1000).toFixed(1)} 秒`;
+  const unavailable = operation.unavailable ? `，不可用 ${operation.unavailable}` : '';
+  return `已检查 ${operation.checked} 个仓库，新增 ${operation.added}，更新 ${operation.updated}${unavailable}，耗时 ${duration}`;
+}
+
 function App() {
   const [repos, setRepos] = useState([]);
   const [selected, setSelected] = useState(new Set());
@@ -41,30 +57,40 @@ function App() {
   const [data, setData] = useState({ days: [], total: 0, repoStats: [] });
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [scanning, setScanning] = useState(false);
+  const [repositoryTask, setRepositoryTask] = useState('initial');
+  const [cacheMeta, setCacheMeta] = useState({ lastRefreshAt: null, lastDiscoveryAt: null });
+  const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const selectionInitialized = useRef(false);
 
-  const loadRepos = useCallback(async (refresh = false) => {
-    setScanning(true);
+  const loadRepos = useCallback(async (task = 'initial') => {
+    setRepositoryTask(task);
     setError('');
+    if (task !== 'initial') setStatus('');
     try {
-      const response = await fetch(`/api/repos${refresh ? '?refresh=1' : ''}`);
-      if (!response.ok) throw new Error('无法扫描本地 Git 仓库');
+      const endpoint = task === 'refresh' ? '/api/refresh' : task === 'discover' ? '/api/discover' : '/api/repos';
+      const response = await fetch(endpoint, { method: task === 'initial' ? 'GET' : 'POST' });
       const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || '无法更新本地 Git 仓库');
       setRepos(payload.repositories);
+      setCacheMeta({ lastRefreshAt: payload.lastRefreshAt, lastDiscoveryAt: payload.lastDiscoveryAt });
+      setStatus(operationSummary(payload.operation));
       setSelected(previous => {
-        if (previous.size) return new Set([...previous].filter(id => payload.repositories.some(repo => repo.id === id)));
-        return new Set(payload.repositories.map(repo => repo.id));
+        if (!selectionInitialized.current) {
+          selectionInitialized.current = true;
+          return new Set(payload.repositories.map(repo => repo.id));
+        }
+        return new Set([...previous].filter(id => payload.repositories.some(repo => repo.id === id)));
       });
     } catch (requestError) {
       setError(requestError.message);
     } finally {
-      setScanning(false);
+      setRepositoryTask('');
     }
   }, []);
 
   useEffect(() => {
-    loadRepos();
+    loadRepos('initial');
   }, [loadRepos]);
 
   useEffect(() => {
@@ -88,7 +114,7 @@ function App() {
     };
     loadContributions();
     return () => controller.abort();
-  }, [repos, selected, year, scanning]);
+  }, [repos, selected, year]);
 
   const counts = useMemo(() => new Map(data.days.map(day => [day.date, day.count])), [data.days]);
   const weeks = useMemo(() => buildCalendar(year, counts), [year, counts]);
@@ -120,11 +146,20 @@ function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark"><SquareTerminal size={19} /></span>
-          <div><strong>Local Contributions</strong><span>D 盘 Git 活动</span></div>
+          <div><strong>Local Contributions</strong><span>本地 Git 活动缓存</span></div>
         </div>
-        <button className="icon-button" onClick={() => loadRepos(true)} disabled={scanning} title="重新扫描 D 盘">
-          <RefreshCw size={17} className={scanning ? 'spin' : ''} />
-        </button>
+        <div className="topbar-actions">
+          <span className="cache-time" title={cacheMeta.lastRefreshAt ? new Date(cacheMeta.lastRefreshAt).toLocaleString('zh-CN') : ''}>
+            <Clock3 size={14} />{formatTimestamp(cacheMeta.lastRefreshAt)}
+          </span>
+          <button className="action-button" onClick={() => loadRepos('refresh')} disabled={Boolean(repositoryTask)} title="检查已有仓库的新增或修改提交">
+            <RefreshCw size={15} className={repositoryTask === 'refresh' ? 'spin' : ''} />
+            <span>刷新提交</span>
+          </button>
+          <button className="icon-button" onClick={() => loadRepos('discover')} disabled={Boolean(repositoryTask)} title="扫描所有磁盘以发现新仓库">
+            <FolderSearch size={17} className={repositoryTask === 'discover' ? 'pulse' : ''} />
+          </button>
+        </div>
       </header>
 
       <main className="workspace">
@@ -160,6 +195,7 @@ function App() {
           </div>
 
           {error && <div className="error-banner">{error}</div>}
+          {status && <div className="status-banner">{status}</div>}
 
           <div className="metrics">
             <div><strong>{loading ? '—' : data.total.toLocaleString()}</strong><span>次提交</span></div>
@@ -185,7 +221,7 @@ function App() {
               </div>
             </div>
             <div className="legend"><span>少</span>{COLORS.map(color => <i key={color} style={{ backgroundColor: color }} />)}<span>多</span></div>
-            {loading && <div className="loading-overlay">正在读取 Git 历史…</div>}
+            {(loading || repositoryTask === 'initial') && <div className="loading-overlay">{repositoryTask === 'initial' ? '正在载入本地缓存…' : '正在读取缓存…'}</div>}
           </div>
 
           <div className="ranking">
