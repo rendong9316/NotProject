@@ -19,13 +19,16 @@ public class ReverseString_II {
                     arr[j]=arr[i+arr.length-j-1];
                     arr[i+arr.length-j-1]=tem;
                 }*/
+                reverse(arr,i,arr.length-1);
                 continue;
+
             }else{
 /*                for (int j = i; j < i+k/2; j++) {
                     char tem = arr[j];
                     arr[j]=arr[i+k+i-j-1];
                     arr[i+k+i-j-1]=tem;
                 }*/
+                reverse(arr,i,i+k-1);
                 continue;
             }
         }
@@ -33,6 +36,15 @@ public class ReverseString_II {
         return result;
 
 
+    }
+
+    private void reverse(char[] arr,int start,int end){
+        //索引值，左闭右闭
+        for (int i = start; i <=start+(end-start)/2; i++) {
+            char tem = arr[i];
+            arr[i]=arr[start+end-i];
+            arr[start+end-i]=tem;
+        }
     }
 
     public static void main(String[] args) {
@@ -43,5 +55,6 @@ public class ReverseString_II {
         ReverseString_II reverseStringIi = new ReverseString_II();
         String result = reverseStringIi.reverseStr(s,k);
         System.out.println(result);
+
     }
 }
