@@ -178,11 +178,11 @@ void UiDraw::DrawTopbar(HDC dc) {
     Fill(dc, rect, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE));
     Line(dc, 0, ScaleIntHelper(TOPBAR_H) - 1, width_, ScaleIntHelper(TOPBAR_H) - 1, ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
 
-    RECT title = {ScaleIntHelper(20), ScaleIntHelper(6), ScaleIntHelper(ScaleIntHelper(280)), ScaleIntHelper(ScaleIntHelper(32))};
+    RECT title = {ScaleIntHelper(20), ScaleIntHelper(6), ScaleIntHelper(280), ScaleIntHelper(32)};
     Text(dc, L"本地 Git 提交热力图", title, ScaleIntHelper(17), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
          DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
 
-    RECT subtitle = {ScaleIntHelper(20), ScaleIntHelper(31), ScaleIntHelper(ScaleIntHelper(310)), ScaleIntHelper(ScaleIntHelper(52))};
+    RECT subtitle = {ScaleIntHelper(20), ScaleIntHelper(31), ScaleIntHelper(310), ScaleIntHelper(52)};
     Text(dc, L"原生 C++ · 本机数据 · 增量刷新", subtitle, ScaleIntHelper(11), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
 
     Button(dc, discoverRect_, L"发现新项目", false, g_loading);
@@ -318,7 +318,8 @@ void UiDraw::DrawCalendar(HDC dc) {
             if (entry.inYear && entry.date.size() >= 7) {
                 const int month = _wtoi(entry.date.substr(5, 2).c_str());
                 if (month != lastMonth && _wtoi(entry.date.substr(8, 2).c_str()) <= 7) {
-                    RECT monthRect = {square.left - ScaleIntHelper(2), calendarRect_.top + ScaleIntHelper(18), square.left + ScaleIntHelper(42), gridY};
+                    RECT monthRect = {square.left - ScaleIntHelper(2), calendarRect_.top + ScaleIntHelper(18),
+                                      square.left + ScaleIntHelper(42), calendarRect_.top + ScaleIntHelper(32)};
                     Text(dc, MonthLabel(entry.date), monthRect, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
                          DT_LEFT | DT_BOTTOM | DT_SINGLELINE);
                     lastMonth = month;
@@ -384,7 +385,7 @@ void UiDraw::DrawStatusbar(HDC dc) {
 
     RECT details = {width_ - ScaleIntHelper(360), bar.top, width_ - ScaleIntHelper(16), bar.bottom};
     Text(dc, FormatInteger(static_cast<int>(g_repos.size())) + L" 个项目 · " + g_gitVersion, details, ScaleIntHelper(10),
-         ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC), DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+         ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC), DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
 }
 
 void UiDraw::DrawTooltip(HDC dc) {
@@ -397,7 +398,7 @@ void UiDraw::DrawTooltip(HDC dc) {
     const int tooltipHeight = ScaleIntHelper(52) + lines * ScaleIntHelper(19);
     int x = std::min(mouseX_ + ScaleIntHelper(14), width_ - tooltipWidth - ScaleIntHelper(8));
     int y = mouseY_ - tooltipHeight - ScaleIntHelper(10);
-    if (y < TOPBAR_H + ScaleIntHelper(4)) y = mouseY_ + ScaleIntHelper(18);
+    if (y < ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(4)) y = mouseY_ + ScaleIntHelper(18);
 
     RECT box = {x, y, x + tooltipWidth, y + tooltipHeight};
     Fill(dc, box, ThemeColor(RGB(36,41,47), RGB(230,237,243)));
