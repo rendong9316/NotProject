@@ -103,8 +103,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int showC
     windowClass.lpfnWndProc = WndProc;
     windowClass.hInstance = instance;
     windowClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    windowClass.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
-    windowClass.hIconSm = static_cast<HICON>(LoadImageW(nullptr, IDI_APPLICATION, IMAGE_ICON, 16, 16, LR_SHARED));
+    windowClass.hIcon = LoadIconW(instance, MAKEINTRESOURCEW(101));
+    windowClass.hIconSm = static_cast<HICON>(LoadImageW(instance, MAKEINTRESOURCEW(101), IMAGE_ICON, 16, 16, LR_DEFAULTSIZE));
     windowClass.hbrBackground = nullptr;
     windowClass.lpszClassName = APP_CLASS;
     if (!RegisterClassExW(&windowClass)) return 1;
