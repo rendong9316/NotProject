@@ -7,7 +7,7 @@ export default [
   js.configs.recommended,
   {
     files: ['src/**/*.{js,jsx}'],
-    languageOptions: { ecmaVersion: 2022, sourceType: 'module', parserOptions: { ecmaFeatures: { jsx: true } }, globals: { document: 'readonly', fetch: 'readonly', AbortController: 'readonly', URLSearchParams: 'readonly' } },
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', parserOptions: { ecmaFeatures: { jsx: true } }, globals: { document: 'readonly', fetch: 'readonly', AbortController: 'readonly', URLSearchParams: 'readonly', localStorage: 'readonly', window: 'readonly' } },
     plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
     rules: {
       ...reactHooks.configs.recommended.rules,

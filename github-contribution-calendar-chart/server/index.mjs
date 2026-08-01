@@ -22,6 +22,14 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
+function mapApiError(message) {
+  if (message.includes('EACCES') || message.includes('permission')) return '磁盘权限不足，请检查扫描目录的访问权限';
+  if (message.includes('git') || message.includes('git log')) return 'Git 命令执行失败，请确认 Git 已正确安装';
+  if (message.includes('ENOENT') || message.includes('No such file')) return '部分仓库路径已不存在，请在刷新后重新扫描';
+  if (message.includes('maxBuffer')) return '仓库数据量过大，缓存超出限制，建议缩小扫描范围';
+  return message;
+}
+
 async function handleApi(request, response, url) {
   if (url.pathname === '/api/health') {
     const snapshot = await repositoryService.listRepositories({ initialize: false });
@@ -81,7 +89,7 @@ const server = http.createServer(async (request, response) => {
     if (url.pathname.startsWith('/api/') && await handleApi(request, response, url)) return;
     await serveStatic(response, url.pathname);
   } catch (error) {
-    sendJson(response, 500, { error: error.message });
+    sendJson(response, 500, { error: mapApiError(error.message) });
   }
 });
 

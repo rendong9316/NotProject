@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Clock3, FolderSearch, GitBranch, RefreshCw, Search, SquareTerminal } from 'lucide-react';
+import { Check, Clock3, FolderSearch, GitBranch, Moon, RefreshCw, Search, Sun, SquareTerminal } from 'lucide-react';
 
 const DAY_MS = 86_400_000;
 const COLORS = ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'];
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+
+const STORAGE_KEY = 'local-contributions-theme';
+const THEME_LIGHT = 'light';
+const THEME_DARK = 'dark';
 
 function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -41,6 +45,12 @@ function formatTimestamp(value) {
   }).format(new Date(value));
 }
 
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  return `${y}年${parseInt(m)}月${parseInt(d)}日`;
+}
+
 function operationSummary(operation) {
   if (!operation) return '';
   const duration = operation.durationMs < 1000
@@ -61,7 +71,44 @@ function App() {
   const [cacheMeta, setCacheMeta] = useState({ lastRefreshAt: null, lastDiscoveryAt: null });
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [colorScheme, setColorScheme] = useState(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === THEME_LIGHT || stored === THEME_DARK) return stored;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? THEME_DARK : THEME_LIGHT;
+  });
+  const [tooltip, setTooltip] = useState(null);
+  const tooltipRef = useRef(null);
+  const dayRefs = useRef(new Map());
   const selectionInitialized = useRef(false);
+
+  // 应用主题
+  useEffect(() => {
+    document.documentElement.setAttribute('data-color-scheme', colorScheme);
+    localStorage.setItem(STORAGE_KEY, colorScheme);
+  }, [colorScheme]);
+
+  // 监听系统主题变化
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e) => {
+      if (!localStorage.getItem(STORAGE_KEY)) {
+        setColorScheme(e.matches ? THEME_DARK : THEME_LIGHT);
+      }
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // tooltip 位置跟踪
+  useEffect(() => {
+    if (!tooltip) return;
+    const el = dayRefs.current.get(tooltip.key);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    tooltipRef.current.style.left = `${rect.left + rect.width / 2}px`;
+    tooltipRef.current.style.top = `${rect.top - 8}px`;
+    tooltipRef.current.style.transform = 'translate(-50%, -100%)';
+  }, [tooltip]);
 
   const loadRepos = useCallback(async (task = 'initial') => {
     setRepositoryTask(task);
@@ -71,7 +118,7 @@ function App() {
       const endpoint = task === 'refresh' ? '/api/refresh' : task === 'discover' ? '/api/discover' : '/api/repos';
       const response = await fetch(endpoint, { method: task === 'initial' ? 'GET' : 'POST' });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || '无法更新本地 Git 仓库');
+      if (!response.ok) throw new Error(payload.error || '请求失败，请稍后重试');
       setRepos(payload.repositories);
       setCacheMeta({ lastRefreshAt: payload.lastRefreshAt, lastDiscoveryAt: payload.lastDiscoveryAt });
       setStatus(operationSummary(payload.operation));
@@ -94,9 +141,7 @@ function App() {
   }, [loadRepos]);
 
   useEffect(() => {
-    if (!repos.length) {
-      return;
-    }
+    if (!repos.length) return;
     const controller = new AbortController();
     const loadContributions = async () => {
       setLoading(true);
@@ -105,7 +150,8 @@ function App() {
         const params = new URLSearchParams({ year: String(year), repos: [...selected].join(',') });
         const response = await fetch(`/api/contributions?${params}`, { signal: controller.signal });
         if (!response.ok) throw new Error('无法读取 Git 提交记录');
-        setData(await response.json());
+        const result = await response.json();
+        setData(result);
       } catch (requestError) {
         if (requestError.name !== 'AbortError') setError(requestError.message);
       } finally {
@@ -116,7 +162,18 @@ function App() {
     return () => controller.abort();
   }, [repos, selected, year]);
 
-  const counts = useMemo(() => new Map(data.days.map(day => [day.date, day.count])), [data.days]);
+  const counts = useMemo(() => {
+    const m = new Map();
+    for (const day of data.days) m.set(day.date, day.count);
+    return m;
+  }, [data.days]);
+
+  const daysMap = useMemo(() => {
+    const m = new Map();
+    for (const day of data.days) m.set(day.date, day);
+    return m;
+  }, [data.days]);
+
   const weeks = useMemo(() => buildCalendar(year, counts), [year, counts]);
   const max = useMemo(() => Math.max(0, ...data.days.map(day => day.count)), [data.days]);
   const activeDays = data.days.filter(day => day.count > 0).length;
@@ -131,6 +188,23 @@ function App() {
     });
   };
 
+  const handleDayMouseEnter = (e, day) => {
+    const dayData = daysMap.get(day.date);
+    if (!dayData || !dayData.count) return;
+    const reposStr = dayData.details
+      ?.filter(d => d.count > 0)
+      .map(d => `${d.repoName}(${d.count})`)
+      .join('、');
+    setTooltip({
+      key: day.date,
+      date: formatDate(day.date),
+      count: dayData.count,
+      repos: reposStr || '无详情'
+    });
+  };
+
+  const handleDayMouseLeave = () => setTooltip(null);
+
   const monthLabels = weeks.map((week, index) => {
     const firstDayInYear = week.find(day => day.inYear);
     if (!firstDayInYear) return '';
@@ -143,6 +217,17 @@ function App() {
 
   return (
     <div className="app-shell">
+      {/* Tooltip */}
+      {tooltip && (
+        <div ref={tooltipRef} className="tooltip-wrapper">
+          <div className="tooltip">
+            <div className="tooltip-date">{tooltip.date}</div>
+            <div className="tooltip-count">{tooltip.count} 次提交</div>
+            <div className="tooltip-repos">{tooltip.repos}</div>
+          </div>
+        </div>
+      )}
+
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark"><SquareTerminal size={19} /></span>
@@ -158,6 +243,13 @@ function App() {
           </button>
           <button className="icon-button" onClick={() => loadRepos('discover')} disabled={Boolean(repositoryTask)} title="扫描所有磁盘以发现新仓库">
             <FolderSearch size={17} className={repositoryTask === 'discover' ? 'pulse' : ''} />
+          </button>
+          <button
+            className="dark-toggle"
+            onClick={() => setColorScheme(prev => prev === THEME_LIGHT ? THEME_DARK : THEME_LIGHT)}
+            title={colorScheme === THEME_LIGHT ? '切换到深色模式' : '切换到亮色模式'}
+          >
+            {colorScheme === THEME_LIGHT ? <Moon size={16} /> : <Sun size={16} />}
           </button>
         </div>
       </header>
@@ -194,8 +286,8 @@ function App() {
             </select>
           </div>
 
-          {error && <div className="error-banner">{error}</div>}
-          {status && <div className="status-banner">{status}</div>}
+          {error && <div className="error-banner" role="alert">{error}</div>}
+          {status && <div className="status-banner" role="status">{status}</div>}
 
           <div className="metrics">
             <div><strong>{loading ? '—' : data.total.toLocaleString()}</strong><span>次提交</span></div>
@@ -213,7 +305,20 @@ function App() {
                     <div className="week" key={weekIndex}>
                       {week.map(day => {
                         const level = day.inYear ? levelFor(day.count, max) : 0;
-                        return <span className={`day ${day.inYear ? '' : 'outside'}`} key={day.date} style={{ backgroundColor: COLORS[level] }} title={`${day.date} · ${day.count} 次提交`} />;
+                        return (
+                          <span
+                            className={`day ${day.inYear ? '' : 'outside'}`}
+                            key={day.date}
+                            ref={el => { if (el) dayRefs.current.set(day.date, el); }}
+                            style={{ backgroundColor: COLORS[level] }}
+                            onMouseEnter={e => { e.stopPropagation(); handleDayMouseEnter(e, day); }}
+                            onMouseLeave={handleDayMouseLeave}
+                            onFocus={e => { e.stopPropagation(); handleDayMouseEnter(e, day); }}
+                            onBlur={handleDayMouseLeave}
+                            tabIndex={day.inYear ? 0 : -1}
+                            title={`${day.date} · ${day.count} 次提交`}
+                          />
+                        );
                       })}
                     </div>
                   ))}
@@ -228,7 +333,9 @@ function App() {
             <div className="section-title"><h2>项目提交</h2><span>当前筛选范围</span></div>
             {data.repoStats.length ? data.repoStats.map(repo => (
               <div className="ranking-row" key={repo.id}>
-                <span>{repo.name}</span><div><i style={{ width: `${Math.max(3, (repo.count / Math.max(...data.repoStats.map(item => item.count))) * 100)}%` }} /></div><strong>{repo.count}</strong>
+                <span title={repo.name}>{repo.name}</span>
+                <div><i style={{ width: `${Math.max(3, (repo.count / Math.max(...data.repoStats.map(item => item.count))) * 100)}%` }} /></div>
+                <strong>{repo.count}</strong>
               </div>
             )) : <p className="empty">所选年份没有匹配的本地提交。</p>}
           </div>

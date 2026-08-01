@@ -124,6 +124,7 @@ export class RepositoryService {
       data: await this.store.loadRepository(repository.id)
     }));
     const dayCounts = new Map();
+    const dayDetails = new Map(); // date -> [{repoName, count}]
     const prefix = `${year}-`;
     const repoStats = [];
 
@@ -132,6 +133,8 @@ export class RepositoryService {
       for (const [date, value] of Object.entries(data?.days || {})) {
         if (!date.startsWith(prefix)) continue;
         dayCounts.set(date, (dayCounts.get(date) || 0) + value);
+        if (!dayDetails.has(date)) dayDetails.set(date, []);
+        dayDetails.get(date).push({ repoName: repository.name, count: value });
         count += value;
       }
       if (count) repoStats.push({ id: repository.id, name: repository.name, count });
@@ -140,8 +143,12 @@ export class RepositoryService {
     const days = [...dayCounts]
       .map(([date, count]) => ({ date, count }))
       .sort((left, right) => left.date.localeCompare(right.date));
+    const daysWithDetails = days.map(day => ({
+      ...day,
+      details: dayDetails.get(day.date) || []
+    }));
     repoStats.sort((left, right) => right.count - left.count);
-    return { year, days, total: days.reduce((sum, day) => sum + day.count, 0), repoStats };
+    return { year, days: daysWithDetails, total: days.reduce((sum, day) => sum + day.count, 0), repoStats };
   }
 
   getActiveOperation() {
