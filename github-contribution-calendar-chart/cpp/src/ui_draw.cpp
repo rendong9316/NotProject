@@ -228,11 +228,15 @@ void UiDraw::DrawSidebar(HDC dc) {
         if (!repository.available) Fill(dc, rowRect, ThemeColor(RGB(255,248,247), RGB(42,25,29)));
         Checkbox(dc, 14, y + ScaleIntHelper(12), g_selected[repository.id], repository.available);
         RECT name = {ScaleIntHelper(42), y + ScaleIntHelper(3), ScaleIntHelper(SIDEBAR_W) - ScaleIntHelper(24), y + ScaleIntHelper(23)};
-        Text(dc, repository.name, name, ScaleIntHelper(12), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY));
+        Text(dc, repository.name, name, ScaleIntHelper(12),
+             !repository.available ? ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC)
+                                   : repository.yearTotal == 0 ? ThemeColor(RGB(158,158,158), RGB(110,110,110))
+                                                             : ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY));
         RECT path = {ScaleIntHelper(42), y + ScaleIntHelper(21), ScaleIntHelper(SIDEBAR_W) - ScaleIntHelper(18), y + ScaleIntHelper(38)};
         Text(dc, repository.available ? repository.path : L"不可用 · " + repository.error, path, ScaleIntHelper(10),
-             repository.available ? ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC)
-                                  : ThemeColor(CLR_DANGER_TEXT, RGB(255,123,114)));
+             !repository.available ? ThemeColor(CLR_DANGER_TEXT, RGB(255,123,114))
+                                   : repository.yearTotal == 0 ? ThemeColor(RGB(180,180,180), RGB(85,85,85))
+                                                               : ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
     }
 
     if (visible.empty()) {

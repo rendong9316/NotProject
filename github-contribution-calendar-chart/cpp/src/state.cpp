@@ -385,15 +385,24 @@ void RebuildContributions() {
             if (day.count > 0) ++next.activeDays;
         }
     }
-    for (const Repository& repository : g_repos) {
+    for (Repository& repository : g_repos) {
         const int count = totals[repository.id];
+        repository.yearTotal = count;
         if (count > 0) next.repoStats.push_back({repository.id, repository.name, count});
     }
+    SortReposByYearTotal();
     std::sort(next.repoStats.begin(), next.repoStats.end(), [](const ContributionData::RepoStat& left,
                                                                 const ContributionData::RepoStat& right) {
         return left.count > right.count;
     });
     g_contributionData = next;
+}
+
+void SortReposByYearTotal() {
+    std::sort(g_repos.begin(), g_repos.end(), [](const Repository& left, const Repository& right) {
+        if (left.yearTotal != right.yearTotal) return left.yearTotal > right.yearTotal;
+        return Lowercase(left.path) < Lowercase(right.path);
+    });
 }
 
 std::vector<size_t> VisibleRepositoryIndices() {

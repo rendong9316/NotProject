@@ -40,4 +40,5 @@ void ToggleTheme();
 void ApplyDarkMode(HWND hwnd, bool dark);
 std::vector<size_t> VisibleRepositoryIndices();
 int SelectedRepositoryCount();
+void SortReposByYearTotal();
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);

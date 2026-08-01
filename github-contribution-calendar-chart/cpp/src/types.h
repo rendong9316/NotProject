@@ -28,6 +28,7 @@ struct Repository {
     std::wstring updatedAt;
     std::wstring error;
     bool available = false;
+    int yearTotal = 0;
 };
 
 struct DayEntry {
