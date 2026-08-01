@@ -24,6 +24,9 @@ private:
     void DrawStatusbar(HDC dc);
     void DrawTooltip(HDC dc);
 
+    double fontScale_ = 1.0;
+    int Scale(int value) const { return static_cast<int>(value * fontScale_); }
+
     RECT refreshRect_ = {};
     RECT discoverRect_ = {};
     RECT themeRect_ = {};
