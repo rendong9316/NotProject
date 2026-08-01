@@ -70,7 +70,7 @@ int RunDiagnostics() {
 
 } // namespace
 
-int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int showCommand) {
+int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int) {
     if (commandLine && std::wstring(commandLine).find(L"--diagnose") != std::wstring::npos) {
         AttachConsole(ATTACH_PARENT_PROCESS);
         FILE* stream = nullptr;
@@ -116,7 +116,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int showC
         return 1;
     }
     ApplyDarkMode(window, false);
-    ShowWindow(window, showCommand);
+    ShowWindow(window, SW_SHOWMAXIMIZED);
     UpdateWindow(window);
 
     MSG message = {};
