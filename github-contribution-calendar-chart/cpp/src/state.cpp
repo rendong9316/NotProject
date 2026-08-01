@@ -259,6 +259,19 @@ bool InitializeState(HWND hwnd) {
     for (const Repository& repository : g_repos) g_selected[repository.id] = true;
     if (!GitScan::IsGitAvailable(g_gitVersion, error)) g_error = error;
     if (!notice.empty()) g_status = notice;
+    // Compute yearTotal for all repos and sort sidebar (same as after refresh/discover)
+    {
+        std::wstring readError;
+        for (Repository& repository : g_repos) {
+            std::map<std::wstring, int> days;
+            repository.yearTotal = g_store.LoadDays(repository.id, days, readError)
+                ? static_cast<int>(std::count_if(days.begin(), days.end(), [prefix = FormatInteger(g_year) + L"-"](const auto& p) {
+                      return p.first.compare(0, prefix.size(), prefix) == 0 && p.second > 0;
+                  }))
+                : 0;
+        }
+        SortReposByYearTotal();
+    }
     RebuildContributions();
     return true;
 }
@@ -319,6 +332,17 @@ void HandleOperationDone(LPARAM resultPointer) {
             L"，更新 " + FormatInteger(summary.updated) + L"，未变化 " + FormatInteger(summary.unchanged) +
             L"，不可用 " + FormatInteger(summary.unavailable) + L"，耗时 " + FormatDuration(summary.durationMs);
         RebuildContributions();
+        // Compute yearTotal for all repos (independent of selection) and sort sidebar
+        std::wstring readError;
+        for (Repository& repository : g_repos) {
+            std::map<std::wstring, int> days;
+            repository.yearTotal = g_store.LoadDays(repository.id, days, readError)
+                ? static_cast<int>(std::count_if(days.begin(), days.end(), [prefix = FormatInteger(g_year) + L"-"](const auto& p) {
+                      return p.first.compare(0, prefix.size(), prefix) == 0 && p.second > 0;
+                  }))
+                : 0;
+        }
+        SortReposByYearTotal();
     }
     delete result;
     InvalidateRect(g_hwndMain, nullptr, FALSE);
@@ -385,12 +409,10 @@ void RebuildContributions() {
             if (day.count > 0) ++next.activeDays;
         }
     }
-    for (Repository& repository : g_repos) {
+    for (const Repository& repository : g_repos) {
         const int count = totals[repository.id];
-        repository.yearTotal = count;
         if (count > 0) next.repoStats.push_back({repository.id, repository.name, count});
     }
-    SortReposByYearTotal();
     std::sort(next.repoStats.begin(), next.repoStats.end(), [](const ContributionData::RepoStat& left,
                                                                 const ContributionData::RepoStat& right) {
         return left.count > right.count;

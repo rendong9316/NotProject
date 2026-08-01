@@ -178,11 +178,13 @@ void UiDraw::DrawTopbar(HDC dc) {
     Fill(dc, rect, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE));
     Line(dc, 0, ScaleIntHelper(TOPBAR_H) - 1, width_, ScaleIntHelper(TOPBAR_H) - 1, ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
 
-    RECT title = {ScaleIntHelper(20), ScaleIntHelper(6), ScaleIntHelper(280), ScaleIntHelper(32)};
+    int titleHeight = ScaleIntHelper(32);
+    int subtitleHeight = ScaleIntHelper(32);
+    RECT title = {ScaleIntHelper(20), ScaleIntHelper(6), width_ - ScaleIntHelper(20), ScaleIntHelper(6) + titleHeight};
     Text(dc, L"本地 Git 提交热力图", title, ScaleIntHelper(17), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
-         DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
+         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS, FW_SEMIBOLD);
 
-    RECT subtitle = {ScaleIntHelper(20), ScaleIntHelper(31), ScaleIntHelper(310), ScaleIntHelper(52)};
+    RECT subtitle = {ScaleIntHelper(20), ScaleIntHelper(titleHeight + 8), width_ - ScaleIntHelper(20), ScaleIntHelper(6) + titleHeight + subtitleHeight};
     Text(dc, L"原生 C++ · 本机数据 · 增量刷新", subtitle, ScaleIntHelper(11), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
 
     Button(dc, discoverRect_, L"发现新项目", false, g_loading);
@@ -382,12 +384,15 @@ void UiDraw::DrawStatusbar(HDC dc) {
     Fill(dc, bar, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE));
     Line(dc, 0, bar.top, width_, bar.top, ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
 
-    RECT status = {ScaleIntHelper(16), bar.top, width_ - ScaleIntHelper(290), bar.bottom};
+    int statusLeftPadding = ScaleIntHelper(16);
+    int statusRightPadding = ScaleIntHelper(360);
+    RECT status = {statusLeftPadding, bar.top, width_ - statusRightPadding, bar.bottom};
     std::wstring text = g_status.empty() ? (g_repos.empty() ? L"点击\"发现新项目\"开始扫描" : L"数据已就绪") : g_status;
     Text(dc, text, status, ScaleIntHelper(11), g_error.empty() ? ThemeColor(CLR_TEXT_SECONDARY, CLR_DARK_TEXT_SEC)
                                                      : ThemeColor(CLR_DANGER_TEXT, RGB(255,123,114)));
 
-    RECT details = {width_ - ScaleIntHelper(360), bar.top, width_ - ScaleIntHelper(16), bar.bottom};
+    int detailsMinWidth = ScaleIntHelper(360);
+    RECT details = {width_ - detailsMinWidth, bar.top, width_ - ScaleIntHelper(16), bar.bottom};
     Text(dc, FormatInteger(static_cast<int>(g_repos.size())) + L" 个项目 · " + g_gitVersion, details, ScaleIntHelper(10),
          ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC), DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
 }
