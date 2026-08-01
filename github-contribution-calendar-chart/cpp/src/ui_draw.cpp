@@ -12,6 +12,9 @@
 
 using namespace Gdiplus;
 
+// Global font scale factor (declared in state.cpp, defined here via extern)
+extern double g_fontScale;
+
 UiDraw g_ui;
 
 namespace {
@@ -38,7 +41,7 @@ void Line(HDC dc, int x1, int y1, int x2, int y2, COLORREF color) {
 }
 
 HFONT MakeFont(int pixels, int weight = FW_NORMAL) {
-    return CreateFontW(-pixels, 0, 0, 0, weight, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+    return CreateFontW(-static_cast<int>(pixels * g_fontScale), 0, 0, 0, weight, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                        OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
                        DEFAULT_PITCH | FF_DONTCARE, FONT_FAMILY);
 }

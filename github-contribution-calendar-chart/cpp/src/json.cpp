@@ -231,6 +231,7 @@ std::string Spaces(int count) { return std::string(static_cast<size_t>(count), '
 
 Json::Json() : type_(Type::Null), boolean_(false), number_(0) {}
 Json::Json(bool value) : type_(Type::Boolean), boolean_(value), number_(0) {}
+Json::Json(int value) : type_(Type::Number), boolean_(false), number_(static_cast<double>(value)) {}
 Json::Json(double value) : type_(Type::Number), boolean_(false), number_(value) {}
 Json::Json(const std::string& value) : type_(Type::String), boolean_(false), number_(0), string_(value) {}
 
@@ -244,6 +245,7 @@ bool Json::Parse(const std::string& source, Json& value, std::string& error) {
 
 bool Json::boolean(bool fallback) const { return isBoolean() ? boolean_ : fallback; }
 int Json::integer(int fallback) const { return isNumber() ? static_cast<int>(number_) : fallback; }
+double Json::number(double fallback) const { return isNumber() ? number_ : fallback; }
 const std::string& Json::string() const { return string_; }
 const std::vector<Json>& Json::array() const { return array_; }
 std::vector<Json>& Json::array() { return array_; }

@@ -10,6 +10,7 @@ public:
 
     Json();
     explicit Json(bool value);
+    explicit Json(int value);
     explicit Json(double value);
     explicit Json(const std::string& value);
 
@@ -27,6 +28,7 @@ public:
 
     bool boolean(bool fallback = false) const;
     int integer(int fallback = 0) const;
+    double number(double fallback = 0.0) const;
     const std::string& string() const;
     const std::vector<Json>& array() const;
     std::vector<Json>& array();

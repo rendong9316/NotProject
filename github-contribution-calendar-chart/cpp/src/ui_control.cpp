@@ -84,6 +84,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
     case WM_MOUSEWHEEL: {
         POINT point = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
         ScreenToClient(hwnd, &point);
+        // Ctrl+滚轮调节字体大小
+        if (GetKeyState(VK_CONTROL) & 0x8000) {
+            AdjustFontSize(GET_WHEEL_DELTA_WPARAM(wParam) > 0 ? 1 : -1);
+            return 0;
+        }
         g_ui.MouseWheel(point.x, point.y, GET_WHEEL_DELTA_WPARAM(wParam));
         return 0;
     }
@@ -94,6 +99,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         if (wParam == VK_RIGHT) { ChangeYear(1); return 0; }
         if (wParam == 'F' && (GetKeyState(VK_CONTROL) & 0x8000)) { SetFocus(g_hwndSearch); return 0; }
         if (wParam == 'D' && (GetKeyState(VK_CONTROL) & 0x8000)) { ToggleTheme(); return 0; }
+        if (wParam == '+' && (GetKeyState(VK_CONTROL) & 0x8000)) { AdjustFontSize(1); return 0; }
+        if (wParam == '-' && (GetKeyState(VK_CONTROL) & 0x8000)) { AdjustFontSize(-1); return 0; }
         break;
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:

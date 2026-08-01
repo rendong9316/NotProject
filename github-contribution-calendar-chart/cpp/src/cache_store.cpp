@@ -171,8 +171,27 @@ bool LoadAppConfig(AppConfig& config, std::wstring& notice, std::wstring& error)
     config.maxScanDepth = std::max(1, std::min(64, config.maxScanDepth));
     config.scanConcurrency = std::max(1, std::min(32, config.scanConcurrency));
     config.gitConcurrency = std::max(1, std::min(16, config.gitConcurrency));
+    config.fontSize = root.get("fontSize").number(config.fontSize);
     for (const Json& item : root.get("authors").array()) if (item.isString()) config.authors.push_back(Utf8ToWide(item.string()));
     for (const Json& item : root.get("scanRoots").array()) if (item.isString()) config.scanRoots.push_back(Utf8ToWide(item.string()));
     if (config.authors.empty()) config.includeAllAuthors = true;
     return true;
+}
+
+bool SaveAppConfig(const AppConfig& config, std::wstring& error) {
+    std::wstring path = JoinPath(ApplicationDataDirectory(), L"config.json");
+    Json root = Json::Object();
+    root["scanAllDrives"] = Json(config.scanAllDrives);
+    root["includeAllAuthors"] = Json(config.includeAllAuthors);
+    root["maxScanDepth"] = Json(config.maxScanDepth);
+    root["scanConcurrency"] = Json(config.scanConcurrency);
+    root["gitConcurrency"] = Json(config.gitConcurrency);
+    root["fontSize"] = Json(config.fontSize);
+    Json authors = Json::Array();
+    for (const auto& a : config.authors) authors.push(JsonText(a));
+    root["authors"] = authors;
+    Json scanRoots = Json::Array();
+    for (const auto& r : config.scanRoots) scanRoots.push(JsonText(r));
+    root["scanRoots"] = scanRoots;
+    return WriteUtf8FileAtomic(path, root.Serialize() + "\n", error);
 }

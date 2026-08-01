@@ -28,3 +28,4 @@ private:
 };
 
 bool LoadAppConfig(AppConfig& config, std::wstring& notice, std::wstring& error);
+bool SaveAppConfig(const AppConfig& config, std::wstring& error);

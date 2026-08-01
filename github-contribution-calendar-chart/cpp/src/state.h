@@ -35,6 +35,7 @@ void ToggleRepository(const std::wstring& id);
 void SelectAllVisible(bool selected);
 void SetSearchQuery(const std::wstring& query);
 void ChangeYear(int delta);
+void AdjustFontSize(int delta);
 void ToggleTheme();
 void ApplyDarkMode(HWND hwnd, bool dark);
 std::vector<size_t> VisibleRepositoryIndices();

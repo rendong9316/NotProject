@@ -27,6 +27,7 @@ std::vector<Repository> g_repos;
 std::unordered_map<std::wstring, bool> g_selected;
 std::wstring g_query;
 ContributionData g_contributionData;
+double g_fontScale = 2.5;  // Set from g_config.fontSize after LoadAppConfig in InitializeState()
 
 namespace {
 
@@ -248,6 +249,7 @@ bool InitializeState(HWND hwnd) {
         return false;
     }
     if (!LoadAppConfig(g_config, notice, error)) g_error = error;
+    g_fontScale = g_config.fontSize;
     g_dataDirectory = g_store.directory();
     if (!cacheNotice.empty()) notice = notice.empty() ? cacheNotice : cacheNotice + L"；" + notice;
     if (!g_store.LoadIndex(g_repos, g_scanRoots, g_lastDiscovery, g_lastRefresh, error)) {
@@ -435,6 +437,20 @@ void ChangeYear(int delta) {
     g_year = next;
     RebuildContributions();
     InvalidateRect(g_hwndMain, nullptr, FALSE);
+}
+
+void AdjustFontSize(int delta) {
+    const double step = 0.1;
+    double newSize = g_config.fontSize + delta * step;
+    if (newSize < g_config.minFontSize) newSize = g_config.minFontSize;
+    if (newSize > g_config.maxFontSize) newSize = g_config.maxFontSize;
+    if (newSize != g_config.fontSize) {
+        g_config.fontSize = newSize;
+        g_fontScale = newSize;  // Update the global scale factor too
+        InvalidateRect(g_hwndMain, nullptr, FALSE);  // Trigger redraw
+        std::wstring saveError;
+        SaveAppConfig(g_config, saveError);  // Persist the new font size
+    }
 }
 
 void ApplyDarkMode(HWND hwnd, bool dark) {

@@ -13,6 +13,9 @@ struct AppConfig {
     int gitConcurrency = 6;
     std::vector<std::wstring> scanRoots;
     std::vector<std::wstring> authors;
+    double fontSize = 1.0;  // Initial font scale factor (minimum 0.5x, maximum 3.0x)
+    double minFontSize = 0.5;  // Minimum scale
+    double maxFontSize = 3.0;  // Maximum scale
 };
 
 struct Repository {
