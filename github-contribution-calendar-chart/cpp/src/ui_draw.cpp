@@ -17,6 +17,9 @@ extern double g_fontScale;
 
 UiDraw g_ui;
 
+// Scale a value by the current font scale
+inline int ScaleInt(int v) { return static_cast<int>(v * g_fontScale); }
+
 namespace {
 
 COLORREF ThemeColor(COLORREF light, COLORREF dark) { return g_theme == Theme::Dark ? dark : light; }
@@ -46,9 +49,7 @@ HFONT MakeFont(int pixels, int weight = FW_NORMAL) {
                        DEFAULT_PITCH | FF_DONTCARE, FONT_FAMILY);
 }
 
-inline int ScaleInt(int v) { return static_cast<int>(v * g_fontScale); }
-
-inline double ScaleDouble(double v) { return v * g_fontScale; }
+inline int ScaleIntHelper(int v) { return static_cast<int>(v * g_fontScale); }
 
 void Text(HDC dc, const std::wstring& value, RECT rect, int size, COLORREF color,
           UINT flags = DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS, int weight = FW_NORMAL) {
@@ -76,7 +77,7 @@ void Button(HDC dc, const RECT& rect, const std::wstring& label, bool primary, b
     HBRUSH outline = CreateSolidBrush(primary ? background : border);
     FrameRect(dc, &rect, outline);
     DeleteObject(outline);
-    Text(dc, label, rect, 13, text, DT_CENTER | DT_VCENTER | DT_SINGLELINE, primary ? FW_SEMIBOLD : FW_NORMAL);
+    Text(dc, label, rect, 13 * static_cast<int>(g_fontScale), text, DT_CENTER | DT_VCENTER | DT_SINGLELINE, primary ? FW_SEMIBOLD : FW_NORMAL);
 }
 
 void Checkbox(HDC dc, int x, int y, bool checked, bool enabled = true) {
@@ -118,30 +119,31 @@ void UiDraw::ComputeLayout(int width, int height) {
     width_ = width;
     height_ = height;
 
-    discoverRect_ = {width - ScaleInt(456), ScaleInt(12), width - ScaleInt(326), ScaleInt(46)};
-    refreshRect_ = {width - ScaleInt(316), ScaleInt(12), width - ScaleInt(196), ScaleInt(46)};
-    themeRect_ = {width - ScaleInt(178), ScaleInt(12), width - ScaleInt(28), ScaleInt(46)};
+    // All layout dimensions are scaled by g_fontScale
+    discoverRect_ = {width - ScaleIntHelper(456), ScaleIntHelper(12), width - ScaleIntHelper(326), ScaleIntHelper(46)};
+    refreshRect_ = {width - ScaleIntHelper(316), ScaleIntHelper(12), width - ScaleIntHelper(196), ScaleIntHelper(46)};
+    themeRect_ = {width - ScaleIntHelper(178), ScaleIntHelper(12), width - ScaleIntHelper(28), ScaleIntHelper(46)};
 
-    searchRect_ = {ScaleInt(14), ScaleInt(TOPBAR_H + 48), ScaleInt(SIDEBAR_W) - ScaleInt(14), ScaleInt(TOPBAR_H) + ScaleInt(82)};
-    selectAllRect_ = {0, ScaleInt(TOPBAR_H) + ScaleInt(92), ScaleInt(SIDEBAR_W), ScaleInt(TOPBAR_H) + ScaleInt(128)};
-    repoListRect_ = {0, ScaleInt(TOPBAR_H) + ScaleInt(132), ScaleInt(SIDEBAR_W), height - ScaleInt(42)};
+    searchRect_ = {ScaleIntHelper(14), ScaleIntHelper(TOPBAR_H + 48), ScaleIntHelper(SIDEBAR_W) - ScaleIntHelper(14), ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(82)};
+    selectAllRect_ = {0, ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(92), ScaleIntHelper(SIDEBAR_W), ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(128)};
+    repoListRect_ = {0, ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(132), ScaleIntHelper(SIDEBAR_W), height - ScaleIntHelper(42)};
 
-    yearPreviousRect_ = {ScaleInt(SIDEBAR_W) + ScaleInt(CONTENT_PAD), ScaleInt(TOPBAR_H) + ScaleInt(20),
-                         ScaleInt(SIDEBAR_W) + ScaleInt(CONTENT_PAD) + ScaleInt(34), ScaleInt(TOPBAR_H) + ScaleInt(52)};
-    yearNextRect_ = {ScaleInt(SIDEBAR_W) + ScaleInt(CONTENT_PAD) + ScaleInt(122), ScaleInt(TOPBAR_H) + ScaleInt(20),
-                     ScaleInt(SIDEBAR_W) + ScaleInt(CONTENT_PAD) + ScaleInt(156), ScaleInt(TOPBAR_H) + ScaleInt(52)};
+    yearPreviousRect_ = {ScaleIntHelper(SIDEBAR_W) + ScaleIntHelper(CONTENT_PAD), ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(20),
+                         ScaleIntHelper(SIDEBAR_W) + ScaleIntHelper(CONTENT_PAD) + ScaleIntHelper(34), ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(52)};
+    yearNextRect_ = {ScaleIntHelper(SIDEBAR_W) + ScaleIntHelper(CONTENT_PAD) + ScaleIntHelper(122), ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(20),
+                     ScaleIntHelper(SIDEBAR_W) + ScaleIntHelper(CONTENT_PAD) + ScaleIntHelper(156), ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(52)};
 
-    const int contentLeft = ScaleInt(SIDEBAR_W) + ScaleInt(CONTENT_PAD);
-    const int contentRight = width - ScaleInt(CONTENT_PAD);
-    const int available = std::max(ScaleInt(300), contentRight - contentLeft - ScaleInt(58));
+    const int contentLeft = ScaleIntHelper(SIDEBAR_W) + ScaleIntHelper(CONTENT_PAD);
+    const int contentRight = width - ScaleIntHelper(CONTENT_PAD);
+    const int available = std::max(ScaleIntHelper(300), contentRight - contentLeft - ScaleIntHelper(58));
     const int weeks = std::max(1, static_cast<int>(g_contributionData.days.size() / 7));
-    dayGap_ = available < ScaleInt(700) ? ScaleInt(2) : ScaleInt(3);
-    daySize_ = std::max(ScaleInt(7), std::min(ScaleInt(13), (available / weeks) - dayGap_));
+    dayGap_ = available < ScaleIntHelper(700) ? ScaleIntHelper(2) : ScaleIntHelper(3);
+    daySize_ = std::max(ScaleIntHelper(7), std::min(ScaleIntHelper(13), (available / weeks) - dayGap_));
 
-    const int calendarWidth = ScaleInt(54) + weeks * (daySize_ + dayGap_) + ScaleInt(16);
-    const int calendarHeight = ScaleInt(40) + 7 * (daySize_ + dayGap_) + ScaleInt(42);
-    calendarRect_ = {contentLeft, ScaleInt(TOPBAR_H) + ScaleInt(112), std::min(contentRight, contentLeft + calendarWidth),
-                     ScaleInt(TOPBAR_H) + ScaleInt(112) + calendarHeight};
+    const int calendarWidth = ScaleIntHelper(54) + weeks * (daySize_ + dayGap_) + ScaleIntHelper(16);
+    const int calendarHeight = ScaleIntHelper(40) + 7 * (daySize_ + dayGap_) + ScaleIntHelper(42);
+    calendarRect_ = {contentLeft, ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(112), std::min(contentRight, contentLeft + calendarWidth),
+                     ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(112) + calendarHeight};
 }
 
 void UiDraw::Resize(int width, int height) { ComputeLayout(width, height); }
@@ -166,22 +168,22 @@ void UiDraw::Paint(HDC target, int width, int height) {
 
 void UiDraw::LayoutSearch(HWND edit) const {
     if (!edit) return;
-    SetWindowPos(edit, nullptr, searchRect_.left + ScaleInt(8), searchRect_.top + ScaleInt(5),
-                 searchRect_.right - searchRect_.left - ScaleInt(16), searchRect_.bottom - searchRect_.top - ScaleInt(10),
+    SetWindowPos(edit, nullptr, searchRect_.left + ScaleIntHelper(8), searchRect_.top + ScaleIntHelper(5),
+                 searchRect_.right - searchRect_.left - ScaleIntHelper(16), searchRect_.bottom - searchRect_.top - ScaleIntHelper(10),
                  SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 void UiDraw::DrawTopbar(HDC dc) {
-    RECT rect = {0, 0, width_, ScaleInt(TOPBAR_H)};
+    RECT rect = {0, 0, width_, ScaleIntHelper(TOPBAR_H)};
     Fill(dc, rect, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE));
-    Line(dc, 0, ScaleInt(TOPBAR_H) - 1, width_, ScaleInt(TOPBAR_H) - 1, ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
+    Line(dc, 0, ScaleIntHelper(TOPBAR_H) - 1, width_, ScaleIntHelper(TOPBAR_H) - 1, ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
 
-    RECT title = {ScaleInt(20), ScaleInt(6), ScaleInt(ScaleInt(280)), ScaleInt(ScaleInt(32))};
-    Text(dc, L"本地 Git 提交热力图", title, ScaleInt(17), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
+    RECT title = {ScaleIntHelper(20), ScaleIntHelper(6), ScaleIntHelper(ScaleIntHelper(280)), ScaleIntHelper(ScaleIntHelper(32))};
+    Text(dc, L"本地 Git 提交热力图", title, ScaleIntHelper(17), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
          DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
 
-    RECT subtitle = {ScaleInt(20), ScaleInt(31), ScaleInt(ScaleInt(310)), ScaleInt(ScaleInt(52))};
-    Text(dc, L"原生 C++ · 本机数据 · 增量刷新", subtitle, ScaleInt(11), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
+    RECT subtitle = {ScaleIntHelper(20), ScaleIntHelper(31), ScaleIntHelper(ScaleIntHelper(310)), ScaleIntHelper(ScaleIntHelper(52))};
+    Text(dc, L"原生 C++ · 本机数据 · 增量刷新", subtitle, ScaleIntHelper(11), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
 
     Button(dc, discoverRect_, L"发现新项目", false, g_loading);
     Button(dc, refreshRect_, g_loading && g_operationKind == OperationKind::Refresh ? L"正在刷新…" : L"刷新提交", true, g_loading);
@@ -189,12 +191,12 @@ void UiDraw::DrawTopbar(HDC dc) {
 }
 
 void UiDraw::DrawSidebar(HDC dc) {
-    RECT sidebar = {0, ScaleInt(TOPBAR_H), ScaleInt(SIDEBAR_W), height_ - ScaleInt(42)};
+    RECT sidebar = {0, ScaleIntHelper(TOPBAR_H), ScaleIntHelper(SIDEBAR_W), height_ - ScaleIntHelper(42)};
     Fill(dc, sidebar, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE));
-    Line(dc, ScaleInt(SIDEBAR_W) - 1, ScaleInt(TOPBAR_H), ScaleInt(SIDEBAR_W), height_, ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
+    Line(dc, ScaleIntHelper(SIDEBAR_W) - 1, ScaleIntHelper(TOPBAR_H), ScaleIntHelper(SIDEBAR_W), height_, ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
 
-    RECT heading = {ScaleInt(14), ScaleInt(TOPBAR_H) + ScaleInt(10), ScaleInt(ScaleInt(SIDEBAR_W) - 12), ScaleInt(TOPBAR_H) + ScaleInt(40)};
-    Text(dc, L"项目  " + FormatInteger(static_cast<int>(g_repos.size())), heading, ScaleInt(14),
+    RECT heading = {ScaleIntHelper(14), ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(10), ScaleIntHelper(SIDEBAR_W) - ScaleIntHelper(12), ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(40)};
+    Text(dc, L"项目  " + FormatInteger(static_cast<int>(g_repos.size())), heading, ScaleIntHelper(14),
          ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY), DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
 
     Fill(dc, searchRect_, ThemeColor(CLR_BG_PAGE, CLR_DARK_BG_PAGE));
@@ -206,15 +208,15 @@ void UiDraw::DrawSidebar(HDC dc) {
     int selectedVisible = 0;
     for (size_t index : visible) if (g_selected[g_repos[index].id]) ++selectedVisible;
 
-    Checkbox(dc, 15, selectAllRect_.top + ScaleInt(10), !visible.empty() && selectedVisible == static_cast<int>(visible.size()));
-    RECT allText = {ScaleInt(42), selectAllRect_.top, ScaleInt(ScaleInt(SIDEBAR_W) - 12), selectAllRect_.bottom};
+    Checkbox(dc, 15, selectAllRect_.top + ScaleIntHelper(10), !visible.empty() && selectedVisible == static_cast<int>(visible.size()));
+    RECT allText = {ScaleIntHelper(42), selectAllRect_.top, ScaleIntHelper(SIDEBAR_W) - ScaleIntHelper(12), selectAllRect_.bottom};
     Text(dc, L"全部可见项目  " + FormatInteger(selectedVisible) + L"/" + FormatInteger(static_cast<int>(visible.size())),
-         allText, ScaleInt(12), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
+         allText, ScaleIntHelper(12), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
          DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
 
-    Line(dc, ScaleInt(12), selectAllRect_.bottom, ScaleInt(ScaleInt(SIDEBAR_W) - 12), selectAllRect_.bottom, ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
+    Line(dc, ScaleIntHelper(12), selectAllRect_.bottom, ScaleIntHelper(SIDEBAR_W) - ScaleIntHelper(12), selectAllRect_.bottom, ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
 
-    const int rowHeight = ScaleInt(40);
+    const int rowHeight = ScaleIntHelper(40);
     const int capacity = std::max(0, static_cast<int>((repoListRect_.bottom - repoListRect_.top) / rowHeight));
     const int maxScroll = std::max(0, static_cast<int>(visible.size()) - capacity);
     g_repoScroll = std::max(0, std::min(g_repoScroll, maxScroll));
@@ -222,20 +224,20 @@ void UiDraw::DrawSidebar(HDC dc) {
     for (int row = 0; row < capacity && g_repoScroll + row < static_cast<int>(visible.size()); ++row) {
         const Repository& repository = g_repos[visible[g_repoScroll + row]];
         const int y = repoListRect_.top + row * rowHeight;
-        RECT rowRect = {0, y, ScaleInt(SIDEBAR_W) - 1, y + rowHeight};
+        RECT rowRect = {0, y, ScaleIntHelper(SIDEBAR_W) - 1, y + rowHeight};
         if (!repository.available) Fill(dc, rowRect, ThemeColor(RGB(255,248,247), RGB(42,25,29)));
-        Checkbox(dc, 14, y + ScaleInt(12), g_selected[repository.id], repository.available);
-        RECT name = {ScaleInt(42), y + ScaleInt(3), ScaleInt(ScaleInt(SIDEBAR_W) - 24), y + ScaleInt(23)};
-        Text(dc, repository.name, name, ScaleInt(12), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY));
-        RECT path = {ScaleInt(42), y + ScaleInt(21), ScaleInt(ScaleInt(SIDEBAR_W) - 18), y + ScaleInt(38)};
-        Text(dc, repository.available ? repository.path : L"不可用 · " + repository.error, path, ScaleInt(10),
+        Checkbox(dc, 14, y + ScaleIntHelper(12), g_selected[repository.id], repository.available);
+        RECT name = {ScaleIntHelper(42), y + ScaleIntHelper(3), ScaleIntHelper(SIDEBAR_W) - ScaleIntHelper(24), y + ScaleIntHelper(23)};
+        Text(dc, repository.name, name, ScaleIntHelper(12), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY));
+        RECT path = {ScaleIntHelper(42), y + ScaleIntHelper(21), ScaleIntHelper(SIDEBAR_W) - ScaleIntHelper(18), y + ScaleIntHelper(38)};
+        Text(dc, repository.available ? repository.path : L"不可用 · " + repository.error, path, ScaleIntHelper(10),
              repository.available ? ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC)
                                   : ThemeColor(CLR_DANGER_TEXT, RGB(255,123,114)));
     }
 
     if (visible.empty()) {
-        RECT empty = {ScaleInt(20), repoListRect_.top + ScaleInt(20), ScaleInt(ScaleInt(SIDEBAR_W) - 20), repoListRect_.top + ScaleInt(90)};
-        Text(dc, g_query.empty() ? L"尚未发现 Git 项目" : L"没有匹配的项目", empty, ScaleInt(12),
+        RECT empty = {ScaleIntHelper(20), repoListRect_.top + ScaleIntHelper(20), ScaleIntHelper(SIDEBAR_W) - ScaleIntHelper(20), repoListRect_.top + ScaleIntHelper(90)};
+        Text(dc, g_query.empty() ? L"尚未发现 Git 项目" : L"没有匹配的项目", empty, ScaleIntHelper(12),
              ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC), DT_CENTER | DT_VCENTER | DT_WORDBREAK);
     }
 }
@@ -246,27 +248,27 @@ void UiDraw::DrawContent(HDC dc) {
     Button(dc, yearPreviousRect_, L"<", false);
     Button(dc, yearNextRect_, L">", false);
 
-    RECT year = {yearPreviousRect_.right + ScaleInt(4), yearPreviousRect_.top, yearNextRect_.left - ScaleInt(4), yearNextRect_.bottom};
-    Text(dc, FormatInteger(g_year), year, ScaleInt(18), primary, DT_CENTER | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
+    RECT year = {yearPreviousRect_.right + ScaleIntHelper(4), yearPreviousRect_.top, yearNextRect_.left - ScaleIntHelper(4), yearNextRect_.bottom};
+    Text(dc, FormatInteger(g_year), year, ScaleIntHelper(18), primary, DT_CENTER | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
 
-    const int metricsLeft = yearNextRect_.right + ScaleInt(32);
-    const int metricsTop = ScaleInt(TOPBAR_H + 12);
-    const int metricWidth = ScaleInt(145);
+    const int metricsLeft = yearNextRect_.right + ScaleIntHelper(32);
+    const int metricsTop = ScaleIntHelper(TOPBAR_H + 12);
+    const int metricWidth = ScaleIntHelper(145);
     const std::wstring values[] = {FormatInteger(g_contributionData.total), FormatInteger(g_contributionData.activeDays),
                                    FormatInteger(SelectedRepositoryCount())};
     const wchar_t* labels[] = {L"提交", L"活跃日", L"已选项目"};
     for (int index = 0; index < 3; ++index) {
-        RECT value = {metricsLeft + index * metricWidth, metricsTop, metricsLeft + (index + 1) * metricWidth - ScaleInt(12), metricsTop + ScaleInt(30)};
-        RECT label = {value.left, metricsTop + ScaleInt(28), value.right, metricsTop + ScaleInt(50)};
-        Text(dc, values[index], value, ScaleInt(21), primary, DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
-        Text(dc, labels[index], label, ScaleInt(11), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
+        RECT value = {metricsLeft + index * metricWidth, metricsTop, metricsLeft + (index + 1) * metricWidth - ScaleIntHelper(12), metricsTop + ScaleIntHelper(30)};
+        RECT label = {value.left, metricsTop + ScaleIntHelper(28), value.right, metricsTop + ScaleIntHelper(50)};
+        Text(dc, values[index], value, ScaleIntHelper(21), primary, DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
+        Text(dc, labels[index], label, ScaleIntHelper(11), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
     }
 
     if (!g_error.empty()) {
-        RECT error = {ScaleInt(SIDEBAR_W) + ScaleInt(CONTENT_PAD), ScaleInt(TOPBAR_H) + ScaleInt(68), width_ - ScaleInt(CONTENT_PAD), ScaleInt(TOPBAR_H) + ScaleInt(102)};
+        RECT error = {ScaleIntHelper(SIDEBAR_W) + ScaleIntHelper(CONTENT_PAD), ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(68), width_ - ScaleIntHelper(CONTENT_PAD), ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(102)};
         Fill(dc, error, ThemeColor(CLR_DANGER_BG, RGB(61,19,24)));
-        RECT text = {error.left + ScaleInt(10), error.top, error.right - ScaleInt(10), error.bottom};
-        Text(dc, g_error, text, ScaleInt(11), ThemeColor(CLR_DANGER_TEXT, RGB(255,123,114)));
+        RECT text = {error.left + ScaleIntHelper(10), error.top, error.right - ScaleIntHelper(10), error.bottom};
+        Text(dc, g_error, text, ScaleIntHelper(11), ThemeColor(CLR_DANGER_TEXT, RGB(255,123,114)));
     }
 
     DrawCalendar(dc);
@@ -279,14 +281,14 @@ void UiDraw::DrawCalendar(HDC dc) {
     FrameRect(dc, &calendarRect_, border);
     DeleteObject(border);
 
-    RECT title = {calendarRect_.left + ScaleInt(16), calendarRect_.top + ScaleInt(4), calendarRect_.right - ScaleInt(16), calendarRect_.top + ScaleInt(29)};
-    Text(dc, FormatInteger(g_year) + L" 年提交分布", title, ScaleInt(13),
+    RECT title = {calendarRect_.left + ScaleIntHelper(16), calendarRect_.top + ScaleIntHelper(4), calendarRect_.right - ScaleIntHelper(16), calendarRect_.top + ScaleIntHelper(29)};
+    Text(dc, FormatInteger(g_year) + L" 年提交分布", title, ScaleIntHelper(13),
          ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY), DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
 
     if (g_contributionData.days.empty()) return;
 
-    const int gridX = calendarRect_.left + ScaleInt(45);
-    const int gridY = calendarRect_.top + ScaleInt(34);
+    const int gridX = calendarRect_.left + ScaleIntHelper(45);
+    const int gridY = calendarRect_.top + ScaleIntHelper(34);
     const int stride = daySize_ + dayGap_;
     const int weeks = static_cast<int>(g_contributionData.days.size() / 7);
 
@@ -295,9 +297,9 @@ void UiDraw::DrawCalendar(HDC dc) {
 
     const wchar_t* weekdays[] = {L"日", L"一", L"二", L"三", L"四", L"五", L"六"};
     for (int day = 0; day < 7; ++day) {
-        RECT label = {calendarRect_.left + ScaleInt(10), gridY + day * stride - ScaleInt(2), gridX - ScaleInt(8), gridY + day * stride + daySize_ + ScaleInt(2)};
+        RECT label = {calendarRect_.left + ScaleIntHelper(10), gridY + day * stride - ScaleIntHelper(2), gridX - ScaleIntHelper(8), gridY + day * stride + daySize_ + ScaleIntHelper(2)};
         if (day == 1 || day == 3 || day == 5)
-            Text(dc, weekdays[day], label, ScaleInt(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC), DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
+            Text(dc, weekdays[day], label, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC), DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
     }
 
     int lastMonth = 0;
@@ -316,8 +318,8 @@ void UiDraw::DrawCalendar(HDC dc) {
             if (entry.inYear && entry.date.size() >= 7) {
                 const int month = _wtoi(entry.date.substr(5, 2).c_str());
                 if (month != lastMonth && _wtoi(entry.date.substr(8, 2).c_str()) <= 7) {
-                    RECT monthRect = {square.left - ScaleInt(2), calendarRect_.top + ScaleInt(18), square.left + ScaleInt(42), gridY};
-                    Text(dc, MonthLabel(entry.date), monthRect, ScaleInt(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+                    RECT monthRect = {square.left - ScaleIntHelper(2), calendarRect_.top + ScaleIntHelper(18), square.left + ScaleIntHelper(42), gridY};
+                    Text(dc, MonthLabel(entry.date), monthRect, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
                          DT_LEFT | DT_BOTTOM | DT_SINGLELINE);
                     lastMonth = month;
                 }
@@ -325,63 +327,63 @@ void UiDraw::DrawCalendar(HDC dc) {
         }
     }
 
-    const int legendY = gridY + 7 * stride + ScaleInt(12);
-    RECT less = {calendarRect_.right - ScaleInt(190), legendY, calendarRect_.right - ScaleInt(158), legendY + ScaleInt(18)};
-    Text(dc, L"少", less, ScaleInt(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC), DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
+    const int legendY = gridY + 7 * stride + ScaleIntHelper(12);
+    RECT less = {calendarRect_.right - ScaleIntHelper(190), legendY, calendarRect_.right - ScaleIntHelper(158), legendY + ScaleIntHelper(18)};
+    Text(dc, L"少", less, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC), DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
     for (int level = 0; level < 5; ++level) {
-        RECT square = {calendarRect_.right - ScaleInt(150) + level * ScaleInt(19), legendY + ScaleInt(2),
-                       calendarRect_.right - ScaleInt(138) + level * ScaleInt(19), legendY + ScaleInt(14)};
+        RECT square = {calendarRect_.right - ScaleIntHelper(150) + level * ScaleIntHelper(19), legendY + ScaleIntHelper(2),
+                       calendarRect_.right - ScaleIntHelper(138) + level * ScaleIntHelper(19), legendY + ScaleIntHelper(14)};
         Fill(dc, square, HeatColor(level, 4, true));
     }
-    RECT more = {calendarRect_.right - ScaleInt(50), legendY, calendarRect_.right - ScaleInt(14), legendY + ScaleInt(18)};
-    Text(dc, L"多", more, ScaleInt(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
+    RECT more = {calendarRect_.right - ScaleIntHelper(50), legendY, calendarRect_.right - ScaleIntHelper(14), legendY + ScaleIntHelper(18)};
+    Text(dc, L"多", more, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
 }
 
 void UiDraw::DrawRanking(HDC dc) {
-    const int top = calendarRect_.bottom + ScaleInt(22);
-    if (top > height_ - ScaleInt(88)) return;
+    const int top = calendarRect_.bottom + ScaleIntHelper(22);
+    if (top > height_ - ScaleIntHelper(88)) return;
 
-    RECT title = {calendarRect_.left, top, calendarRect_.right, top + ScaleInt(28)};
-    Text(dc, L"项目提交排行", title, ScaleInt(14), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
+    RECT title = {calendarRect_.left, top, calendarRect_.right, top + ScaleIntHelper(28)};
+    Text(dc, L"项目提交排行", title, ScaleIntHelper(14), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
          DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
 
-    const int availableHeight = height_ - ScaleInt(48) - (top + ScaleInt(30));
-    const int rows = std::min(6, std::min(static_cast<int>(g_contributionData.repoStats.size()), availableHeight / ScaleInt(30)));
+    const int availableHeight = height_ - ScaleIntHelper(48) - (top + ScaleIntHelper(30));
+    const int rows = std::min(6, std::min(static_cast<int>(g_contributionData.repoStats.size()), availableHeight / ScaleIntHelper(30)));
     const int maximum = rows ? g_contributionData.repoStats[0].count : 1;
 
     for (int index = 0; index < rows; ++index) {
         const ContributionData::RepoStat& stat = g_contributionData.repoStats[index];
-        const int y = top + ScaleInt(31) + index * ScaleInt(30);
-        RECT name = {calendarRect_.left, y, calendarRect_.left + ScaleInt(180), y + ScaleInt(24)};
-        Text(dc, stat.name, name, ScaleInt(11), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY));
-        RECT track = {calendarRect_.left + ScaleInt(190), y + ScaleInt(8), calendarRect_.right - ScaleInt(62), y + ScaleInt(16)};
+        const int y = top + ScaleIntHelper(31) + index * ScaleIntHelper(30);
+        RECT name = {calendarRect_.left, y, calendarRect_.left + ScaleIntHelper(180), y + ScaleIntHelper(24)};
+        Text(dc, stat.name, name, ScaleIntHelper(11), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY));
+        RECT track = {calendarRect_.left + ScaleIntHelper(190), y + ScaleIntHelper(8), calendarRect_.right - ScaleIntHelper(62), y + ScaleIntHelper(16)};
         Fill(dc, track, ThemeColor(CLR_GREEN_0, CLR_DARK_BG_HOVER));
         RECT value = track;
         value.right = value.left + static_cast<int>((track.right - track.left) * (stat.count / static_cast<double>(maximum)));
         Fill(dc, value, ThemeColor(CLR_GREEN_3, CLR_DARK_GREEN_3));
-        RECT count = {calendarRect_.right - ScaleInt(55), y, calendarRect_.right, y + ScaleInt(24)};
-        Text(dc, FormatInteger(stat.count), count, ScaleInt(11), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
+        RECT count = {calendarRect_.right - ScaleIntHelper(55), y, calendarRect_.right, y + ScaleIntHelper(24)};
+        Text(dc, FormatInteger(stat.count), count, ScaleIntHelper(11), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
              DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
     }
 
     if (!rows) {
-        RECT empty = {calendarRect_.left, top + ScaleInt(30), calendarRect_.right, top + ScaleInt(70)};
-        Text(dc, L"当前筛选范围内没有提交", empty, ScaleInt(11), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
+        RECT empty = {calendarRect_.left, top + ScaleIntHelper(30), calendarRect_.right, top + ScaleIntHelper(70)};
+        Text(dc, L"当前筛选范围内没有提交", empty, ScaleIntHelper(11), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
     }
 }
 
 void UiDraw::DrawStatusbar(HDC dc) {
-    RECT bar = {0, height_ - ScaleInt(42), width_, height_};
+    RECT bar = {0, height_ - ScaleIntHelper(42), width_, height_};
     Fill(dc, bar, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE));
     Line(dc, 0, bar.top, width_, bar.top, ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
 
-    RECT status = {ScaleInt(16), bar.top, width_ - ScaleInt(290), bar.bottom};
+    RECT status = {ScaleIntHelper(16), bar.top, width_ - ScaleIntHelper(290), bar.bottom};
     std::wstring text = g_status.empty() ? (g_repos.empty() ? L"点击\"发现新项目\"开始扫描" : L"数据已就绪") : g_status;
-    Text(dc, text, status, ScaleInt(11), g_error.empty() ? ThemeColor(CLR_TEXT_SECONDARY, CLR_DARK_TEXT_SEC)
+    Text(dc, text, status, ScaleIntHelper(11), g_error.empty() ? ThemeColor(CLR_TEXT_SECONDARY, CLR_DARK_TEXT_SEC)
                                                      : ThemeColor(CLR_DANGER_TEXT, RGB(255,123,114)));
 
-    RECT details = {width_ - ScaleInt(360), bar.top, width_ - ScaleInt(16), bar.bottom};
-    Text(dc, FormatInteger(static_cast<int>(g_repos.size())) + L" 个项目 · " + g_gitVersion, details, ScaleInt(10),
+    RECT details = {width_ - ScaleIntHelper(360), bar.top, width_ - ScaleIntHelper(16), bar.bottom};
+    Text(dc, FormatInteger(static_cast<int>(g_repos.size())) + L" 个项目 · " + g_gitVersion, details, ScaleIntHelper(10),
          ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC), DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
 }
 
@@ -391,11 +393,11 @@ void UiDraw::DrawTooltip(HDC dc) {
     if (!day.inYear) return;
 
     int lines = std::min(4, static_cast<int>(day.details.size()));
-    const int tooltipWidth = ScaleInt(250);
-    const int tooltipHeight = ScaleInt(52) + lines * ScaleInt(19);
-    int x = std::min(mouseX_ + ScaleInt(14), width_ - tooltipWidth - ScaleInt(8));
-    int y = mouseY_ - tooltipHeight - ScaleInt(10);
-    if (y < TOPBAR_H + ScaleInt(4)) y = mouseY_ + ScaleInt(18);
+    const int tooltipWidth = ScaleIntHelper(250);
+    const int tooltipHeight = ScaleIntHelper(52) + lines * ScaleIntHelper(19);
+    int x = std::min(mouseX_ + ScaleIntHelper(14), width_ - tooltipWidth - ScaleIntHelper(8));
+    int y = mouseY_ - tooltipHeight - ScaleIntHelper(10);
+    if (y < TOPBAR_H + ScaleIntHelper(4)) y = mouseY_ + ScaleIntHelper(18);
 
     RECT box = {x, y, x + tooltipWidth, y + tooltipHeight};
     Fill(dc, box, ThemeColor(RGB(36,41,47), RGB(230,237,243)));
@@ -404,24 +406,24 @@ void UiDraw::DrawTooltip(HDC dc) {
     DeleteObject(border);
 
     const COLORREF foreground = ThemeColor(RGB(255,255,255), RGB(31,35,40));
-    RECT headline = {x + ScaleInt(10), y + ScaleInt(5), box.right - ScaleInt(10), y + ScaleInt(29)};
-    Text(dc, day.date + L" · " + FormatInteger(day.count) + L" 次提交", headline, ScaleInt(12), foreground,
+    RECT headline = {x + ScaleIntHelper(10), y + ScaleIntHelper(5), box.right - ScaleIntHelper(10), y + ScaleIntHelper(29)};
+    Text(dc, day.date + L" · " + FormatInteger(day.count) + L" 次提交", headline, ScaleIntHelper(12), foreground,
          DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
 
     if (day.details.empty()) {
-        RECT empty = {x + ScaleInt(10), y + ScaleInt(28), box.right - ScaleInt(10), box.bottom - ScaleInt(6)};
-        Text(dc, L"当天没有提交", empty, ScaleInt(10), foreground);
+        RECT empty = {x + ScaleIntHelper(10), y + ScaleIntHelper(28), box.right - ScaleIntHelper(10), box.bottom - ScaleIntHelper(6)};
+        Text(dc, L"当天没有提交", empty, ScaleIntHelper(10), foreground);
     } else {
         for (int index = 0; index < lines; ++index) {
-            RECT detail = {x + ScaleInt(10), y + ScaleInt(29) + index * ScaleInt(19), box.right - ScaleInt(10), y + ScaleInt(48) + index * ScaleInt(19)};
-            Text(dc, day.details[index].repoName + L"  " + FormatInteger(day.details[index].count), detail, ScaleInt(10), foreground);
+            RECT detail = {x + ScaleIntHelper(10), y + ScaleIntHelper(29) + index * ScaleIntHelper(19), box.right - ScaleIntHelper(10), y + ScaleIntHelper(48) + index * ScaleIntHelper(19)};
+            Text(dc, day.details[index].repoName + L"  " + FormatInteger(day.details[index].count), detail, ScaleIntHelper(10), foreground);
         }
     }
 }
 
 int UiDraw::RepositoryAt(int x, int y) const {
     if (!Contains(repoListRect_, x, y)) return -1;
-    const int row = (y - repoListRect_.top) / ScaleInt(40);
+    const int row = (y - repoListRect_.top) / ScaleIntHelper(40);
     const std::vector<size_t> visible = VisibleRepositoryIndices();
     const int visibleIndex = g_repoScroll + row;
     return visibleIndex >= 0 && visibleIndex < static_cast<int>(visible.size()) ? static_cast<int>(visible[visibleIndex]) : -1;
@@ -457,8 +459,8 @@ void UiDraw::MouseMove(int x, int y) {
     mouseY_ = y;
     int next = -1;
     if (Contains(calendarRect_, x, y) && !g_contributionData.days.empty()) {
-        const int gridX = calendarRect_.left + ScaleInt(45);
-        const int gridY = calendarRect_.top + ScaleInt(34);
+        const int gridX = calendarRect_.left + ScaleIntHelper(45);
+        const int gridY = calendarRect_.top + ScaleIntHelper(34);
         const int stride = daySize_ + dayGap_;
         const int week = (x - gridX) / stride;
         const int day = (y - gridY) / stride;
@@ -485,8 +487,8 @@ void UiDraw::MouseLeave() {
 }
 
 void UiDraw::MouseWheel(int x, int y, int delta) {
-    if (x >= ScaleInt(SIDEBAR_W) || y < ScaleInt(TOPBAR_H)) return;
-    g_repoScroll -= delta / WHEEL_DELTA * ScaleInt(3);
+    if (x >= ScaleIntHelper(SIDEBAR_W) || y < ScaleIntHelper(TOPBAR_H)) return;
+    g_repoScroll -= delta / WHEEL_DELTA * ScaleIntHelper(3);
     g_repoScroll = std::max(0, g_repoScroll);
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }
