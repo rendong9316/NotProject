@@ -5,6 +5,7 @@
 #include "state.h"
 
 #include <windows.h>
+#include <wingdi.h>
 #include <gdiplus.h>
 #include <shellapi.h>
 #include <algorithm>
@@ -32,6 +33,42 @@ void Fill(HDC dc, const RECT& rect, COLORREF color) {
     HBRUSH brush = CreateSolidBrush(color);
     FillRect(dc, &rect, brush);
     DeleteObject(brush);
+}
+
+// GDI+ filled rounded rectangle (no border).
+void RoundRectFill(HDC dc, const RECT& rect, int radius, COLORREF fillColor) {
+    Graphics graphics(dc);
+    graphics.SetSmoothingMode(SmoothingModeHighQuality);
+    GraphicsPath path;
+    const int r2 = radius * 2;
+    path.AddArc(rect.left, rect.top, r2, r2, 180, 90);
+    path.AddArc(rect.right - r2, rect.top, r2, r2, 270, 90);
+    path.AddArc(rect.right - r2, rect.bottom - r2, r2, r2, 0, 90);
+    path.AddArc(rect.left, rect.bottom - r2, r2, r2, 90, 90);
+    path.CloseFigure();
+    SolidBrush fillBrush(ColorOf(fillColor));
+    graphics.FillPath(&fillBrush, &path);
+}
+
+// GDI+ stroked rounded rectangle (no fill).
+void RoundRectStroke(HDC dc, const RECT& rect, int radius, COLORREF borderColor) {
+    Graphics graphics(dc);
+    graphics.SetSmoothingMode(SmoothingModeHighQuality);
+    GraphicsPath path;
+    const int r2 = radius * 2;
+    path.AddArc(rect.left, rect.top, r2, r2, 180, 90);
+    path.AddArc(rect.right - r2, rect.top, r2, r2, 270, 90);
+    path.AddArc(rect.right - r2, rect.bottom - r2, r2, r2, 0, 90);
+    path.AddArc(rect.left, rect.bottom - r2, r2, r2, 90, 90);
+    path.CloseFigure();
+    Pen pen(ColorOf(borderColor), 1.0f);
+    graphics.DrawPath(&pen, &path);
+}
+
+// GDI+ rounded rectangle with both fill and border.
+void RoundRect(HDC dc, const RECT& rect, int radius, COLORREF fillColor, COLORREF borderColor) {
+    RoundRectFill(dc, rect, radius, fillColor);
+    RoundRectStroke(dc, rect, radius, borderColor);
 }
 
 void Line(HDC dc, int x1, int y1, int x2, int y2, COLORREF color) {
@@ -347,17 +384,11 @@ void UiDraw::DrawCalendar(HDC dc) {
             const DayEntry& entry = g_contributionData.days[index];
             RECT square = {gridX + week * stride, gridY + day * stride,
                            gridX + week * stride + daySize_, gridY + day * stride + daySize_};
-            Fill(dc, square, HeatColor(entry.count, maximum, entry.inYear));
-            if (index == selectedDay_) {
-                HBRUSH selected = CreateSolidBrush(ThemeColor(CLR_ACCENT, CLR_DARK_ACCENT));
-                FrameRect(dc, &square, selected);
-                DeleteObject(selected);
-            }
-            if (index == hoveredDay_ && entry.inYear) {
-                HBRUSH hover = CreateSolidBrush(ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY));
-                FrameRect(dc, &square, hover);
-                DeleteObject(hover);
-            }
+            RoundRectFill(dc, square, daySize_ / 3, HeatColor(entry.count, maximum, entry.inYear));
+            if (index == selectedDay_)
+                RoundRectStroke(dc, square, daySize_ / 3, ThemeColor(CLR_ACCENT, CLR_DARK_ACCENT));
+            if (index == hoveredDay_ && entry.inYear)
+                RoundRectStroke(dc, square, daySize_ / 3, ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY));
             if (entry.inYear && entry.date.size() >= 7) {
                 const int month = _wtoi(entry.date.substr(5, 2).c_str());
                 if (month != lastMonth && _wtoi(entry.date.substr(8, 2).c_str()) <= 7) {
@@ -377,7 +408,7 @@ void UiDraw::DrawCalendar(HDC dc) {
     for (int level = 0; level < 5; ++level) {
         RECT square = {calendarRect_.right - ScaleIntHelper(150) + level * ScaleIntHelper(19), legendY + ScaleIntHelper(2),
                        calendarRect_.right - ScaleIntHelper(138) + level * ScaleIntHelper(19), legendY + ScaleIntHelper(14)};
-        Fill(dc, square, HeatColor(level, 4, true));
+        RoundRectFill(dc, square, 2, HeatColor(level, 4, true));
     }
     RECT more = {calendarRect_.right - ScaleIntHelper(50), legendY, calendarRect_.right - ScaleIntHelper(14), legendY + ScaleIntHelper(18)};
     Text(dc, L"多", more, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
@@ -447,10 +478,9 @@ void UiDraw::DrawTooltip(HDC dc) {
     if (y < ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(4)) y = mouseY_ + ScaleIntHelper(18);
 
     RECT box = {x, y, x + tooltipWidth, y + tooltipHeight};
-    Fill(dc, box, ThemeColor(RGB(36,41,47), RGB(230,237,243)));
-    HBRUSH border = CreateSolidBrush(ThemeColor(RGB(36,41,47), RGB(230,237,243)));
-    FrameRect(dc, &box, border);
-    DeleteObject(border);
+    constexpr int tooltipRadius = 6;
+    RoundRect(dc, box, tooltipRadius, ThemeColor(RGB(36,41,47), RGB(230,237,243)),
+              ThemeColor(RGB(36,41,47), RGB(230,237,243)));
 
     const COLORREF foreground = ThemeColor(RGB(255,255,255), RGB(31,35,40));
     RECT headline = {x + ScaleIntHelper(10), y + ScaleIntHelper(5), box.right - ScaleIntHelper(10), y + ScaleIntHelper(29)};
@@ -645,10 +675,8 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
     RECT panel = detailPanelRect_;
     if (panel.bottom <= panel.top) return;
 
-    Fill(dc, panel, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE));
-    HBRUSH border = CreateSolidBrush(ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
-    FrameRect(dc, &panel, border);
-    DeleteObject(border);
+    constexpr int cornerRadius = 6;
+    RoundRect(dc, panel, cornerRadius, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE), ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
 
     const int titleHeight = ScaleIntHelper(36);
     const int columnsHeight = ScaleIntHelper(26);
