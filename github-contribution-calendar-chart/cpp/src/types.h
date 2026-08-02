@@ -5,6 +5,9 @@
 #include <string>
 #include <vector>
 
+enum class Theme { Light, Dark };
+enum class OperationKind { None, Refresh, Discover };
+
 struct AppConfig {
     bool scanAllDrives = true;
     bool includeAllAuthors = false;
@@ -17,6 +20,7 @@ struct AppConfig {
     double minFontSize = 0.5;  // Minimum scale
     double maxFontSize = 3.0;  // Maximum scale (was 3.0, reduce to prevent UI overflow)
     std::vector<int> columnWidths;  // Detail panel column widths
+    Theme theme = Theme::Light;
 };
 
 struct Repository {
@@ -70,6 +74,3 @@ struct OperationSummary {
     int unavailable = 0;
     unsigned long long durationMs = 0;
 };
-
-enum class Theme { Light, Dark };
-enum class OperationKind { None, Refresh, Discover };

@@ -3,6 +3,7 @@
 #include "git_scan.h"
 #include "platform.h"
 #include "state.h"
+#include "cache_store.h"
 
 #include <windows.h>
 #include <gdiplus.h>
@@ -115,7 +116,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int) {
         Gdiplus::GdiplusShutdown(gdiplusToken);
         return 1;
     }
-    ApplyDarkMode(window, false);
+    { std::wstring notice, error; LoadAppConfig(g_config, notice, error); }
+    ApplyDarkMode(window, g_config.theme == Theme::Dark);
     ShowWindow(window, SW_SHOWMAXIMIZED);
     UpdateWindow(window);
 

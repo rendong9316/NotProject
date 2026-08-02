@@ -254,6 +254,8 @@ bool InitializeState(HWND hwnd) {
     }
     if (!LoadAppConfig(g_config, notice, error)) g_error = error;
     g_fontScale = g_config.fontSize;
+    g_theme = g_config.theme;
+    ApplyDarkMode(hwnd, g_theme == Theme::Dark);
     g_ui.InitColumnWidths();
     g_dataDirectory = g_store.directory();
     if (!cacheNotice.empty()) notice = notice.empty() ? cacheNotice : cacheNotice + L"；" + notice;
@@ -537,6 +539,9 @@ void ApplyDarkMode(HWND hwnd, bool dark) {
 
 void ToggleTheme() {
     g_theme = g_theme == Theme::Light ? Theme::Dark : Theme::Light;
+    g_config.theme = g_theme;
     ApplyDarkMode(g_hwndMain, g_theme == Theme::Dark);
+    std::wstring saveError;
+    SaveAppConfig(g_config, saveError);
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }

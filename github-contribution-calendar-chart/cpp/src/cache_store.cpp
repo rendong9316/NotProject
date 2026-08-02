@@ -216,6 +216,7 @@ bool LoadAppConfig(AppConfig& config, std::wstring& notice, std::wstring& error)
     config.scanConcurrency = std::max(1, std::min(32, config.scanConcurrency));
     config.gitConcurrency = std::max(1, std::min(16, config.gitConcurrency));
     config.fontSize = root.get("fontSize").number(config.fontSize);
+    config.theme = root.get("theme").integer(0) == 1 ? Theme::Dark : Theme::Light;
     for (const Json& item : root.get("authors").array()) if (item.isString()) config.authors.push_back(Utf8ToWide(item.string()));
     for (const Json& item : root.get("scanRoots").array()) if (item.isString()) config.scanRoots.push_back(Utf8ToWide(item.string()));
     // Load column widths
@@ -239,6 +240,7 @@ bool SaveAppConfig(const AppConfig& config, std::wstring& error) {
     root["scanConcurrency"] = Json(config.scanConcurrency);
     root["gitConcurrency"] = Json(config.gitConcurrency);
     root["fontSize"] = Json(config.fontSize);
+    root["theme"] = Json(static_cast<double>(config.theme == Theme::Dark ? 1 : 0));
     Json authors = Json::Array();
     for (const auto& a : config.authors) authors.push(JsonText(a));
     root["authors"] = authors;
