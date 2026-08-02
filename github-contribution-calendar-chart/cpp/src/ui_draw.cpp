@@ -97,13 +97,31 @@ HFONT MakeFont(int pixels, int weight = FW_NORMAL) {
 
 inline int ScaleIntHelper(int v) { return static_cast<int>(v * g_fontScale); }
 
-void Text(HDC dc, const std::wstring& value, RECT rect, int size, COLORREF color,
-          UINT flags = DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS, int weight = FW_NORMAL) {
+// Get the number of lines needed for text within a given width, using specified font size.
+int GetTextLineCount(HDC dc, const std::wstring& text, int width, int fontSize) {
+    if (width <= 0 || text.empty()) return 1;
+    HFONT oldFont = MakeFont(fontSize, FW_NORMAL);
+    HFONT font = static_cast<HFONT>(SelectObject(dc, oldFont));
+    // Use DT_CALCRECT to compute needed rectangle size with word wrap
+    RECT testRect = {0, 0, width, 1000};
+    DrawTextW(dc, text.c_str(), static_cast<int>(text.size()), &testRect, DT_WORDBREAK | DT_CALCRECT | DT_SINGLELINE);
+    SelectObject(dc, font);
+    DeleteObject(oldFont);
+    return (testRect.bottom + fontSize - 1) / fontSize;  // Approximate line count
+}
+
+// Overload: supports word wrap and multi-line drawing
+void TextWrap(HDC dc, const std::wstring& value, RECT rect, int size, COLORREF color,
+              int maxLines = 1, UINT flags = DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS, int weight = FW_NORMAL) {
     HFONT font = MakeFont(size, weight);
     HFONT old = static_cast<HFONT>(SelectObject(dc, font));
     SetTextColor(dc, color);
     SetBkMode(dc, TRANSPARENT);
-    DrawTextW(dc, value.c_str(), static_cast<int>(value.size()), &rect, flags);
+    int drawFlags = flags;
+    if (maxLines > 1) {
+        drawFlags |= DT_WORDBREAK;
+    }
+    DrawTextW(dc, value.c_str(), static_cast<int>(value.size()), &rect, drawFlags);
     SelectObject(dc, old);
     DeleteObject(font);
 }
@@ -836,7 +854,8 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
 
     const int titleHeight = ScaleIntHelper(36);
     const int columnsHeight = ScaleIntHelper(26);
-    const int rowHeight = ScaleIntHelper(40);
+    const int baseRowHeight = ScaleIntHelper(40);
+    const int rowHeight = baseRowHeight + ScaleIntHelper(12);  // Increased for multi-line support
     const int inset = ScaleIntHelper(12);
 
     RECT titleRect = {panel.left, panel.top, panel.right, panel.top + titleHeight};
@@ -936,9 +955,10 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
         Text(dc, commit.repoName, {x1, y, x2 - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(10), secondary,
              DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
         const std::wstring subject = commit.message.empty() ? L"(无提交说明)" : commit.message;
+        // Message column: wrap to fit column width
         Text(dc, subject, {x2, y, x3 - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(11),
              ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
-             DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+             DT_LEFT | DT_WORDBREAK | DT_TOP | DT_END_ELLIPSIS);
         Text(dc, commit.author, {x3, y, x4 - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(10), secondary,
              DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
         const std::wstring shortHash = commit.hash.size() > 7 ? commit.hash.substr(0, 7) : commit.hash;
