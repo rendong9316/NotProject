@@ -63,7 +63,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         break;
     case WM_LBUTTONDOWN:
         SetFocus(hwnd);
+        g_ui.MouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
         g_ui.Click(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+        return 0;
+    case WM_LBUTTONUP:
+        g_ui.MouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
         return 0;
     case WM_RBUTTONUP:
         g_ui.RightClick(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));

@@ -3,6 +3,7 @@
 #include "config.h"
 #include "platform.h"
 #include "state.h"
+#include "cache_store.h"
 
 #include <windows.h>
 #include <wingdi.h>
@@ -22,6 +23,14 @@ UiDraw g_ui;
 inline int ScaleInt(int v) { return static_cast<int>(v * g_fontScale); }
 
 namespace {
+
+// Column resize: fixed ordering and default widths (pixels at fontScale=1.0)
+constexpr int kColCount = 5;
+// time | repo | message | author | hash
+constexpr int kColDefaultWidths[kColCount] = {68, 140, 250, 100, 76};
+constexpr int kColMinWidth = 40;
+// Dividers to check for hover: 0..3 (between col0/1, 1/2, 2/3, 3/4)
+constexpr int kColDividerCount = kColCount - 1;
 
 COLORREF ThemeColor(COLORREF light, COLORREF dark) { return g_theme == Theme::Dark ? dark : light; }
 
@@ -173,7 +182,55 @@ std::wstring MonthLabel(const std::wstring& date) {
     return FormatInteger(month) + L"月";
 }
 
+// Compute absolute X positions for column edges given content area bounds.
+// out[0..4] = left edges of each column, out[5] = right edge of last column.
+void GetColumnRects(const RECT& panel, int inset, const std::vector<int>& colWidths, int* out) {
+    const int contentLeft = panel.left + inset;
+    const int contentRight = panel.right - inset;
+    const int contentWidth = std::max(1, contentRight - contentLeft);
+
+    int widths[kColCount];
+    // First 4 columns: at least min width, preserve relative proportions if needed
+    int minFixedW = 0;
+    for (int i = 0; i < kColCount - 1; ++i) {
+        widths[i] = std::max(kColMinWidth, colWidths[i]);
+        minFixedW += widths[i];
+    }
+
+    // If first 4 cols exceed panel, proportionally scale them down
+    if (minFixedW >= contentWidth) {
+        double scale = static_cast<double>(contentWidth) / minFixedW;
+        for (int i = 0; i < kColCount - 1; ++i) {
+            widths[i] = std::max(kColMinWidth, static_cast<int>(widths[i] * scale));
+        }
+        minFixedW = 0;
+        for (int i = 0; i < kColCount - 1; ++i) minFixedW += widths[i];
+    }
+
+    // Last column takes remaining space
+    widths[kColCount - 1] = contentWidth - minFixedW;
+
+    int x = contentLeft;
+    for (int i = 0; i < kColCount; ++i) {
+        out[i] = x;
+        x += widths[i];
+    }
+    out[kColCount] = contentRight;
+}
+
 } // namespace
+
+// Initialize colWidths_ from defaults (or config), scaled to current font scale.
+void UiDraw::InitColumnWidths() {
+    colWidths_.resize(kColCount);
+    if (g_config.columnWidths.size() == kColCount) {
+        for (int i = 0; i < kColCount; ++i)
+            colWidths_[i] = static_cast<int>(g_config.columnWidths[i] * g_fontScale);
+    } else {
+        for (int i = 0; i < kColCount; ++i)
+            colWidths_[i] = static_cast<int>(kColDefaultWidths[i] * g_fontScale);
+    }
+}
 
 void UiDraw::ComputeLayout(int width, int height) {
     width_ = width;
@@ -540,6 +597,11 @@ bool UiDraw::Click(int x, int y) {
     }
     const int repository = RepositoryAt(x, y);
     if (repository >= 0) { ToggleRepository(g_repos[repository].id); return true; }
+    // Column resize start
+    if (selectedDay_ >= 0 && colDragDivider_ >= 0 && Contains(detailPanelRect_, x, y)) {
+        MouseDown(x, y);
+        return true;
+    }
     if (selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) {
         const RECT closeRect = {detailPanelRect_.right - ScaleIntHelper(36), detailPanelRect_.top,
                                 detailPanelRect_.right, detailPanelRect_.top + ScaleIntHelper(36)};
@@ -620,6 +682,48 @@ void UiDraw::MouseMove(int x, int y) {
             }
         }
     }
+
+    // Column resize drag
+    if (colResizeState_ == ColResizeState::Dragging && colResizeColumn_ >= 0) {
+        const int delta = x - colResizeEndX_;
+        const int col = colResizeColumn_;
+        const int minW = kColMinWidth;
+        // Constrain: left col grows at most by remaining right width, right col shrinks at most by left width
+        int adj = delta;
+        if (colWidths_[col] + adj < minW) adj = minW - colWidths_[col];
+        int rightSpace = colWidths_[col + 1] - minW;
+        if (adj > rightSpace) adj = rightSpace;
+        colWidths_[col] += adj;
+        colWidths_[col + 1] -= adj;
+        colResizeDragDelta_ += adj;
+        colResizeEndX_ = x;
+        InvalidateRect(g_hwndMain, nullptr, FALSE);
+        return;
+    }
+
+    // Column resize hover detection
+    if (selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) {
+        const int inset = ScaleIntHelper(12);
+        int colX[kColCount + 1];
+        GetColumnRects(detailPanelRect_, inset, colWidths_, colX);
+        int newDivider = -1;
+        for (int i = 1; i <= kColDividerCount; ++i) {
+            if (std::abs(x - colX[i]) <= 5) { newDivider = i - 1; break; }
+        }
+        if (newDivider != colDragDivider_) {
+            colDragDivider_ = newDivider;
+            if (colDragDivider_ >= 0)
+                SetCursor(LoadCursorW(nullptr, IDC_SIZEWE));
+            else
+                SetCursor(LoadCursorW(nullptr, IDC_ARROW));
+            InvalidateRect(g_hwndMain, nullptr, FALSE);
+        }
+    } else if (colDragDivider_ >= 0) {
+        colDragDivider_ = -1;
+        SetCursor(LoadCursorW(nullptr, IDC_ARROW));
+        InvalidateRect(g_hwndMain, nullptr, FALSE);
+    }
+
     const int nextCommit = CommitAt(x, y);
     if (next != hoveredDay_ || nextCommit != hoveredCommit_) {
         hoveredDay_ = next;
@@ -631,12 +735,64 @@ void UiDraw::MouseMove(int x, int y) {
 }
 
 void UiDraw::MouseLeave() {
+    if (colDragDivider_ >= 0 || colResizeState_ == ColResizeState::Dragging) {
+        colDragDivider_ = -1;
+        colResizeState_ = ColResizeState::None;
+        colResizeColumn_ = -1;
+        colResizeEndX_ = 0;
+        colResizeDragDelta_ = 0;
+        SetCursor(LoadCursorW(nullptr, IDC_ARROW));
+    }
     if (hoveredDay_ >= 0 || hoveredCommit_ >= 0) {
         hoveredDay_ = -1;
         hoveredCommit_ = -1;
         InvalidateRect(g_hwndMain, nullptr, FALSE);
     }
 }
+
+void UiDraw::MouseDown(int x, int y) {
+    if (selectedDay_ < 0 || colDragDivider_ < 0) return;
+    if (!Contains(detailPanelRect_, x, y)) return;
+    colResizeState_ = ColResizeState::Dragging;
+    colResizeColumn_ = colDragDivider_;
+    colResizeEndX_ = x;
+    // Record divider position at start for guide line
+    const int inset = ScaleIntHelper(12);
+    int colX[kColCount + 1];
+    GetColumnRects(detailPanelRect_, inset, colWidths_, colX);
+    colResizeStartDividerX_ = colX[colResizeColumn_];
+    colResizeDragDelta_ = 0;
+    InvalidateRect(g_hwndMain, nullptr, FALSE);
+}
+
+void UiDraw::MouseUp(int x, int y) {
+    if (colResizeState_ != ColResizeState::Dragging || colResizeColumn_ < 0) return;
+    if (!Contains(detailPanelRect_, x, y)) {
+        // Drag ended outside panel — cancel without saving
+        colResizeState_ = ColResizeState::None;
+        colResizeColumn_ = -1;
+        colResizeEndX_ = 0;
+        colResizeDragDelta_ = 0;
+        colResizeStartDividerX_ = 0;
+        colDragDivider_ = -1;
+        SetCursor(LoadCursorW(nullptr, IDC_ARROW));
+        return;
+    }
+    colResizeState_ = ColResizeState::None;
+    colResizeColumn_ = -1;
+    colResizeEndX_ = 0;
+    colResizeDragDelta_ = 0;
+    colDragDivider_ = -1;
+    SetCursor(LoadCursorW(nullptr, IDC_ARROW));
+    // Persist column widths to config
+    g_config.columnWidths.resize(kColCount);
+    for (int i = 0; i < kColCount; ++i)
+        g_config.columnWidths[i] = static_cast<int>(colWidths_[i] / g_fontScale);
+    std::wstring saveError;
+    SaveAppConfig(g_config, saveError);
+    InvalidateRect(g_hwndMain, nullptr, FALSE);
+}
+
 
 void UiDraw::MouseWheel(int x, int y, int delta) {
     if (selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) {
@@ -706,29 +862,52 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
     Text(dc, L"×", closeRect, ScaleIntHelper(12), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
          DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-    const int contentLeft = panel.left + inset;
-    const int contentRight = panel.right - inset;
-    const int contentWidth = std::max(1, contentRight - contentLeft);
-    const int timeWidth = ScaleIntHelper(68);
-    const int repoWidth = std::max(ScaleIntHelper(110), std::min(ScaleIntHelper(180), contentWidth / 5));
-    const int authorWidth = std::max(ScaleIntHelper(86), std::min(ScaleIntHelper(130), contentWidth / 7));
-    const int hashWidth = ScaleIntHelper(76);
-    const int timeX = contentLeft;
-    const int repoX = timeX + timeWidth;
-    const int messageX = repoX + repoWidth;
-    const int hashX = contentRight - hashWidth;
-    const int authorX = hashX - authorWidth;
+    int colX[kColCount + 1];
+    GetColumnRects(panel, inset, colWidths_, colX);
 
+    // Column header labels
     RECT columns = {panel.left, titleRect.bottom, panel.right, titleRect.bottom + columnsHeight};
     Fill(dc, columns, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE));
     const COLORREF secondary = ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC);
-    Text(dc, L"时间", {timeX, columns.top, repoX, columns.bottom}, ScaleIntHelper(9), secondary);
-    Text(dc, L"项目", {repoX, columns.top, messageX, columns.bottom}, ScaleIntHelper(9), secondary);
-    Text(dc, L"提交说明", {messageX, columns.top, authorX - ScaleIntHelper(8), columns.bottom}, ScaleIntHelper(9), secondary);
-    Text(dc, L"作者", {authorX, columns.top, hashX - ScaleIntHelper(8), columns.bottom}, ScaleIntHelper(9), secondary);
-    Text(dc, L"哈希", {hashX, columns.top, contentRight, columns.bottom}, ScaleIntHelper(9), secondary);
+    Text(dc, L"时间", {colX[0], columns.top, colX[1], columns.bottom}, ScaleIntHelper(9), secondary);
+    Text(dc, L"项目", {colX[1], columns.top, colX[2], columns.bottom}, ScaleIntHelper(9), secondary);
+    Text(dc, L"提交说明", {colX[2], columns.top, colX[3], columns.bottom}, ScaleIntHelper(9), secondary);
+    Text(dc, L"作者", {colX[3], columns.top, colX[4], columns.bottom}, ScaleIntHelper(9), secondary);
+    Text(dc, L"哈希", {colX[4], columns.top, colX[5], columns.bottom}, ScaleIntHelper(9), secondary);
     Line(dc, panel.left, columns.bottom - 1, panel.right, columns.bottom - 1,
          ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
+
+    // Draw vertical divider lines (resize handles)
+    const COLORREF dividerColor = ThemeColor(CLR_BORDER, CLR_DARK_BORDER);
+    const int dividerY1 = columns.top, dividerY2 = panel.bottom;
+    for (int i = 1; i < kColCount; ++i) {
+        Line(dc, colX[i], dividerY1, colX[i], dividerY2, dividerColor);
+    }
+
+    // Draw resize handle on header (hover or drag active)
+    const int kHandleH = ScaleIntHelper(16);
+    if (colDragDivider_ >= 0 && colResizeState_ == ColResizeState::None) {
+        const int dx = colX[colDragDivider_];
+        const int dy = columns.top + (columnsHeight - kHandleH) / 2;
+        RECT handleRect = {dx - 2, dy, dx + 2, dy + kHandleH};
+        Fill(dc, handleRect, ThemeColor(RGB(31,136,61), RGB(63,185,80)));
+    }
+
+    // Draw drag guide line while resizing
+    if (colResizeState_ == ColResizeState::Dragging && colResizeColumn_ >= 0) {
+        // Compute current divider position based on modified colWidths
+        int inset = ScaleIntHelper(12);
+        GetColumnRects(panel, inset, colWidths_, colX);
+        const int guideX = colX[colResizeColumn_];
+        const int guideColor = ThemeColor(RGB(31,136,61), RGB(63,185,80));
+        HPEN pen = CreatePen(PS_DOT, 1, guideColor);
+        HPEN oldPen = static_cast<HPEN>(SelectObject(dc, pen));
+        SetROP2(dc, R2_NOTXORPEN);
+        Line(dc, guideX, columns.top, guideX, panel.bottom, guideColor);
+        SetROP2(dc, R2_COPYPEN);
+        SelectObject(dc, oldPen);
+        DeleteObject(pen);
+    }
 
     RECT listRect = {panel.left, columns.bottom, panel.right, panel.bottom};
 
@@ -751,18 +930,19 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
             Fill(dc, rowRect, ThemeColor(CLR_BG_HOVER, CLR_DARK_BG_HOVER));
         else if (i % 2 == 0)
             Fill(dc, rowRect, ThemeColor(CLR_BG_PAGE, CLR_DARK_BG_PAGE));
-        Text(dc, commit.time, {timeX, y, repoX - ScaleIntHelper(8), y + rowHeight}, ScaleIntHelper(10), secondary,
+        const int x0 = colX[0], x1 = colX[1], x2 = colX[2], x3 = colX[3], x4 = colX[4], x5 = colX[5];
+        Text(dc, commit.time, {x0, y, x1 - ScaleIntHelper(8), y + rowHeight}, ScaleIntHelper(10), secondary,
              DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-        Text(dc, commit.repoName, {repoX, y, messageX - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(10), secondary,
+        Text(dc, commit.repoName, {x1, y, x2 - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(10), secondary,
              DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
         const std::wstring subject = commit.message.empty() ? L"(无提交说明)" : commit.message;
-        Text(dc, subject, {messageX, y, authorX - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(11),
+        Text(dc, subject, {x2, y, x3 - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(11),
              ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
              DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-        Text(dc, commit.author, {authorX, y, hashX - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(10), secondary,
+        Text(dc, commit.author, {x3, y, x4 - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(10), secondary,
              DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
         const std::wstring shortHash = commit.hash.size() > 7 ? commit.hash.substr(0, 7) : commit.hash;
-        Text(dc, shortHash, {hashX, y, contentRight, y + rowHeight}, ScaleIntHelper(10), secondary,
+        Text(dc, shortHash, {x4, y, x5, y + rowHeight}, ScaleIntHelper(10), secondary,
              DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
         Line(dc, panel.left, rowRect.bottom - 1, panel.right, rowRect.bottom - 1,
              ThemeColor(CLR_BORDER, CLR_DARK_BORDER));

@@ -218,6 +218,14 @@ bool LoadAppConfig(AppConfig& config, std::wstring& notice, std::wstring& error)
     config.fontSize = root.get("fontSize").number(config.fontSize);
     for (const Json& item : root.get("authors").array()) if (item.isString()) config.authors.push_back(Utf8ToWide(item.string()));
     for (const Json& item : root.get("scanRoots").array()) if (item.isString()) config.scanRoots.push_back(Utf8ToWide(item.string()));
+    // Load column widths
+    const Json& colWidthsJson = root.get("columnWidths");
+    if (colWidthsJson.isArray()) {
+        config.columnWidths.clear();
+        for (const Json& item : colWidthsJson.array()) {
+            if (item.isNumber()) config.columnWidths.push_back(item.integer());
+        }
+    }
     if (config.authors.empty()) config.includeAllAuthors = true;
     return true;
 }
@@ -237,5 +245,9 @@ bool SaveAppConfig(const AppConfig& config, std::wstring& error) {
     Json scanRoots = Json::Array();
     for (const auto& r : config.scanRoots) scanRoots.push(JsonText(r));
     root["scanRoots"] = scanRoots;
+    // Save column widths
+    Json colWidthsJson = Json::Array();
+    for (const int w : config.columnWidths) colWidthsJson.push(Json(w));
+    root["columnWidths"] = colWidthsJson;
     return WriteUtf8FileAtomic(path, root.Serialize() + "\n", error);
 }

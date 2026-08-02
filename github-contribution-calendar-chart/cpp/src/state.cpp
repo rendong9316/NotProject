@@ -29,6 +29,7 @@ std::unordered_map<std::wstring, bool> g_selected;
 std::wstring g_query;
 ContributionData g_contributionData;
 double g_fontScale = 1.0;
+AppConfig g_config;
 
 namespace {
 
@@ -42,7 +43,6 @@ struct OperationResult {
 };
 
 CacheStore g_store;
-AppConfig g_config;
 std::wstring g_lastDiscovery;
 std::wstring g_lastRefresh;
 std::vector<std::wstring> g_scanRoots;
@@ -254,6 +254,7 @@ bool InitializeState(HWND hwnd) {
     }
     if (!LoadAppConfig(g_config, notice, error)) g_error = error;
     g_fontScale = g_config.fontSize;
+    g_ui.InitColumnWidths();
     g_dataDirectory = g_store.directory();
     if (!cacheNotice.empty()) notice = notice.empty() ? cacheNotice : cacheNotice + L"；" + notice;
     if (!g_store.LoadIndex(g_repos, g_scanRoots, g_lastDiscovery, g_lastRefresh, error)) {

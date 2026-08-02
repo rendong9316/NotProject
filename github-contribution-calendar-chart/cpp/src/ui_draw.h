@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windows.h>
+#include <vector>
 
 class UiDraw {
 public:
@@ -11,10 +12,13 @@ public:
     void MouseLeave();
     bool Click(int x, int y);
     bool RightClick(int x, int y);
+    void MouseDown(int x, int y);
+    void MouseUp(int x, int y);
     void MouseWheel(int x, int y, int delta);
 
     void SelectDay(int index);
     void ClearDaySelection();
+    void InitColumnWidths();
 
 private:
     void ComputeLayout(int width, int height);
@@ -53,6 +57,16 @@ private:
     int commitScroll_ = 0;
     int mouseX_ = 0;
     int mouseY_ = 0;
+
+    // Column resize state
+    enum class ColResizeState { None, Dragging };
+    ColResizeState colResizeState_ = ColResizeState::None;
+    int colResizeColumn_ = -1;       // 0=time,1=repo,2=message,3=author
+    int colResizeEndX_ = 0;          // absolute X where drag started (mouse down position)
+    int colResizeDragDelta_ = 0;     // pixel offset accumulated during current drag
+    int colResizeStartDividerX_ = 0; // X position of the divider at drag start (for guide line)
+    std::vector<int> colWidths_;     // 5 saved widths at fontScale=1.0
+    int colDragDivider_ = -1;        // which divider the cursor is hovering over
 };
 
 extern UiDraw g_ui;
