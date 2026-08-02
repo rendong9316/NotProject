@@ -44,7 +44,7 @@ void Line(HDC dc, int x1, int y1, int x2, int y2, COLORREF color) {
 }
 
 HFONT MakeFont(int pixels, int weight = FW_NORMAL) {
-    return CreateFontW(-static_cast<int>(pixels * g_fontScale), 0, 0, 0, weight, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+    return CreateFontW(-pixels, 0, 0, 0, weight, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                        OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
                        DEFAULT_PITCH | FF_DONTCARE, FONT_FAMILY);
 }
@@ -64,6 +64,29 @@ void Text(HDC dc, const std::wstring& value, RECT rect, int size, COLORREF color
 
 bool Contains(const RECT& rect, int x, int y) { return x >= rect.left && x < rect.right && y >= rect.top && y <= rect.bottom; }
 
+bool CopyTextToClipboard(HWND owner, const std::wstring& value) {
+    if (value.empty() || !OpenClipboard(owner)) return false;
+    EmptyClipboard();
+    const SIZE_T bytes = (value.size() + 1) * sizeof(wchar_t);
+    HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, bytes);
+    if (!memory) {
+        CloseClipboard();
+        return false;
+    }
+    void* destination = GlobalLock(memory);
+    if (!destination) {
+        GlobalFree(memory);
+        CloseClipboard();
+        return false;
+    }
+    CopyMemory(destination, value.c_str(), bytes);
+    GlobalUnlock(memory);
+    const bool copied = SetClipboardData(CF_UNICODETEXT, memory) != nullptr;
+    if (!copied) GlobalFree(memory);
+    CloseClipboard();
+    return copied;
+}
+
 void Button(HDC dc, const RECT& rect, const std::wstring& label, bool primary, bool disabled = false) {
     const COLORREF border = ThemeColor(CLR_BORDER, CLR_DARK_BORDER);
     COLORREF background = primary ? ThemeColor(CLR_ACCENT, CLR_DARK_ACCENT)
@@ -77,7 +100,7 @@ void Button(HDC dc, const RECT& rect, const std::wstring& label, bool primary, b
     HBRUSH outline = CreateSolidBrush(primary ? background : border);
     FrameRect(dc, &rect, outline);
     DeleteObject(outline);
-    Text(dc, label, rect, 13 * static_cast<int>(g_fontScale), text, DT_CENTER | DT_VCENTER | DT_SINGLELINE, primary ? FW_SEMIBOLD : FW_NORMAL);
+    Text(dc, label, rect, ScaleIntHelper(13), text, DT_CENTER | DT_VCENTER | DT_SINGLELINE, primary ? FW_SEMIBOLD : FW_NORMAL);
 }
 
 void Checkbox(HDC dc, int x, int y, bool checked, bool enabled = true) {
@@ -148,6 +171,10 @@ void UiDraw::ComputeLayout(int width, int height) {
     const int panelTop = calendarRect_.bottom + ScaleIntHelper(12);
     const int panelHeight = std::max(ScaleIntHelper(0), height_ - ScaleIntHelper(42) - panelTop - ScaleIntHelper(8));
     detailPanelRect_ = {contentLeft, panelTop, contentRight, panelTop + panelHeight};
+    if (selectedDay_ >= 0 && panelHeight < ScaleIntHelper(140)) {
+        detailPanelRect_.top = calendarRect_.top;
+        detailPanelRect_.bottom = height_ - ScaleIntHelper(50);
+    }
 }
 
 void UiDraw::Resize(int width, int height) { ComputeLayout(width, height); }
@@ -449,6 +476,25 @@ int UiDraw::RepositoryAt(int x, int y) const {
     return visibleIndex >= 0 && visibleIndex < static_cast<int>(visible.size()) ? static_cast<int>(visible[visibleIndex]) : -1;
 }
 
+int UiDraw::VisibleCommitRows() const {
+    const int listTop = detailPanelRect_.top + ScaleIntHelper(62);
+    const int listHeight = std::max(0, static_cast<int>(detailPanelRect_.bottom) - listTop);
+    return std::max(1, listHeight / std::max(1, ScaleIntHelper(40)));
+}
+
+int UiDraw::CommitAt(int x, int y) const {
+    if (selectedDay_ < 0 || selectedDay_ >= static_cast<int>(g_contributionData.days.size()) ||
+        !Contains(detailPanelRect_, x, y)) return -1;
+    const int listTop = detailPanelRect_.top + ScaleIntHelper(62);
+    const int rowHeight = ScaleIntHelper(40);
+    if (y < listTop || rowHeight <= 0) return -1;
+    const int visibleRow = (y - listTop) / rowHeight;
+    if (visibleRow < 0 || visibleRow >= VisibleCommitRows()) return -1;
+    const int index = commitScroll_ + visibleRow;
+    const int total = static_cast<int>(g_contributionData.days[selectedDay_].commits.size());
+    return index >= 0 && index < total ? index : -1;
+}
+
 bool UiDraw::Click(int x, int y) {
     if (Contains(themeRect_, x, y)) { ToggleTheme(); return true; }
     if (Contains(refreshRect_, x, y)) { StartRefresh(); return true; }
@@ -464,6 +510,12 @@ bool UiDraw::Click(int x, int y) {
     }
     const int repository = RepositoryAt(x, y);
     if (repository >= 0) { ToggleRepository(g_repos[repository].id); return true; }
+    if (selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) {
+        const RECT closeRect = {detailPanelRect_.right - ScaleIntHelper(36), detailPanelRect_.top,
+                                detailPanelRect_.right, detailPanelRect_.top + ScaleIntHelper(36)};
+        if (Contains(closeRect, x, y)) ClearDaySelection();
+        return true;
+    }
     // Handle calendar day click for detail panel
     if (Contains(calendarRect_, x, y) && !g_contributionData.days.empty()) {
         const int gridX = calendarRect_.left + ScaleIntHelper(45);
@@ -483,14 +535,6 @@ bool UiDraw::Click(int x, int y) {
             }
         }
     }
-    // Close button in detail panel
-    if (selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) {
-        const int closeX = detailPanelRect_.right - ScaleIntHelper(32);
-        const int closeY = detailPanelRect_.top;
-        if (Contains({closeX, closeY, detailPanelRect_.right, closeY + ScaleIntHelper(30)}, x, y)) {
-            ClearDaySelection(); return true;
-        }
-    }
     // Close detail panel when clicking outside
     if (selectedDay_ >= 0 && !Contains(detailPanelRect_, x, y) && !Contains(calendarRect_, x, y)) {
         ClearDaySelection(); return true;
@@ -499,18 +543,25 @@ bool UiDraw::Click(int x, int y) {
 }
 
 bool UiDraw::RightClick(int x, int y) {
-    if (selectedDay_ >= 0 && selectedDay_ < static_cast<int>(g_contributionData.days.size()) &&
-        Contains(detailPanelRect_, x, y)) {
-        const int listTop = detailPanelRect_.top + ScaleIntHelper(62);
-        const int rowHeight = ScaleIntHelper(40);
-        if (y >= listTop) {
-            const int index = commitScroll_ + (y - listTop) / rowHeight;
-            const std::vector<DayEntry::CommitEntry>& commits = g_contributionData.days[selectedDay_].commits;
-            if (index >= 0 && index < static_cast<int>(commits.size()) && !commits[index].repoPath.empty()) {
-                ShellExecuteW(g_hwndMain, L"open", commits[index].repoPath.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                return true;
-            }
-        }
+    const int commitIndex = CommitAt(x, y);
+    if (commitIndex >= 0) {
+        const DayEntry::CommitEntry& commit = g_contributionData.days[selectedDay_].commits[commitIndex];
+        HMENU menu = CreatePopupMenu();
+        if (!menu) return false;
+        constexpr UINT OPEN_REPOSITORY = 1;
+        constexpr UINT COPY_HASH = 2;
+        AppendMenuW(menu, MF_STRING | (commit.repoPath.empty() ? MF_GRAYED : 0), OPEN_REPOSITORY, L"打开项目目录");
+        AppendMenuW(menu, MF_STRING | (commit.hash.empty() ? MF_GRAYED : 0), COPY_HASH, L"复制提交哈希");
+        POINT point = {x, y};
+        ClientToScreen(g_hwndMain, &point);
+        const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
+                                             point.x, point.y, 0, g_hwndMain, nullptr);
+        DestroyMenu(menu);
+        if (command == OPEN_REPOSITORY)
+            ShellExecuteW(g_hwndMain, L"open", commit.repoPath.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        else if (command == COPY_HASH)
+            CopyTextToClipboard(g_hwndMain, commit.hash);
+        return true;
     }
     const int repository = RepositoryAt(x, y);
     if (repository < 0) return false;
@@ -522,7 +573,9 @@ void UiDraw::MouseMove(int x, int y) {
     mouseX_ = x;
     mouseY_ = y;
     int next = -1;
-    if (Contains(calendarRect_, x, y) && !g_contributionData.days.empty()) {
+    if (Contains(calendarRect_, x, y) &&
+        !(selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) &&
+        !g_contributionData.days.empty()) {
         const int gridX = calendarRect_.left + ScaleIntHelper(45);
         const int gridY = calendarRect_.top + ScaleIntHelper(34);
         const int stride = daySize_ + dayGap_;
@@ -537,8 +590,10 @@ void UiDraw::MouseMove(int x, int y) {
             }
         }
     }
-    if (next != hoveredDay_) {
+    const int nextCommit = CommitAt(x, y);
+    if (next != hoveredDay_ || nextCommit != hoveredCommit_) {
         hoveredDay_ = next;
+        hoveredCommit_ = nextCommit;
         InvalidateRect(g_hwndMain, nullptr, FALSE);
     } else if (hoveredDay_ >= 0) {
         InvalidateRect(g_hwndMain, nullptr, FALSE);
@@ -546,8 +601,9 @@ void UiDraw::MouseMove(int x, int y) {
 }
 
 void UiDraw::MouseLeave() {
-    if (hoveredDay_ >= 0) {
+    if (hoveredDay_ >= 0 || hoveredCommit_ >= 0) {
         hoveredDay_ = -1;
+        hoveredCommit_ = -1;
         InvalidateRect(g_hwndMain, nullptr, FALSE);
     }
 }
@@ -555,7 +611,9 @@ void UiDraw::MouseLeave() {
 void UiDraw::MouseWheel(int x, int y, int delta) {
     if (selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) {
         commitScroll_ -= delta / WHEEL_DELTA * 3;
-        commitScroll_ = std::max(0, commitScroll_);
+        const int totalRows = static_cast<int>(g_contributionData.days[selectedDay_].commits.size());
+        commitScroll_ = std::max(0, std::min(commitScroll_, std::max(0, totalRows - VisibleCommitRows())));
+        hoveredCommit_ = CommitAt(x, y);
         InvalidateRect(g_hwndMain, nullptr, FALSE);
         return;
     }
@@ -568,6 +626,7 @@ void UiDraw::MouseWheel(int x, int y, int delta) {
 void UiDraw::SelectDay(int index) {
     selectedDay_ = index;
     commitScroll_ = 0;
+    hoveredCommit_ = -1;
     LoadDayCommits(index);
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }
@@ -575,6 +634,7 @@ void UiDraw::SelectDay(int index) {
 void UiDraw::ClearDaySelection() {
     selectedDay_ = -1;
     commitScroll_ = 0;
+    hoveredCommit_ = -1;
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }
 
@@ -597,13 +657,25 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
 
     RECT titleRect = {panel.left, panel.top, panel.right, panel.top + titleHeight};
     Fill(dc, titleRect, ThemeColor(CLR_BG_HOVER, CLR_DARK_BG_HOVER));
-    RECT titleText = {titleRect.left + inset, titleRect.top, titleRect.right - ScaleIntHelper(40), titleRect.bottom};
+    const int visibleRows = VisibleCommitRows();
+    const int totalRows = static_cast<int>(day.commits.size());
+    commitScroll_ = std::max(0, std::min(commitScroll_, std::max(0, totalRows - visibleRows)));
+    const int firstVisible = totalRows ? commitScroll_ + 1 : 0;
+    const int lastVisible = std::min(totalRows, commitScroll_ + visibleRows);
+
+    RECT titleText = {titleRect.left + inset, titleRect.top, titleRect.right - ScaleIntHelper(150), titleRect.bottom};
     Text(dc, day.date + L" · " + FormatInteger(day.count) + L" 次提交 · " +
              FormatInteger(static_cast<int>(day.details.size())) + L" 个项目",
          titleText, ScaleIntHelper(12), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
          DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
+    if (totalRows) {
+        RECT rangeRect = {panel.right - ScaleIntHelper(146), panel.top, panel.right - ScaleIntHelper(40), panel.top + titleHeight};
+        Text(dc, FormatInteger(firstVisible) + L"-" + FormatInteger(lastVisible) + L" / " + FormatInteger(totalRows),
+             rangeRect, ScaleIntHelper(9), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+             DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
+    }
     RECT closeRect = {panel.right - ScaleIntHelper(36), panel.top, panel.right, panel.top + titleHeight};
-    Text(dc, L"X", closeRect, ScaleIntHelper(11), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+    Text(dc, L"×", closeRect, ScaleIntHelper(12), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
          DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
     const int contentLeft = panel.left + inset;
@@ -626,7 +698,7 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
     Text(dc, L"项目", {repoX, columns.top, messageX, columns.bottom}, ScaleIntHelper(9), secondary);
     Text(dc, L"提交说明", {messageX, columns.top, authorX - ScaleIntHelper(8), columns.bottom}, ScaleIntHelper(9), secondary);
     Text(dc, L"作者", {authorX, columns.top, hashX - ScaleIntHelper(8), columns.bottom}, ScaleIntHelper(9), secondary);
-    Text(dc, L"提交", {hashX, columns.top, contentRight, columns.bottom}, ScaleIntHelper(9), secondary);
+    Text(dc, L"哈希", {hashX, columns.top, contentRight, columns.bottom}, ScaleIntHelper(9), secondary);
     Line(dc, panel.left, columns.bottom - 1, panel.right, columns.bottom - 1,
          ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
 
@@ -643,15 +715,14 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
         return;
     }
 
-    const int visibleRows = std::max(1, static_cast<int>((listRect.bottom - listRect.top) / rowHeight));
-    const int totalRows = static_cast<int>(day.commits.size());
-    commitScroll_ = std::max(0, std::min(commitScroll_, std::max(0, totalRows - visibleRows)));
-
     for (int i = 0; i < visibleRows && commitScroll_ + i < totalRows; ++i) {
         const DayEntry::CommitEntry& commit = day.commits[commitScroll_ + i];
         const int y = listRect.top + i * rowHeight;
         RECT rowRect = {listRect.left, y, listRect.right, y + rowHeight};
-        if (i % 2 == 0) Fill(dc, rowRect, ThemeColor(CLR_BG_PAGE, CLR_DARK_BG_PAGE));
+        if (commitScroll_ + i == hoveredCommit_)
+            Fill(dc, rowRect, ThemeColor(CLR_BG_HOVER, CLR_DARK_BG_HOVER));
+        else if (i % 2 == 0)
+            Fill(dc, rowRect, ThemeColor(CLR_BG_PAGE, CLR_DARK_BG_PAGE));
         Text(dc, commit.time, {timeX, y, repoX - ScaleIntHelper(8), y + rowHeight}, ScaleIntHelper(10), secondary,
              DT_LEFT | DT_VCENTER | DT_SINGLELINE);
         Text(dc, commit.repoName, {repoX, y, messageX - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(10), secondary,

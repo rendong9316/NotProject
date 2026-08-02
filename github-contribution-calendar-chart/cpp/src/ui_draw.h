@@ -19,6 +19,8 @@ public:
 private:
     void ComputeLayout(int width, int height);
     int RepositoryAt(int x, int y) const;
+    int CommitAt(int x, int y) const;
+    int VisibleCommitRows() const;
     void DrawTopbar(HDC dc);
     void DrawSidebar(HDC dc);
     void DrawContent(HDC dc);
@@ -46,6 +48,7 @@ private:
     int daySize_ = 12;
     int dayGap_ = 3;
     int hoveredDay_ = -1;
+    int hoveredCommit_ = -1;
     int selectedDay_ = -1;
     int commitScroll_ = 0;
     int mouseX_ = 0;
