@@ -1,7 +1,9 @@
 package com.sky.service.impl;
 
 import com.sky.constant.MessageConstant;
+import com.sky.constant.PasswordConstant;
 import com.sky.constant.StatusConstant;
+import com.sky.dto.EmployeeDTO;
 import com.sky.dto.EmployeeLoginDTO;
 import com.sky.entity.Employee;
 import com.sky.exception.AccountLockedException;
@@ -9,9 +11,12 @@ import com.sky.exception.AccountNotFoundException;
 import com.sky.exception.PasswordErrorException;
 import com.sky.mapper.EmployeeMapper;
 import com.sky.service.EmployeeService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
+
+import java.time.LocalDateTime;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
@@ -39,7 +44,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         //密码比对
-        // TODO 后期需要进行md5加密，然后再进行比对
+        // T/O/D/O 后期需要进行md5加密，然后再进行比对
         // 本td已完成
 
         password = DigestUtils.md5DigestAsHex(password.getBytes());
@@ -56,5 +61,33 @@ public class EmployeeServiceImpl implements EmployeeService {
         //3、返回实体对象
         return employee;
     }
+
+
+    /**
+     * 新增员工
+     */
+    public void save(EmployeeDTO employeeDTO){
+        Employee employee = new Employee();
+        //使用对象属性拷贝(前提是属性名是一致的)
+        BeanUtils.copyProperties(employeeDTO,employee);
+        //但是还有四个属性DYO中没有，就需要手动设置
+        //默认设置状态为“正常”
+        employee.setStatus(StatusConstant.ENABLE);
+
+        //还得设置初始密码
+        employee.setPassword(DigestUtils.md5DigestAsHex(PasswordConstant.DEFAULT_PASSWORD.getBytes()));
+        employee.setCreateTime(LocalDateTime.now());
+        employee.setUpdateTime(LocalDateTime.now());
+        //设置创建人/修改人id，先写死一个值，后期完善。后缀L表示是Long长整型类型
+        // TODO 后期需要改为动态获取操作者的员工id
+        employee.setCreateUser(666L);
+        employee.setUpdateUser(666L);
+
+        //对象都封装完毕后，需要调用持久层方法
+        employeeMapper.insert(employee);
+
+
+    }
+
 
 }
