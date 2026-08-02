@@ -13,6 +13,9 @@ public:
     bool RightClick(int x, int y);
     void MouseWheel(int x, int y, int delta);
 
+    void SelectDay(int index);
+    void ClearDaySelection();
+
 private:
     void ComputeLayout(int width, int height);
     int RepositoryAt(int x, int y) const;
@@ -21,6 +24,7 @@ private:
     void DrawContent(HDC dc);
     void DrawCalendar(HDC dc);
     void DrawRanking(HDC dc);
+    void DrawDayDetailPanel(HDC dc);
     void DrawStatusbar(HDC dc);
     void DrawTooltip(HDC dc);
 
@@ -36,11 +40,14 @@ private:
     RECT searchRect_ = {};
     RECT repoListRect_ = {};
     RECT calendarRect_ = {};
+    RECT detailPanelRect_ = {};
     int width_ = 0;
     int height_ = 0;
     int daySize_ = 12;
     int dayGap_ = 3;
     int hoveredDay_ = -1;
+    int selectedDay_ = -1;
+    int commitScroll_ = 0;
     int mouseX_ = 0;
     int mouseY_ = 0;
 };

@@ -144,6 +144,10 @@ void UiDraw::ComputeLayout(int width, int height) {
     const int calendarHeight = ScaleIntHelper(40) + 7 * (daySize_ + dayGap_) + ScaleIntHelper(42);
     calendarRect_ = {contentLeft, ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(112), std::min(contentRight, contentLeft + calendarWidth),
                      ScaleIntHelper(TOPBAR_H) + ScaleIntHelper(112) + calendarHeight};
+    // Detail panel: below calendar, above status bar
+    const int panelTop = calendarRect_.bottom + ScaleIntHelper(12);
+    const int panelHeight = std::max(ScaleIntHelper(0), height_ - ScaleIntHelper(42) - panelTop - ScaleIntHelper(8));
+    detailPanelRect_ = {contentLeft, panelTop, contentRight, panelTop + panelHeight};
 }
 
 void UiDraw::Resize(int width, int height) { ComputeLayout(width, height); }
@@ -159,6 +163,7 @@ void UiDraw::Paint(HDC target, int width, int height) {
     DrawSidebar(buffer);
     DrawContent(buffer);
     DrawStatusbar(buffer);
+    DrawDayDetailPanel(buffer);
     DrawTooltip(buffer);
     BitBlt(target, 0, 0, width, height, buffer, 0, 0, SRCCOPY);
     SelectObject(buffer, previous);
@@ -279,6 +284,7 @@ void UiDraw::DrawContent(HDC dc) {
 
     DrawCalendar(dc);
     DrawRanking(dc);
+    DrawDayDetailPanel(dc);
 }
 
 void UiDraw::DrawCalendar(HDC dc) {
@@ -454,6 +460,37 @@ bool UiDraw::Click(int x, int y) {
     }
     const int repository = RepositoryAt(x, y);
     if (repository >= 0) { ToggleRepository(g_repos[repository].id); return true; }
+    // Handle calendar day click for detail panel
+    if (Contains(calendarRect_, x, y) && !g_contributionData.days.empty()) {
+        const int gridX = calendarRect_.left + ScaleIntHelper(45);
+        const int gridY = calendarRect_.top + ScaleIntHelper(34);
+        const int stride = daySize_ + dayGap_;
+        const int week = (x - gridX) / stride;
+        const int dayOfWeek = (y - gridY) / stride;
+        if (x >= gridX && y >= gridY && week >= 0 && dayOfWeek >= 0 && dayOfWeek < 7) {
+            const int index = week * 7 + dayOfWeek;
+            if (index < static_cast<int>(g_contributionData.days.size())) {
+                const DayEntry& entry = g_contributionData.days[index];
+                const int localX = (x - gridX) % stride;
+                const int localY = (y - gridY) % stride;
+                if (localX < daySize_ && localY < daySize_ && !entry.commits.empty()) {
+                    SelectDay(index); return true;
+                }
+            }
+        }
+    }
+    // Close button in detail panel
+    if (selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) {
+        const int closeX = detailPanelRect_.right - ScaleIntHelper(32);
+        const int closeY = detailPanelRect_.top;
+        if (Contains({closeX, closeY, detailPanelRect_.right, closeY + ScaleIntHelper(30)}, x, y)) {
+            ClearDaySelection(); return true;
+        }
+    }
+    // Close detail panel when clicking outside
+    if (selectedDay_ >= 0 && !Contains(detailPanelRect_, x, y) && !Contains(calendarRect_, x, y)) {
+        ClearDaySelection(); return true;
+    }
     return false;
 }
 
@@ -478,7 +515,9 @@ void UiDraw::MouseMove(int x, int y) {
             const int index = week * 7 + day;
             const int localX = (x - gridX) % stride;
             const int localY = (y - gridY) % stride;
-            if (index < static_cast<int>(g_contributionData.days.size()) && localX < daySize_ && localY < daySize_) next = index;
+            if (index < static_cast<int>(g_contributionData.days.size()) && localX < daySize_ && localY < daySize_) {
+                next = index;
+            }
         }
     }
     if (next != hoveredDay_) {
@@ -500,5 +539,82 @@ void UiDraw::MouseWheel(int x, int y, int delta) {
     if (x >= ScaleIntHelper(SIDEBAR_W) || y < ScaleIntHelper(TOPBAR_H)) return;
     g_repoScroll -= delta / WHEEL_DELTA * ScaleIntHelper(3);
     g_repoScroll = std::max(0, g_repoScroll);
+    if (selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) {
+        commitScroll_ -= delta / WHEEL_DELTA * ScaleIntHelper(3);
+        commitScroll_ = std::max(0, commitScroll_);
+    }
     InvalidateRect(g_hwndMain, nullptr, FALSE);
+}
+
+void UiDraw::SelectDay(int index) {
+    selectedDay_ = index;
+    commitScroll_ = 0;
+    InvalidateRect(g_hwndMain, nullptr, FALSE);
+}
+
+void UiDraw::ClearDaySelection() {
+    selectedDay_ = -1;
+    commitScroll_ = 0;
+    InvalidateRect(g_hwndMain, nullptr, FALSE);
+}
+
+void UiDraw::DrawDayDetailPanel(HDC dc) {
+    if (selectedDay_ < 0 || selectedDay_ >= static_cast<int>(g_contributionData.days.size())) return;
+    const DayEntry& day = g_contributionData.days[selectedDay_];
+    if (day.commits.empty()) { selectedDay_ = -1; return; }
+    if (!Contains(detailPanelRect_, 0, 0)) return;
+
+    RECT panel = detailPanelRect_;
+    if (panel.bottom <= panel.top) return;
+
+    Fill(dc, panel, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE));
+    HBRUSH border = CreateSolidBrush(ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
+    FrameRect(dc, &panel, border);
+    DeleteObject(border);
+
+    // Title bar
+    RECT titleRect = {panel.left, panel.top, panel.right, panel.top + ScaleIntHelper(30)};
+    Fill(dc, titleRect, ThemeColor(CLR_BG_HOVER, CLR_DARK_BG_HOVER));
+    RECT titleText = {titleRect.left + ScaleIntHelper(12), titleRect.top, titleRect.right - ScaleIntHelper(12), titleRect.bottom};
+    // Extract date from day.date (YYYY-MM-DD)
+    const wchar_t* dateStr = day.date.c_str();
+    Text(dc, dateStr ? std::wstring(dateStr) + L" · " + FormatInteger(day.commits.size()) + L" 次提交" : L"",
+         titleText, ScaleIntHelper(12), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
+         DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    // Close button (×)
+    RECT closeRect = {panel.right - ScaleIntHelper(32), panel.top, panel.right, panel.top + ScaleIntHelper(30)};
+    Text(dc, L"✕", closeRect, ScaleIntHelper(12), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+         DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+    // Commit list area
+    int commitHeight = ScaleIntHelper(28);
+    int visibleRows = std::max(1, static_cast<int>((panel.bottom - panel.top - ScaleIntHelper(30)) / commitHeight));
+    int totalRows = static_cast<int>(day.commits.size());
+    commitScroll_ = std::max(0, std::min(commitScroll_, std::max(0, totalRows - visibleRows)));
+
+    RECT listRect = {panel.left, panel.top + ScaleIntHelper(30), panel.right, panel.bottom};
+    for (int i = 0; i < visibleRows && commitScroll_ + i < totalRows; ++i) {
+        const DayEntry::CommitEntry& commit = day.commits[commitScroll_ + i];
+        const int y = listRect.top + i * commitHeight;
+        RECT rowRect = {listRect.left, y, listRect.right, y + commitHeight};
+        // Alternate row background
+        if (i % 2 == 0) Fill(dc, rowRect, ThemeColor(CLR_BG_PAGE, CLR_DARK_BG_PAGE));
+        // Time
+        RECT timeRect = {listRect.left + ScaleIntHelper(8), y, listRect.left + ScaleIntHelper(60), y + commitHeight};
+        Text(dc, commit.time, timeRect, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+             DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        // Repository name
+        RECT repoRect = {timeRect.right + ScaleIntHelper(4), y, listRect.right - ScaleIntHelper(80), y + commitHeight};
+        const std::wstring repoName = day.details.empty() ? L"" : day.details[0].repoName;
+        Text(dc, repoName, repoRect, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+             DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        // Commit message
+        RECT msgRect = {repoRect.right + ScaleIntHelper(4), y, listRect.right - ScaleIntHelper(80), y + commitHeight};
+        Text(dc, commit.message, msgRect, ScaleIntHelper(11), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
+             DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        // Author
+        RECT authorRect = {listRect.right - ScaleIntHelper(72), y, listRect.right - ScaleIntHelper(8), y + commitHeight};
+        Text(dc, commit.author, authorRect, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+             DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+    }
 }

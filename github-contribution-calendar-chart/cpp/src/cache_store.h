@@ -16,6 +16,8 @@ public:
                    const std::wstring& lastDiscovery, const std::wstring& lastRefresh, std::wstring& error) const;
     bool LoadDays(const std::wstring& repositoryId, std::map<std::wstring, int>& days, std::wstring& error) const;
     bool SaveDays(const Repository& repository, const std::map<std::wstring, int>& days, std::wstring& error) const;
+    bool LoadCommits(const std::wstring& repositoryId, std::vector<DayEntry::CommitEntry>& commits, std::wstring& error) const;
+    bool SaveCommits(const Repository& repository, const std::vector<DayEntry::CommitEntry>& commits, std::wstring& error) const;
     bool HasDays(const std::wstring& repositoryId) const;
 
     const std::wstring& directory() const { return directory_; }

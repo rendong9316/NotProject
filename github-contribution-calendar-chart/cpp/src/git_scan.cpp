@@ -256,6 +256,53 @@ bool GitScan::IsGitAvailable(std::wstring& version, std::wstring& error) {
     return true;
 }
 
+bool GitScan::CollectCommits(const std::wstring& path, const AppConfig& config,
+                             std::vector<DayEntry::CommitEntry>& commits, std::wstring& error) {
+    std::string output;
+    if (!RunGit({L"--no-pager", L"-C", path, L"log", L"--all",
+                 L"--pretty=format:%ad%x09%ai%x09%s%x09%an%x09%ae"}, output, error, 30 * 60 * 1000)) return false;
+    std::set<std::wstring> authors;
+    for (const std::wstring& author : config.authors) authors.insert(Lowercase(author));
+    const bool includeAll = config.includeAllAuthors || authors.empty();
+    commits.clear();
+    size_t position = 0;
+    while (position < output.size()) {
+        const size_t end = output.find('\n', position);
+        std::string line = output.substr(position, end == std::string::npos ? std::string::npos : end - position);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        // Format: date\tfull_iso_time\tsubject\tname\temail
+        std::vector<std::string> fields;
+        size_t start = 0;
+        for (int i = 0; i < 4; ++i) {
+            const size_t pos = line.find('\t', start);
+            fields.push_back(pos == std::string::npos ? line.substr(start) : line.substr(start, pos - start));
+            start = pos == std::string::npos ? line.size() : pos + 1;
+        }
+        if (fields.size() < 4) { position = end == std::string::npos ? output.size() : end + 1; continue; }
+        const std::wstring wdate = Utf8ToWide(fields[0]);
+        const std::wstring wtime = Utf8ToWide(fields[1]);
+        const std::wstring wsubject = Utf8ToWide(fields[2]);
+        const std::wstring wname = Utf8ToWide(fields[3]);
+        const std::wstring wemail = Lowercase(Utf8ToWide(start < line.size() ? std::string(line, start) : std::string()));
+        if (wdate.size() < 10 || wsubject.empty()) {
+            position = end == std::string::npos ? output.size() : end + 1; continue;
+        }
+        if (!includeAll && !authors.count(wemail) && !authors.count(wname)) {
+            position = end == std::string::npos ? output.size() : end + 1; continue;
+        }
+        DayEntry::CommitEntry entry;
+        entry.date = wdate.substr(0, 10);
+        // Extract time portion from full ISO timestamp (format: YYYY-MM-DD HH:MM:SS +/-ZZZZ)
+        const size_t spacePos = wtime.find(L' ');
+        entry.time = spacePos != std::wstring::npos ? wtime.substr(spacePos + 1, 8) : L"";
+        entry.message = wsubject;
+        entry.author = wname;
+        commits.push_back(entry);
+        position = end == std::string::npos ? output.size() : end + 1;
+    }
+    return true;
+}
+
 std::vector<std::wstring> GitScan::FindRepositories(const std::vector<std::wstring>& roots,
                                                      int maxDepth, int concurrency,
                                                      std::atomic<bool>& cancel,

@@ -36,7 +36,9 @@ struct DayEntry {
     int count = 0;
     bool inYear = true;
     struct Detail { std::wstring repoName; int count = 0; };
+    struct CommitEntry { std::wstring date; std::wstring time; std::wstring message; std::wstring author; };
     std::vector<Detail> details;
+    std::vector<CommitEntry> commits;
 };
 
 struct ContributionData {

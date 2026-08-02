@@ -140,6 +140,53 @@ bool CacheStore::SaveDays(const Repository& repository, const std::map<std::wstr
     return WriteUtf8FileAtomic(RepositoryFile(repository.id), root.Serialize() + "\n", error);
 }
 
+bool CacheStore::LoadCommits(const std::wstring& repositoryId, std::vector<DayEntry::CommitEntry>& commits, std::wstring& error) const {
+    commits.clear();
+    Json root;
+    if (!ReadJson(RepositoryFile(repositoryId), root, error)) return false;
+    const Json& values = root.get("commits");
+    if (!values.isArray()) return true;
+    for (const Json& item : values.array()) {
+        if (!item.isObject()) continue;
+        DayEntry::CommitEntry entry;
+        entry.date = JsonWide(item.get("date"));
+        entry.time = JsonWide(item.get("time"));
+        entry.message = JsonWide(item.get("message"));
+        entry.author = JsonWide(item.get("author"));
+        if (!entry.date.empty() && !entry.message.empty()) commits.push_back(entry);
+    }
+    return true;
+}
+
+bool CacheStore::SaveCommits(const Repository& repository, const std::vector<DayEntry::CommitEntry>& commits, std::wstring& error) const {
+    Json root = Json::Object();
+    root["version"] = Json(1.0);
+    root["id"] = JsonText(repository.id);
+    root["path"] = JsonText(repository.path);
+    root["updatedAt"] = JsonText(repository.updatedAt);
+    if (commits.empty()) return WriteUtf8FileAtomic(RepositoryFile(repository.id), root.Serialize() + "\n", error);
+    // Preserve existing days data
+    Json existing;
+    if (!ReadJson(RepositoryFile(repository.id), existing, error)) existing = Json::Object();
+    Json values = Json::Object();
+    const Json& oldDays = existing.get("days");
+    if (oldDays.isObject()) {
+        for (const auto& pair : oldDays.object()) values[pair.first] = Json(static_cast<double>(pair.second.integer()));
+    }
+    root["days"] = values;
+    Json arr = Json::Array();
+    for (const auto& c : commits) {
+        Json item = Json::Object();
+        item["date"] = JsonText(c.date);
+        item["time"] = c.time.empty() ? Json() : JsonText(c.time);
+        item["message"] = JsonText(c.message);
+        item["author"] = c.author.empty() ? Json() : JsonText(c.author);
+        arr.push(item);
+    }
+    root["commits"] = arr;
+    return WriteUtf8FileAtomic(RepositoryFile(repository.id), root.Serialize() + "\n", error);
+}
+
 bool CacheStore::HasDays(const std::wstring& repositoryId) const { return PathExists(RepositoryFile(repositoryId)); }
 
 bool LoadAppConfig(AppConfig& config, std::wstring& notice, std::wstring& error) {

@@ -111,6 +111,20 @@ RepositoryUpdate UpdateRepository(const std::wstring& path, const Repository* ex
         update.status = RepositoryUpdate::Unavailable;
         return update;
     }
+    std::vector<DayEntry::CommitEntry> commits;
+    GitScan::CollectCommits(path, g_config, commits, error);
+    if (!error.empty()) {
+        update.repository.available = false;
+        update.repository.error = error;
+        update.status = RepositoryUpdate::Unavailable;
+        return update;
+    }
+    if (!g_store.SaveCommits(update.repository, commits, error)) {
+        update.repository.available = false;
+        update.repository.error = error;
+        update.status = RepositoryUpdate::Unavailable;
+        return update;
+    }
     update.status = existing ? RepositoryUpdate::Updated : RepositoryUpdate::Added;
     return update;
 }
@@ -378,6 +392,15 @@ void RebuildContributions() {
             day.count += pair.second;
             day.details.push_back({repository.name, pair.second});
             totals[repository.id] += pair.second;
+        }
+        std::vector<DayEntry::CommitEntry> commits;
+        if (g_store.LoadCommits(repository.id, commits, readError)) {
+            for (const auto& commit : commits) {
+                if (commit.date.size() < 10) continue;
+                const std::wstring dateStr = commit.date.substr(0, 10);
+                if (dateStr.compare(0, prefix.size(), prefix) != 0) continue;
+                byDate[dateStr].commits.push_back(commit);
+            }
         }
     }
 
