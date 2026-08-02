@@ -473,7 +473,7 @@ bool UiDraw::Click(int x, int y) {
                 const DayEntry& entry = g_contributionData.days[index];
                 const int localX = (x - gridX) % stride;
                 const int localY = (y - gridY) % stride;
-                if (localX < daySize_ && localY < daySize_ && !entry.commits.empty()) {
+                if (localX < daySize_ && localY < daySize_ && entry.count > 0) {
                     SelectDay(index); return true;
                 }
             }
@@ -549,6 +549,7 @@ void UiDraw::MouseWheel(int x, int y, int delta) {
 void UiDraw::SelectDay(int index) {
     selectedDay_ = index;
     commitScroll_ = 0;
+    LoadDayCommits(index);
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }
 
@@ -560,9 +561,7 @@ void UiDraw::ClearDaySelection() {
 
 void UiDraw::DrawDayDetailPanel(HDC dc) {
     if (selectedDay_ < 0 || selectedDay_ >= static_cast<int>(g_contributionData.days.size())) return;
-    const DayEntry& day = g_contributionData.days[selectedDay_];
-    if (day.commits.empty()) { selectedDay_ = -1; return; }
-    if (!Contains(detailPanelRect_, 0, 0)) return;
+    DayEntry& day = g_contributionData.days[selectedDay_];
 
     RECT panel = detailPanelRect_;
     if (panel.bottom <= panel.top) return;
@@ -576,9 +575,7 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
     RECT titleRect = {panel.left, panel.top, panel.right, panel.top + ScaleIntHelper(30)};
     Fill(dc, titleRect, ThemeColor(CLR_BG_HOVER, CLR_DARK_BG_HOVER));
     RECT titleText = {titleRect.left + ScaleIntHelper(12), titleRect.top, titleRect.right - ScaleIntHelper(12), titleRect.bottom};
-    // Extract date from day.date (YYYY-MM-DD)
-    const wchar_t* dateStr = day.date.c_str();
-    Text(dc, dateStr ? std::wstring(dateStr) + L" · " + FormatInteger(day.commits.size()) + L" 次提交" : L"",
+    Text(dc, day.date + L" · " + FormatInteger(static_cast<int>(day.commits.size())) + L" 次提交",
          titleText, ScaleIntHelper(12), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
          DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     // Close button (×)
@@ -587,12 +584,21 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
          DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
     // Commit list area
+    RECT listRect = {panel.left, panel.top + ScaleIntHelper(30), panel.right, panel.bottom};
+
+    if (day.commits.empty()) {
+        RECT empty = {listRect.left + ScaleIntHelper(8), listRect.top + ScaleIntHelper(8),
+                      listRect.right - ScaleIntHelper(8), listRect.bottom};
+        Text(dc, L"暂无提交记录", empty, ScaleIntHelper(11), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+             DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        return;
+    }
+
     int commitHeight = ScaleIntHelper(28);
     int visibleRows = std::max(1, static_cast<int>((panel.bottom - panel.top - ScaleIntHelper(30)) / commitHeight));
     int totalRows = static_cast<int>(day.commits.size());
     commitScroll_ = std::max(0, std::min(commitScroll_, std::max(0, totalRows - visibleRows)));
 
-    RECT listRect = {panel.left, panel.top + ScaleIntHelper(30), panel.right, panel.bottom};
     for (int i = 0; i < visibleRows && commitScroll_ + i < totalRows; ++i) {
         const DayEntry::CommitEntry& commit = day.commits[commitScroll_ + i];
         const int y = listRect.top + i * commitHeight;
@@ -605,8 +611,7 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
              DT_LEFT | DT_VCENTER | DT_SINGLELINE);
         // Repository name
         RECT repoRect = {timeRect.right + ScaleIntHelper(4), y, listRect.right - ScaleIntHelper(80), y + commitHeight};
-        const std::wstring repoName = day.details.empty() ? L"" : day.details[0].repoName;
-        Text(dc, repoName, repoRect, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+        Text(dc, commit.repoName, repoRect, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
              DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
         // Commit message
         RECT msgRect = {repoRect.right + ScaleIntHelper(4), y, listRect.right - ScaleIntHelper(80), y + commitHeight};

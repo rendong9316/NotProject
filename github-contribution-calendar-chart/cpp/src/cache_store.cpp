@@ -153,6 +153,7 @@ bool CacheStore::LoadCommits(const std::wstring& repositoryId, std::vector<DayEn
         entry.time = JsonWide(item.get("time"));
         entry.message = JsonWide(item.get("message"));
         entry.author = JsonWide(item.get("author"));
+        entry.repoName = JsonWide(item.get("repoName"));
         if (!entry.date.empty() && !entry.message.empty()) commits.push_back(entry);
     }
     return true;
@@ -181,6 +182,7 @@ bool CacheStore::SaveCommits(const Repository& repository, const std::vector<Day
         item["time"] = c.time.empty() ? Json() : JsonText(c.time);
         item["message"] = JsonText(c.message);
         item["author"] = c.author.empty() ? Json() : JsonText(c.author);
+        item["repoName"] = c.repoName.empty() ? Json() : JsonText(c.repoName);
         arr.push(item);
     }
     root["commits"] = arr;

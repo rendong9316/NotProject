@@ -90,12 +90,6 @@ RepositoryUpdate UpdateRepository(const std::wstring& path, const Repository* ex
     }
     update.repository.available = true;
     update.repository.error.clear();
-    if (existing && existing->fingerprint == fingerprint &&
-        existing->filterSignature == update.repository.filterSignature && g_store.HasDays(update.repository.id)) {
-        update.repository.fingerprint = fingerprint;
-        update.status = RepositoryUpdate::Unchanged;
-        return update;
-    }
     std::map<std::wstring, int> days;
     if (!GitScan::CollectDays(path, g_config, days, error)) {
         update.repository.available = false;
@@ -111,6 +105,8 @@ RepositoryUpdate UpdateRepository(const std::wstring& path, const Repository* ex
         update.status = RepositoryUpdate::Unavailable;
         return update;
     }
+    // Always collect and save commits (even when fingerprint is unchanged)
+    // so that the detail panel can display per-day commit information.
     std::vector<DayEntry::CommitEntry> commits;
     GitScan::CollectCommits(path, g_config, commits, error);
     if (!error.empty()) {
@@ -119,12 +115,8 @@ RepositoryUpdate UpdateRepository(const std::wstring& path, const Repository* ex
         update.status = RepositoryUpdate::Unavailable;
         return update;
     }
-    if (!g_store.SaveCommits(update.repository, commits, error)) {
-        update.repository.available = false;
-        update.repository.error = error;
-        update.status = RepositoryUpdate::Unavailable;
-        return update;
-    }
+    std::wstring saveError;
+    g_store.SaveCommits(update.repository, commits, saveError);
     update.status = existing ? RepositoryUpdate::Updated : RepositoryUpdate::Added;
     return update;
 }
@@ -396,7 +388,8 @@ void RebuildContributions() {
         std::vector<DayEntry::CommitEntry> commits;
         if (g_store.LoadCommits(repository.id, commits, readError)) {
             for (const auto& commit : commits) {
-                if (commit.date.size() < 10) continue;
+                // Only accept ISO-format dates (YYYY-MM-DD, exactly 10 chars)
+                if (commit.date.size() != 10 || commit.date[4] != L'-' || commit.date[7] != L'-') continue;
                 const std::wstring dateStr = commit.date.substr(0, 10);
                 if (dateStr.compare(0, prefix.size(), prefix) != 0) continue;
                 byDate[dateStr].commits.push_back(commit);
@@ -447,6 +440,38 @@ void SortReposByYearTotal() {
     std::sort(g_repos.begin(), g_repos.end(), [](const Repository& left, const Repository& right) {
         if (left.yearTotal != right.yearTotal) return left.yearTotal > right.yearTotal;
         return Lowercase(left.path) < Lowercase(right.path);
+    });
+}
+
+void LoadDayCommits(int dayIndex) {
+    if (dayIndex < 0 || dayIndex >= static_cast<int>(g_contributionData.days.size())) return;
+    DayEntry& day = g_contributionData.days[dayIndex];
+    if (!day.commits.empty()) return; // already loaded
+
+    std::wstring readError;
+    for (const Repository& repository : g_repos) {
+        const auto selected = g_selected.find(repository.id);
+        if (selected == g_selected.end() || !selected->second) continue;
+        std::vector<DayEntry::CommitEntry> commits;
+        // Try cache first; fall back to live git if cache load failed or returned empty
+        bool loadedFromCache = g_store.LoadCommits(repository.id, commits, readError);
+        if ((!loadedFromCache || commits.empty()) && repository.available) {
+            commits.clear();
+            readError.clear();
+            GitScan::CollectCommits(repository.path, g_config, commits, readError);
+        }
+        for (auto& commit : commits) {
+            // Only accept ISO-format dates (YYYY-MM-DD, exactly 10 chars with dashes)
+            if (commit.date.size() != 10 || commit.date[4] != L'-' || commit.date[7] != L'-') continue;
+            if (commit.date.substr(0, 10) == day.date) {
+                commit.repoName = repository.name;
+                day.commits.push_back(commit);
+            }
+        }
+    }
+    // Sort by time within the day
+    std::sort(day.commits.begin(), day.commits.end(), [](const DayEntry::CommitEntry& a, const DayEntry::CommitEntry& b) {
+        return a.time < b.time;
     });
 }
 

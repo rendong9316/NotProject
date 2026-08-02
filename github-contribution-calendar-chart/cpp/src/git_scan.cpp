@@ -279,22 +279,22 @@ bool GitScan::CollectCommits(const std::wstring& path, const AppConfig& config,
             start = pos == std::string::npos ? line.size() : pos + 1;
         }
         if (fields.size() < 4) { position = end == std::string::npos ? output.size() : end + 1; continue; }
-        const std::wstring wdate = Utf8ToWide(fields[0]);
-        const std::wstring wtime = Utf8ToWide(fields[1]);
+        // Git format: %ad(human) \t %ai(iso) \t %s(subject) \t %an(name) \t %ae(email)
+        // fields[0]=%ad (ignored), fields[1]=%ai (ISO date+time), fields[2]=%s, fields[3]=%an, email from remainder
+        const std::wstring wiso = Utf8ToWide(fields[1]);
         const std::wstring wsubject = Utf8ToWide(fields[2]);
         const std::wstring wname = Utf8ToWide(fields[3]);
         const std::wstring wemail = Lowercase(Utf8ToWide(start < line.size() ? std::string(line, start) : std::string()));
-        if (wdate.size() < 10 || wsubject.empty()) {
+        if (wiso.size() < 10 || wsubject.empty()) {
             position = end == std::string::npos ? output.size() : end + 1; continue;
         }
         if (!includeAll && !authors.count(wemail) && !authors.count(wname)) {
             position = end == std::string::npos ? output.size() : end + 1; continue;
         }
         DayEntry::CommitEntry entry;
-        entry.date = wdate.substr(0, 10);
-        // Extract time portion from full ISO timestamp (format: YYYY-MM-DD HH:MM:SS +/-ZZZZ)
-        const size_t spacePos = wtime.find(L' ');
-        entry.time = spacePos != std::wstring::npos ? wtime.substr(spacePos + 1, 8) : L"";
+        entry.date = wiso.substr(0, 10);
+        const size_t spacePos = wiso.find(L' ');
+        entry.time = spacePos != std::wstring::npos ? wiso.substr(spacePos + 1, 8) : L"";
         entry.message = wsubject;
         entry.author = wname;
         commits.push_back(entry);

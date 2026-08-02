@@ -41,4 +41,5 @@ void ApplyDarkMode(HWND hwnd, bool dark);
 std::vector<size_t> VisibleRepositoryIndices();
 int SelectedRepositoryCount();
 void SortReposByYearTotal();
+void LoadDayCommits(int dayIndex);
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
