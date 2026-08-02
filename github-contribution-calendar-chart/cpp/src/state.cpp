@@ -3,6 +3,7 @@
 #include "cache_store.h"
 #include "git_scan.h"
 #include "platform.h"
+#include "ui_draw.h"
 
 #include <windows.h>
 #include <algorithm>
@@ -27,7 +28,7 @@ std::vector<Repository> g_repos;
 std::unordered_map<std::wstring, bool> g_selected;
 std::wstring g_query;
 ContributionData g_contributionData;
-double g_fontScale = 2.5;  // Set from g_config.fontSize after LoadAppConfig in InitializeState()
+double g_fontScale = 1.0;
 
 namespace {
 
@@ -90,33 +91,30 @@ RepositoryUpdate UpdateRepository(const std::wstring& path, const Repository* ex
     }
     update.repository.available = true;
     update.repository.error.clear();
-    std::map<std::wstring, int> days;
-    if (!GitScan::CollectDays(path, g_config, days, error)) {
-        update.repository.available = false;
-        update.repository.error = error;
-        update.status = RepositoryUpdate::Unavailable;
-        return update;
-    }
     update.repository.fingerprint = fingerprint;
-    update.repository.updatedAt = TimestampWide();
-    if (!g_store.SaveDays(update.repository, days, error)) {
-        update.repository.available = false;
-        update.repository.error = error;
-        update.status = RepositoryUpdate::Unavailable;
+    const bool unchanged = existing && existing->fingerprint == fingerprint &&
+                           existing->filterSignature == update.repository.filterSignature &&
+                           g_store.HasCompleteHistory(update.repository.id);
+    if (unchanged) {
+        update.status = RepositoryUpdate::Unchanged;
         return update;
     }
-    // Always collect and save commits (even when fingerprint is unchanged)
-    // so that the detail panel can display per-day commit information.
+
+    std::map<std::wstring, int> days;
     std::vector<DayEntry::CommitEntry> commits;
-    GitScan::CollectCommits(path, g_config, commits, error);
-    if (!error.empty()) {
+    if (!GitScan::CollectHistory(path, g_config, days, commits, error)) {
         update.repository.available = false;
         update.repository.error = error;
         update.status = RepositoryUpdate::Unavailable;
         return update;
     }
-    std::wstring saveError;
-    g_store.SaveCommits(update.repository, commits, saveError);
+    update.repository.updatedAt = TimestampWide();
+    if (!g_store.SaveHistory(update.repository, days, commits, error)) {
+        update.repository.available = false;
+        update.repository.error = error;
+        update.status = RepositoryUpdate::Unavailable;
+        return update;
+    }
     update.status = existing ? RepositoryUpdate::Updated : RepositoryUpdate::Added;
     return update;
 }
@@ -337,6 +335,7 @@ void HandleOperationDone(LPARAM resultPointer) {
             FormatInteger(summary.checked) + L" 个项目，新增 " + FormatInteger(summary.added) +
             L"，更新 " + FormatInteger(summary.updated) + L"，未变化 " + FormatInteger(summary.unchanged) +
             L"，不可用 " + FormatInteger(summary.unavailable) + L"，耗时 " + FormatDuration(summary.durationMs);
+        g_ui.ClearDaySelection();
         RebuildContributions();
         // Compute yearTotal for all repos (independent of selection) and sort sidebar
         std::wstring readError;
@@ -384,16 +383,6 @@ void RebuildContributions() {
             day.count += pair.second;
             day.details.push_back({repository.name, pair.second});
             totals[repository.id] += pair.second;
-        }
-        std::vector<DayEntry::CommitEntry> commits;
-        if (g_store.LoadCommits(repository.id, commits, readError)) {
-            for (const auto& commit : commits) {
-                // Only accept ISO-format dates (YYYY-MM-DD, exactly 10 chars)
-                if (commit.date.size() != 10 || commit.date[4] != L'-' || commit.date[7] != L'-') continue;
-                const std::wstring dateStr = commit.date.substr(0, 10);
-                if (dateStr.compare(0, prefix.size(), prefix) != 0) continue;
-                byDate[dateStr].commits.push_back(commit);
-            }
         }
     }
 
@@ -446,32 +435,30 @@ void SortReposByYearTotal() {
 void LoadDayCommits(int dayIndex) {
     if (dayIndex < 0 || dayIndex >= static_cast<int>(g_contributionData.days.size())) return;
     DayEntry& day = g_contributionData.days[dayIndex];
-    if (!day.commits.empty()) return; // already loaded
+    if (day.commitsLoaded) return;
+    day.commitsLoaded = true;
+    day.commits.clear();
+    day.commitError.clear();
 
     std::wstring readError;
     for (const Repository& repository : g_repos) {
         const auto selected = g_selected.find(repository.id);
         if (selected == g_selected.end() || !selected->second) continue;
         std::vector<DayEntry::CommitEntry> commits;
-        // Try cache first; fall back to live git if cache load failed or returned empty
-        bool loadedFromCache = g_store.LoadCommits(repository.id, commits, readError);
-        if ((!loadedFromCache || commits.empty()) && repository.available) {
-            commits.clear();
-            readError.clear();
-            GitScan::CollectCommits(repository.path, g_config, commits, readError);
+        readError.clear();
+        if (!g_store.LoadCommitsForDate(repository.id, day.date, commits, readError)) {
+            if (day.commitError.empty()) day.commitError = readError;
+            continue;
         }
         for (auto& commit : commits) {
-            // Only accept ISO-format dates (YYYY-MM-DD, exactly 10 chars with dashes)
-            if (commit.date.size() != 10 || commit.date[4] != L'-' || commit.date[7] != L'-') continue;
-            if (commit.date.substr(0, 10) == day.date) {
-                commit.repoName = repository.name;
-                day.commits.push_back(commit);
-            }
+            commit.repoName = repository.name;
+            commit.repoPath = repository.path;
+            day.commits.push_back(commit);
         }
     }
-    // Sort by time within the day
     std::sort(day.commits.begin(), day.commits.end(), [](const DayEntry::CommitEntry& a, const DayEntry::CommitEntry& b) {
-        return a.time < b.time;
+        if (a.time != b.time) return a.time > b.time;
+        return Lowercase(a.repoName) < Lowercase(b.repoName);
     });
 }
 
@@ -488,12 +475,14 @@ std::vector<size_t> VisibleRepositoryIndices() {
 
 void ToggleRepository(const std::wstring& id) {
     g_selected[id] = !g_selected[id];
+    g_ui.ClearDaySelection();
     RebuildContributions();
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }
 
 void SelectAllVisible(bool selected) {
     for (size_t index : VisibleRepositoryIndices()) g_selected[g_repos[index].id] = selected;
+    g_ui.ClearDaySelection();
     RebuildContributions();
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }
@@ -514,6 +503,7 @@ void ChangeYear(int delta) {
     const int next = g_year + delta;
     if (next < 1970 || next > 2100) return;
     g_year = next;
+    g_ui.ClearDaySelection();
     RebuildContributions();
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }

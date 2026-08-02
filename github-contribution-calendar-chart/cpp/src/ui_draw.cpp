@@ -163,7 +163,6 @@ void UiDraw::Paint(HDC target, int width, int height) {
     DrawSidebar(buffer);
     DrawContent(buffer);
     DrawStatusbar(buffer);
-    DrawDayDetailPanel(buffer);
     DrawTooltip(buffer);
     BitBlt(target, 0, 0, width, height, buffer, 0, 0, SRCCOPY);
     SelectObject(buffer, previous);
@@ -283,8 +282,8 @@ void UiDraw::DrawContent(HDC dc) {
     }
 
     DrawCalendar(dc);
-    DrawRanking(dc);
-    DrawDayDetailPanel(dc);
+    if (selectedDay_ >= 0) DrawDayDetailPanel(dc);
+    else DrawRanking(dc);
 }
 
 void UiDraw::DrawCalendar(HDC dc) {
@@ -322,6 +321,11 @@ void UiDraw::DrawCalendar(HDC dc) {
             RECT square = {gridX + week * stride, gridY + day * stride,
                            gridX + week * stride + daySize_, gridY + day * stride + daySize_};
             Fill(dc, square, HeatColor(entry.count, maximum, entry.inYear));
+            if (index == selectedDay_) {
+                HBRUSH selected = CreateSolidBrush(ThemeColor(CLR_ACCENT, CLR_DARK_ACCENT));
+                FrameRect(dc, &square, selected);
+                DeleteObject(selected);
+            }
             if (index == hoveredDay_ && entry.inYear) {
                 HBRUSH hover = CreateSolidBrush(ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY));
                 FrameRect(dc, &square, hover);
@@ -495,6 +499,19 @@ bool UiDraw::Click(int x, int y) {
 }
 
 bool UiDraw::RightClick(int x, int y) {
+    if (selectedDay_ >= 0 && selectedDay_ < static_cast<int>(g_contributionData.days.size()) &&
+        Contains(detailPanelRect_, x, y)) {
+        const int listTop = detailPanelRect_.top + ScaleIntHelper(62);
+        const int rowHeight = ScaleIntHelper(40);
+        if (y >= listTop) {
+            const int index = commitScroll_ + (y - listTop) / rowHeight;
+            const std::vector<DayEntry::CommitEntry>& commits = g_contributionData.days[selectedDay_].commits;
+            if (index >= 0 && index < static_cast<int>(commits.size()) && !commits[index].repoPath.empty()) {
+                ShellExecuteW(g_hwndMain, L"open", commits[index].repoPath.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                return true;
+            }
+        }
+    }
     const int repository = RepositoryAt(x, y);
     if (repository < 0) return false;
     ShellExecuteW(g_hwndMain, L"open", g_repos[repository].path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
@@ -536,13 +553,15 @@ void UiDraw::MouseLeave() {
 }
 
 void UiDraw::MouseWheel(int x, int y, int delta) {
-    if (x >= ScaleIntHelper(SIDEBAR_W) || y < ScaleIntHelper(TOPBAR_H)) return;
-    g_repoScroll -= delta / WHEEL_DELTA * ScaleIntHelper(3);
-    g_repoScroll = std::max(0, g_repoScroll);
     if (selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) {
-        commitScroll_ -= delta / WHEEL_DELTA * ScaleIntHelper(3);
+        commitScroll_ -= delta / WHEEL_DELTA * 3;
         commitScroll_ = std::max(0, commitScroll_);
+        InvalidateRect(g_hwndMain, nullptr, FALSE);
+        return;
     }
+    if (x >= ScaleIntHelper(SIDEBAR_W) || y < ScaleIntHelper(TOPBAR_H)) return;
+    g_repoScroll -= delta / WHEEL_DELTA * 3;
+    g_repoScroll = std::max(0, g_repoScroll);
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }
 
@@ -571,55 +590,93 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
     FrameRect(dc, &panel, border);
     DeleteObject(border);
 
-    // Title bar
-    RECT titleRect = {panel.left, panel.top, panel.right, panel.top + ScaleIntHelper(30)};
+    const int titleHeight = ScaleIntHelper(36);
+    const int columnsHeight = ScaleIntHelper(26);
+    const int rowHeight = ScaleIntHelper(40);
+    const int inset = ScaleIntHelper(12);
+
+    RECT titleRect = {panel.left, panel.top, panel.right, panel.top + titleHeight};
     Fill(dc, titleRect, ThemeColor(CLR_BG_HOVER, CLR_DARK_BG_HOVER));
-    RECT titleText = {titleRect.left + ScaleIntHelper(12), titleRect.top, titleRect.right - ScaleIntHelper(12), titleRect.bottom};
-    Text(dc, day.date + L" · " + FormatInteger(static_cast<int>(day.commits.size())) + L" 次提交",
+    RECT titleText = {titleRect.left + inset, titleRect.top, titleRect.right - ScaleIntHelper(40), titleRect.bottom};
+    Text(dc, day.date + L" · " + FormatInteger(day.count) + L" 次提交 · " +
+             FormatInteger(static_cast<int>(day.details.size())) + L" 个项目",
          titleText, ScaleIntHelper(12), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
-         DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-    // Close button (×)
-    RECT closeRect = {panel.right - ScaleIntHelper(32), panel.top, panel.right, panel.top + ScaleIntHelper(30)};
-    Text(dc, L"✕", closeRect, ScaleIntHelper(12), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+         DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
+    RECT closeRect = {panel.right - ScaleIntHelper(36), panel.top, panel.right, panel.top + titleHeight};
+    Text(dc, L"X", closeRect, ScaleIntHelper(11), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
          DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-    // Commit list area
-    RECT listRect = {panel.left, panel.top + ScaleIntHelper(30), panel.right, panel.bottom};
+    const int contentLeft = panel.left + inset;
+    const int contentRight = panel.right - inset;
+    const int contentWidth = std::max(1, contentRight - contentLeft);
+    const int timeWidth = ScaleIntHelper(68);
+    const int repoWidth = std::max(ScaleIntHelper(110), std::min(ScaleIntHelper(180), contentWidth / 5));
+    const int authorWidth = std::max(ScaleIntHelper(86), std::min(ScaleIntHelper(130), contentWidth / 7));
+    const int hashWidth = ScaleIntHelper(76);
+    const int timeX = contentLeft;
+    const int repoX = timeX + timeWidth;
+    const int messageX = repoX + repoWidth;
+    const int hashX = contentRight - hashWidth;
+    const int authorX = hashX - authorWidth;
+
+    RECT columns = {panel.left, titleRect.bottom, panel.right, titleRect.bottom + columnsHeight};
+    Fill(dc, columns, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE));
+    const COLORREF secondary = ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC);
+    Text(dc, L"时间", {timeX, columns.top, repoX, columns.bottom}, ScaleIntHelper(9), secondary);
+    Text(dc, L"项目", {repoX, columns.top, messageX, columns.bottom}, ScaleIntHelper(9), secondary);
+    Text(dc, L"提交说明", {messageX, columns.top, authorX - ScaleIntHelper(8), columns.bottom}, ScaleIntHelper(9), secondary);
+    Text(dc, L"作者", {authorX, columns.top, hashX - ScaleIntHelper(8), columns.bottom}, ScaleIntHelper(9), secondary);
+    Text(dc, L"提交", {hashX, columns.top, contentRight, columns.bottom}, ScaleIntHelper(9), secondary);
+    Line(dc, panel.left, columns.bottom - 1, panel.right, columns.bottom - 1,
+         ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
+
+    RECT listRect = {panel.left, columns.bottom, panel.right, panel.bottom};
 
     if (day.commits.empty()) {
         RECT empty = {listRect.left + ScaleIntHelper(8), listRect.top + ScaleIntHelper(8),
                       listRect.right - ScaleIntHelper(8), listRect.bottom};
-        Text(dc, L"暂无提交记录", empty, ScaleIntHelper(11), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+        const std::wstring message = !day.commitError.empty()
+            ? L"提交明细读取失败：" + day.commitError
+            : (day.count > 0 ? L"该日期的提交明细尚未建立" : L"当天没有提交记录");
+        Text(dc, message, empty, ScaleIntHelper(11), secondary,
              DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         return;
     }
 
-    int commitHeight = ScaleIntHelper(28);
-    int visibleRows = std::max(1, static_cast<int>((panel.bottom - panel.top - ScaleIntHelper(30)) / commitHeight));
-    int totalRows = static_cast<int>(day.commits.size());
+    const int visibleRows = std::max(1, static_cast<int>((listRect.bottom - listRect.top) / rowHeight));
+    const int totalRows = static_cast<int>(day.commits.size());
     commitScroll_ = std::max(0, std::min(commitScroll_, std::max(0, totalRows - visibleRows)));
 
     for (int i = 0; i < visibleRows && commitScroll_ + i < totalRows; ++i) {
         const DayEntry::CommitEntry& commit = day.commits[commitScroll_ + i];
-        const int y = listRect.top + i * commitHeight;
-        RECT rowRect = {listRect.left, y, listRect.right, y + commitHeight};
-        // Alternate row background
+        const int y = listRect.top + i * rowHeight;
+        RECT rowRect = {listRect.left, y, listRect.right, y + rowHeight};
         if (i % 2 == 0) Fill(dc, rowRect, ThemeColor(CLR_BG_PAGE, CLR_DARK_BG_PAGE));
-        // Time
-        RECT timeRect = {listRect.left + ScaleIntHelper(8), y, listRect.left + ScaleIntHelper(60), y + commitHeight};
-        Text(dc, commit.time, timeRect, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+        Text(dc, commit.time, {timeX, y, repoX - ScaleIntHelper(8), y + rowHeight}, ScaleIntHelper(10), secondary,
              DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-        // Repository name
-        RECT repoRect = {timeRect.right + ScaleIntHelper(4), y, listRect.right - ScaleIntHelper(80), y + commitHeight};
-        Text(dc, commit.repoName, repoRect, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
+        Text(dc, commit.repoName, {repoX, y, messageX - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(10), secondary,
              DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-        // Commit message
-        RECT msgRect = {repoRect.right + ScaleIntHelper(4), y, listRect.right - ScaleIntHelper(80), y + commitHeight};
-        Text(dc, commit.message, msgRect, ScaleIntHelper(11), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
+        const std::wstring subject = commit.message.empty() ? L"(无提交说明)" : commit.message;
+        Text(dc, subject, {messageX, y, authorX - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(11),
+             ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
              DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-        // Author
-        RECT authorRect = {listRect.right - ScaleIntHelper(72), y, listRect.right - ScaleIntHelper(8), y + commitHeight};
-        Text(dc, commit.author, authorRect, ScaleIntHelper(10), ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
-             DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        Text(dc, commit.author, {authorX, y, hashX - ScaleIntHelper(10), y + rowHeight}, ScaleIntHelper(10), secondary,
+             DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        const std::wstring shortHash = commit.hash.size() > 7 ? commit.hash.substr(0, 7) : commit.hash;
+        Text(dc, shortHash, {hashX, y, contentRight, y + rowHeight}, ScaleIntHelper(10), secondary,
+             DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        Line(dc, panel.left, rowRect.bottom - 1, panel.right, rowRect.bottom - 1,
+             ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
+    }
+
+    if (totalRows > visibleRows) {
+        RECT track = {panel.right - ScaleIntHelper(4), listRect.top, panel.right - ScaleIntHelper(1), listRect.bottom};
+        Fill(dc, track, ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
+        const int trackHeight = track.bottom - track.top;
+        const int thumbHeight = std::max(ScaleIntHelper(18), trackHeight * visibleRows / totalRows);
+        const int range = std::max(1, totalRows - visibleRows);
+        const int thumbTop = track.top + (trackHeight - thumbHeight) * commitScroll_ / range;
+        Fill(dc, {track.left, thumbTop, track.right, thumbTop + thumbHeight},
+             ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
     }
 }

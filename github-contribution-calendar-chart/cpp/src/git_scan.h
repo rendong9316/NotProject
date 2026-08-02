@@ -14,10 +14,10 @@ public:
     static std::wstring RepositoryId(const std::wstring& path);
     static std::wstring FilterSignature(const AppConfig& config);
     static bool ReadFingerprint(const std::wstring& path, std::wstring& fingerprint, std::wstring& error);
-    static bool CollectDays(const std::wstring& path, const AppConfig& config,
-                            std::map<std::wstring, int>& days, std::wstring& error);
-    static bool CollectCommits(const std::wstring& path, const AppConfig& config,
-                               std::vector<DayEntry::CommitEntry>& commits, std::wstring& error);
+    static bool CollectHistory(const std::wstring& path, const AppConfig& config,
+                               std::map<std::wstring, int>& days,
+                               std::vector<DayEntry::CommitEntry>& commits,
+                               std::wstring& error);
     static std::vector<std::wstring> FindRepositories(const std::vector<std::wstring>& roots,
                                                        int maxDepth, int concurrency,
                                                        std::atomic<bool>& cancel,

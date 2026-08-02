@@ -15,10 +15,11 @@ public:
     bool SaveIndex(const std::vector<Repository>& repositories, const std::vector<std::wstring>& scanRoots,
                    const std::wstring& lastDiscovery, const std::wstring& lastRefresh, std::wstring& error) const;
     bool LoadDays(const std::wstring& repositoryId, std::map<std::wstring, int>& days, std::wstring& error) const;
-    bool SaveDays(const Repository& repository, const std::map<std::wstring, int>& days, std::wstring& error) const;
-    bool LoadCommits(const std::wstring& repositoryId, std::vector<DayEntry::CommitEntry>& commits, std::wstring& error) const;
-    bool SaveCommits(const Repository& repository, const std::vector<DayEntry::CommitEntry>& commits, std::wstring& error) const;
-    bool HasDays(const std::wstring& repositoryId) const;
+    bool LoadCommitsForDate(const std::wstring& repositoryId, const std::wstring& date,
+                            std::vector<DayEntry::CommitEntry>& commits, std::wstring& error) const;
+    bool SaveHistory(const Repository& repository, const std::map<std::wstring, int>& days,
+                     const std::vector<DayEntry::CommitEntry>& commits, std::wstring& error) const;
+    bool HasCompleteHistory(const std::wstring& repositoryId) const;
 
     const std::wstring& directory() const { return directory_; }
 

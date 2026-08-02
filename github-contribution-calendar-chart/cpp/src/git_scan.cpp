@@ -220,30 +220,59 @@ bool GitScan::ReadFingerprint(const std::wstring& path, std::wstring& fingerprin
     return true;
 }
 
-bool GitScan::CollectDays(const std::wstring& path, const AppConfig& config,
-                          std::map<std::wstring, int>& days, std::wstring& error) {
+bool GitScan::CollectHistory(const std::wstring& path, const AppConfig& config,
+                             std::map<std::wstring, int>& days,
+                             std::vector<DayEntry::CommitEntry>& commits,
+                             std::wstring& error) {
     std::string output;
     if (!RunGit({L"--no-pager", L"-C", path, L"log", L"--all", L"--date=format:%Y-%m-%d",
-                 L"--pretty=format:%ad%x09%ae%x09%an"}, output, error, 10 * 60 * 1000)) return false;
+                 L"--pretty=format:%ad%x1f%ai%x1f%H%x1f%an%x1f%ae%x1f%s%x1e"},
+                output, error, 30 * 60 * 1000)) return false;
+
     std::set<std::wstring> authors;
     for (const std::wstring& author : config.authors) authors.insert(Lowercase(author));
     const bool includeAll = config.includeAllAuthors || authors.empty();
     days.clear();
+    commits.clear();
+
     size_t position = 0;
     while (position < output.size()) {
-        const size_t end = output.find('\n', position);
-        std::string line = output.substr(position, end == std::string::npos ? std::string::npos : end - position);
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        const size_t tab1 = line.find('\t');
-        const size_t tab2 = tab1 == std::string::npos ? std::string::npos : line.find('\t', tab1 + 1);
-        if (tab1 != std::string::npos) {
-            const std::wstring date = Utf8ToWide(line.substr(0, tab1));
-            const std::wstring email = Lowercase(Utf8ToWide(line.substr(tab1 + 1, tab2 - tab1 - 1)));
-            const std::wstring name = tab2 == std::string::npos ? L"" : Lowercase(Utf8ToWide(line.substr(tab2 + 1)));
-            if (date.size() == 10 && (includeAll || authors.count(email) || authors.count(name))) ++days[date];
+        const size_t recordEnd = output.find('\x1e', position);
+        std::string record = output.substr(position, recordEnd == std::string::npos
+                                                        ? std::string::npos
+                                                        : recordEnd - position);
+        while (!record.empty() && (record.front() == '\r' || record.front() == '\n')) record.erase(record.begin());
+        while (!record.empty() && (record.back() == '\r' || record.back() == '\n')) record.pop_back();
+
+        std::vector<std::string> fields;
+        size_t fieldStart = 0;
+        for (int field = 0; field < 5; ++field) {
+            const size_t separator = record.find('\x1f', fieldStart);
+            if (separator == std::string::npos) break;
+            fields.push_back(record.substr(fieldStart, separator - fieldStart));
+            fieldStart = separator + 1;
         }
-        if (end == std::string::npos) break;
-        position = end + 1;
+        if (fields.size() == 5) {
+            fields.push_back(record.substr(fieldStart));
+            const std::wstring date = Utf8ToWide(fields[0]);
+            const std::wstring isoTime = Utf8ToWide(fields[1]);
+            const std::wstring name = Utf8ToWide(fields[3]);
+            const std::wstring email = Lowercase(Utf8ToWide(fields[4]));
+            if (date.size() == 10 && (includeAll || authors.count(email) || authors.count(Lowercase(name)))) {
+                DayEntry::CommitEntry entry;
+                entry.date = date;
+                entry.hash = Utf8ToWide(fields[2]);
+                const size_t space = isoTime.find(L' ');
+                if (space != std::wstring::npos && isoTime.size() >= space + 9)
+                    entry.time = isoTime.substr(space + 1, 8);
+                entry.author = name;
+                entry.message = Utf8ToWide(fields[5]);
+                commits.push_back(entry);
+                ++days[date];
+            }
+        }
+        if (recordEnd == std::string::npos) break;
+        position = recordEnd + 1;
     }
     return true;
 }
@@ -253,53 +282,6 @@ bool GitScan::IsGitAvailable(std::wstring& version, std::wstring& error) {
     if (!RunGit({L"--version"}, output, error, 10000)) return false;
     while (!output.empty() && (output.back() == '\r' || output.back() == '\n')) output.pop_back();
     version = Utf8ToWide(output);
-    return true;
-}
-
-bool GitScan::CollectCommits(const std::wstring& path, const AppConfig& config,
-                             std::vector<DayEntry::CommitEntry>& commits, std::wstring& error) {
-    std::string output;
-    if (!RunGit({L"--no-pager", L"-C", path, L"log", L"--all",
-                 L"--pretty=format:%ad%x09%ai%x09%s%x09%an%x09%ae"}, output, error, 30 * 60 * 1000)) return false;
-    std::set<std::wstring> authors;
-    for (const std::wstring& author : config.authors) authors.insert(Lowercase(author));
-    const bool includeAll = config.includeAllAuthors || authors.empty();
-    commits.clear();
-    size_t position = 0;
-    while (position < output.size()) {
-        const size_t end = output.find('\n', position);
-        std::string line = output.substr(position, end == std::string::npos ? std::string::npos : end - position);
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        // Format: date\tfull_iso_time\tsubject\tname\temail
-        std::vector<std::string> fields;
-        size_t start = 0;
-        for (int i = 0; i < 4; ++i) {
-            const size_t pos = line.find('\t', start);
-            fields.push_back(pos == std::string::npos ? line.substr(start) : line.substr(start, pos - start));
-            start = pos == std::string::npos ? line.size() : pos + 1;
-        }
-        if (fields.size() < 4) { position = end == std::string::npos ? output.size() : end + 1; continue; }
-        // Git format: %ad(human) \t %ai(iso) \t %s(subject) \t %an(name) \t %ae(email)
-        // fields[0]=%ad (ignored), fields[1]=%ai (ISO date+time), fields[2]=%s, fields[3]=%an, email from remainder
-        const std::wstring wiso = Utf8ToWide(fields[1]);
-        const std::wstring wsubject = Utf8ToWide(fields[2]);
-        const std::wstring wname = Utf8ToWide(fields[3]);
-        const std::wstring wemail = Lowercase(Utf8ToWide(start < line.size() ? std::string(line, start) : std::string()));
-        if (wiso.size() < 10 || wsubject.empty()) {
-            position = end == std::string::npos ? output.size() : end + 1; continue;
-        }
-        if (!includeAll && !authors.count(wemail) && !authors.count(wname)) {
-            position = end == std::string::npos ? output.size() : end + 1; continue;
-        }
-        DayEntry::CommitEntry entry;
-        entry.date = wiso.substr(0, 10);
-        const size_t spacePos = wiso.find(L' ');
-        entry.time = spacePos != std::wstring::npos ? wiso.substr(spacePos + 1, 8) : L"";
-        entry.message = wsubject;
-        entry.author = wname;
-        commits.push_back(entry);
-        position = end == std::string::npos ? output.size() : end + 1;
-    }
     return true;
 }
 
