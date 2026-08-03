@@ -70,6 +70,13 @@ private:
     int colResizeStartDividerX_ = 0; // X position of the divider at drag start (for guide line)
     std::vector<int> colWidths_;     // 5 saved widths at fontScale=1.0
     int colDragDivider_ = -1;        // which divider the cursor is hovering over
+
+    // Sidebar resize state
+    enum class SidebarResizeState { None, Dragging };
+    SidebarResizeState sidebarResizeState_ = SidebarResizeState::None;
+    int sidebarResizeStartX_ = 0;    // absolute X where drag started
+    int sidebarResizeStartWidth_ = 0; // sidebarWidth_ at drag start
+    int sidebarDragHit_ = -1;        // whether cursor is over the sidebar resize zone
 };
 
 extern UiDraw g_ui;

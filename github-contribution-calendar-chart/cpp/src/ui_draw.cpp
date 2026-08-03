@@ -294,7 +294,7 @@ void UiDraw::ComputeLayout(int width, int height) {
 
     const int statusHeight = std::max(ScaleIntHelper(42), FontPixels(11) + ScaleIntHelper(16));
     statusbarRect_ = {0, std::max(topbarHeight, height - statusHeight), width, height};
-    sidebarWidth_ = std::min(ScaleIntHelper(SIDEBAR_W), std::max(ScaleIntHelper(190), width * 36 / 100));
+    sidebarWidth_ = std::min(ScaleIntHelper(g_config.sidebarWidth), std::max(ScaleIntHelper(190), width * 36 / 100));
 
     const int headingTop = topbarRect_.bottom + ScaleIntHelper(10);
     const int headingHeight = std::max(ScaleIntHelper(30), FontPixels(14) + ScaleIntHelper(8));
@@ -394,6 +394,18 @@ void UiDraw::DrawSidebar(HDC dc) {
     Fill(dc, sidebar, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE));
     Line(dc, sidebarWidth_ - 1, topbarRect_.bottom, sidebarWidth_, statusbarRect_.top,
          ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
+
+    // Draw sidebar resize handle indicator
+    const int resizeZone = 8;
+    RECT resizeHandle = {sidebarWidth_ - resizeZone, topbarRect_.bottom, sidebarWidth_, statusbarRect_.top};
+    if (sidebarDragHit_ >= 0 || sidebarResizeState_ == SidebarResizeState::Dragging) {
+        Fill(dc, resizeHandle, ThemeColor(RGB(31,136,61), RGB(63,185,80)));
+    } else {
+        // Subtle double-line indicator
+        const COLORREF hint = ThemeColor(RGB(208,215,222), RGB(48,54,61));
+        Fill(dc, {sidebarWidth_ - 3, topbarRect_.bottom, sidebarWidth_ - 2, statusbarRect_.top}, hint);
+        Fill(dc, {sidebarWidth_ - 1, topbarRect_.bottom, sidebarWidth_, statusbarRect_.top}, hint);
+    }
 
     RECT heading = {ScaleIntHelper(14), topbarRect_.bottom + ScaleIntHelper(10),
                     sidebarWidth_ - ScaleIntHelper(12), searchRect_.top - ScaleIntHelper(8)};
@@ -826,6 +838,22 @@ void UiDraw::MouseMove(int x, int y) {
         return;
     }
 
+    // Sidebar resize drag
+    if (sidebarResizeState_ == SidebarResizeState::Dragging) {
+        const int delta = x - sidebarResizeStartX_;
+        const int minWidth = ScaleIntHelper(190);
+        const int maxWidth = std::min(ScaleIntHelper(600), width_ / 2);
+        int newWidth = sidebarResizeStartWidth_ + delta;
+        newWidth = std::max(minWidth, std::min(maxWidth, newWidth));
+        if (newWidth != sidebarWidth_) {
+            sidebarWidth_ = newWidth;
+            // Reposition search control to follow sidebar edge
+            if (g_hwndSearch) LayoutSearch(g_hwndSearch);
+            InvalidateRect(g_hwndMain, nullptr, FALSE);
+        }
+        return;
+    }
+
     // Column resize hover detection
     if (selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) {
         const int inset = ScaleIntHelper(12);
@@ -849,6 +877,18 @@ void UiDraw::MouseMove(int x, int y) {
         InvalidateRect(g_hwndMain, nullptr, FALSE);
     }
 
+    // Sidebar resize hover detection
+    if (sidebarResizeState_ == SidebarResizeState::None) {
+        const int resizeZone = 8;
+        bool overZone = x >= sidebarWidth_ - resizeZone && x <= sidebarWidth_ &&
+                        y >= topbarRect_.bottom && y <= statusbarRect_.top;
+        if (overZone != (sidebarDragHit_ >= 0)) {
+            sidebarDragHit_ = overZone ? 1 : -1;
+            SetCursor(LoadCursorW(nullptr, IDC_SIZEWE));
+            InvalidateRect(g_hwndMain, nullptr, FALSE);
+        }
+    }
+
     const int nextCommit = CommitAt(x, y);
     if (next != hoveredDay_ || nextCommit != hoveredCommit_) {
         hoveredDay_ = next;
@@ -868,6 +908,14 @@ void UiDraw::MouseLeave() {
         colResizeDragDelta_ = 0;
         SetCursor(LoadCursorW(nullptr, IDC_ARROW));
     }
+    if (sidebarResizeState_ == SidebarResizeState::Dragging) {
+        sidebarResizeState_ = SidebarResizeState::None;
+        sidebarDragHit_ = -1;
+        SetCursor(LoadCursorW(nullptr, IDC_ARROW));
+    } else if (sidebarDragHit_ >= 0) {
+        sidebarDragHit_ = -1;
+        SetCursor(LoadCursorW(nullptr, IDC_ARROW));
+    }
     if (hoveredDay_ >= 0 || hoveredCommit_ >= 0) {
         hoveredDay_ = -1;
         hoveredCommit_ = -1;
@@ -876,6 +924,18 @@ void UiDraw::MouseLeave() {
 }
 
 void UiDraw::MouseDown(int x, int y) {
+    // Start sidebar resize
+    if (sidebarResizeState_ == SidebarResizeState::None) {
+        const int resizeZone = 8;
+        if (x >= sidebarWidth_ - resizeZone && x <= sidebarWidth_ + resizeZone &&
+            y >= topbarRect_.bottom && y <= statusbarRect_.top) {
+            sidebarResizeState_ = SidebarResizeState::Dragging;
+            sidebarResizeStartX_ = x;
+            sidebarResizeStartWidth_ = sidebarWidth_;
+            InvalidateRect(g_hwndMain, nullptr, FALSE);
+            return;
+        }
+    }
     if (selectedDay_ < 0 || colDragDivider_ < 0) return;
     if (!Contains(detailPanelRect_, x, y)) return;
     colResizeState_ = ColResizeState::Dragging;
@@ -891,6 +951,18 @@ void UiDraw::MouseDown(int x, int y) {
 }
 
 void UiDraw::MouseUp(int x, int y) {
+    // End sidebar resize — persist to config
+    if (sidebarResizeState_ == SidebarResizeState::Dragging) {
+        sidebarResizeState_ = SidebarResizeState::None;
+        sidebarDragHit_ = -1;
+        // Normalize: store unscaled pixel value
+        g_config.sidebarWidth = static_cast<int>(sidebarWidth_ / LayoutScale());
+        std::wstring saveError;
+        SaveAppConfig(g_config, saveError);
+        SetCursor(LoadCursorW(nullptr, IDC_ARROW));
+        InvalidateRect(g_hwndMain, nullptr, FALSE);
+        return;
+    }
     if (colResizeState_ != ColResizeState::Dragging || colResizeColumn_ < 0) return;
     if (!Contains(detailPanelRect_, x, y)) {
         // Drag ended outside panel — cancel without saving

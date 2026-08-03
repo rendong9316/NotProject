@@ -278,6 +278,9 @@ bool LoadAppConfig(AppConfig& config, std::wstring& notice, std::wstring& error)
             if (item.isNumber()) config.columnWidths.push_back(item.integer());
         }
     }
+    // Load sidebar width
+    config.sidebarWidth = root.get("sidebarWidth").integer(250);
+    config.sidebarWidth = std::max(190, std::min(600, config.sidebarWidth));
     const bool normalized = NormalizeConfigLists(config) || config.fontSize != loadedFontSize;
     if (config.authors.empty()) config.includeAllAuthors = true;
     if (normalized) {
@@ -314,5 +317,6 @@ bool SaveAppConfig(const AppConfig& config, std::wstring& error) {
     Json colWidthsJson = Json::Array();
     for (const int w : normalized.columnWidths) colWidthsJson.push(Json(w));
     root["columnWidths"] = colWidthsJson;
+    root["sidebarWidth"] = Json(normalized.sidebarWidth);
     return WriteUtf8FileAtomic(path, root.Serialize() + "\n", error);
 }
