@@ -92,7 +92,7 @@ public class EmployeeController {
         //接下来是service实现真正业务操作
         employeeService.save(employeeDTO);
 
-        return null;
+        return Result.success();
     }
 
 }
