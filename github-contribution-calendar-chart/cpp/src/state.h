@@ -23,6 +23,7 @@ extern std::vector<Repository> g_repos;
 extern std::unordered_map<std::wstring, bool> g_selected;
 extern std::wstring g_query;
 extern ContributionData g_contributionData;
+extern double g_fontScale;
 extern AppConfig g_config;
 
 bool InitializeState(HWND hwnd);

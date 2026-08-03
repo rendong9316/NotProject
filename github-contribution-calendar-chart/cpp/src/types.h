@@ -18,7 +18,7 @@ struct AppConfig {
     std::vector<std::wstring> authors;
     double fontSize = 1.0;  // Default font scale factor
     double minFontSize = 0.5;  // Minimum scale
-    double maxFontSize = 3.0;  // Maximum scale (was 3.0, reduce to prevent UI overflow)
+    double maxFontSize = 3.0;  // Maximum readable scale supported by the responsive layout
     std::vector<int> columnWidths;  // Detail panel column widths
     Theme theme = Theme::Light;
 };

@@ -546,7 +546,8 @@ void AdjustFontSize(int delta) {
     if (newSize != g_config.fontSize) {
         g_config.fontSize = newSize;
         g_fontScale = newSize;  // Update the global scale factor too
-        InvalidateRect(g_hwndMain, nullptr, FALSE);  // Trigger redraw
+        g_ui.InitColumnWidths();
+        RefreshSearchControlScale();
         std::wstring saveError;
         SaveAppConfig(g_config, saveError);  // Persist the new font size
     }

@@ -6,6 +6,8 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <commctrl.h>
+#include <algorithm>
+#include <cmath>
 
 namespace {
 
@@ -22,7 +24,29 @@ void UpdateSearch() {
     SetSearchQuery(query);
 }
 
+void UpdateSearchFont() {
+    if (!g_hwndSearch) return;
+    const int pixels = std::max(10, static_cast<int>(std::lround(13.0 * g_fontScale)));
+    HFONT font = CreateFontW(-pixels, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                             DEFAULT_PITCH | FF_DONTCARE, FONT_FAMILY);
+    if (!font) return;
+    SendMessageW(g_hwndSearch, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
+    if (g_editFont) DeleteObject(g_editFont);
+    g_editFont = font;
+}
+
 } // namespace
+
+void RefreshSearchControlScale() {
+    UpdateSearchFont();
+    if (!g_hwndMain) return;
+    RECT client = {};
+    GetClientRect(g_hwndMain, &client);
+    g_ui.Resize(client.right - client.left, client.bottom - client.top);
+    g_ui.LayoutSearch(g_hwndSearch);
+    InvalidateRect(g_hwndMain, nullptr, FALSE);
+}
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
@@ -32,12 +56,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         g_hwndSearch = CreateWindowExW(0, L"EDIT", L"", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
                                        0, 0, 100, 24, hwnd, reinterpret_cast<HMENU>(IDC_SEARCH),
                                        reinterpret_cast<LPCREATESTRUCT>(lParam)->hInstance, nullptr);
-        g_editFont = CreateFontW(-13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                                 OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-                                 DEFAULT_PITCH | FF_DONTCARE, FONT_FAMILY);
-        SendMessageW(g_hwndSearch, WM_SETFONT, reinterpret_cast<WPARAM>(g_editFont), TRUE);
         SendMessageW(g_hwndSearch, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"搜索名称或路径"));
         InitializeState(hwnd);
+        RefreshSearchControlScale();
         return 0;
     }
     case WM_SIZE: {

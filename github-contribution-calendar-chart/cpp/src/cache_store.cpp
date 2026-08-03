@@ -4,6 +4,7 @@
 #include "platform.h"
 
 #include <windows.h>
+#include <algorithm>
 #include <set>
 
 namespace {
@@ -264,7 +265,8 @@ bool LoadAppConfig(AppConfig& config, std::wstring& notice, std::wstring& error)
     config.maxScanDepth = std::max(1, std::min(64, config.maxScanDepth));
     config.scanConcurrency = std::max(1, std::min(32, config.scanConcurrency));
     config.gitConcurrency = std::max(1, std::min(16, config.gitConcurrency));
-    config.fontSize = root.get("fontSize").number(config.fontSize);
+    const double loadedFontSize = root.get("fontSize").number(config.fontSize);
+    config.fontSize = std::max(config.minFontSize, std::min(config.maxFontSize, loadedFontSize));
     config.theme = root.get("theme").integer(0) == 1 ? Theme::Dark : Theme::Light;
     for (const Json& item : root.get("authors").array()) if (item.isString()) config.authors.push_back(Utf8ToWide(item.string()));
     for (const Json& item : root.get("scanRoots").array()) if (item.isString()) config.scanRoots.push_back(Utf8ToWide(item.string()));
@@ -276,7 +278,7 @@ bool LoadAppConfig(AppConfig& config, std::wstring& notice, std::wstring& error)
             if (item.isNumber()) config.columnWidths.push_back(item.integer());
         }
     }
-    const bool normalized = NormalizeConfigLists(config);
+    const bool normalized = NormalizeConfigLists(config) || config.fontSize != loadedFontSize;
     if (config.authors.empty()) config.includeAllAuthors = true;
     if (normalized) {
         std::wstring saveError;

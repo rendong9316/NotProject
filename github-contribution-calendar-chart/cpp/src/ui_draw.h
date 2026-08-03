@@ -19,6 +19,7 @@ public:
     void SelectDay(int index);
     void ClearDaySelection();
     void InitColumnWidths();
+    int VisibleRankingRows() const;
 
 private:
     void ComputeLayout(int width, int height);
@@ -34,9 +35,8 @@ private:
     void DrawStatusbar(HDC dc);
     void DrawTooltip(HDC dc);
 
-    double fontScale_ = 1.0;
-    int Scale(int value) const { return static_cast<int>(value * fontScale_); }
-
+    RECT topbarRect_ = {};
+    RECT statusbarRect_ = {};
     RECT refreshRect_ = {};
     RECT discoverRect_ = {};
     RECT themeRect_ = {};
@@ -46,15 +46,18 @@ private:
     RECT searchRect_ = {};
     RECT repoListRect_ = {};
     RECT calendarRect_ = {};
+    RECT rankingRect_ = {};
     RECT detailPanelRect_ = {};
     int width_ = 0;
     int height_ = 0;
+    int sidebarWidth_ = 250;
     int daySize_ = 12;
     int dayGap_ = 3;
     int hoveredDay_ = -1;
     int hoveredCommit_ = -1;
     int selectedDay_ = -1;
     int commitScroll_ = 0;
+    int repoScroll_ = 0;
     int mouseX_ = 0;
     int mouseY_ = 0;
 
@@ -70,3 +73,5 @@ private:
 };
 
 extern UiDraw g_ui;
+
+void RefreshSearchControlScale();
