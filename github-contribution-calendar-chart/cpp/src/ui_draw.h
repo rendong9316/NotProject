@@ -64,19 +64,13 @@ private:
     // Column resize state
     enum class ColResizeState { None, Dragging };
     ColResizeState colResizeState_ = ColResizeState::None;
-    int colResizeColumn_ = -1;       // 0=time,1=repo,2=message,3=author
+    int colResizeColumn_ = -1;       // 0=time,1=repo,2=message,3=author; -1=dragging; -2=sidebar hover
     int colResizeEndX_ = 0;          // absolute X where drag started (mouse down position)
     int colResizeDragDelta_ = 0;     // pixel offset accumulated during current drag
     int colResizeStartDividerX_ = 0; // X position of the divider at drag start (for guide line)
+    int sidebarResizeStartWidth_ = 0; // sidebarWidth_ at drag start (sidebar mode only)
     std::vector<int> colWidths_;     // 5 saved widths at fontScale=1.0
-    int colDragDivider_ = -1;        // which divider the cursor is hovering over
-
-    // Sidebar resize state
-    enum class SidebarResizeState { None, Dragging };
-    SidebarResizeState sidebarResizeState_ = SidebarResizeState::None;
-    int sidebarResizeStartX_ = 0;    // absolute X where drag started
-    int sidebarResizeStartWidth_ = 0; // sidebarWidth_ at drag start
-    int sidebarDragHit_ = -1;        // whether cursor is over the sidebar resize zone
+    int colDragDivider_ = -1;        // which divider the cursor is hovering over (-2 = sidebar)
 };
 
 extern UiDraw g_ui;
