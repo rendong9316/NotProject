@@ -133,7 +133,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int) {
         return RunDiagnostics();
     }
 
-    HANDLE instanceMutex = CreateMutexW(nullptr, TRUE, L"LocalGitHeatmap.SingleInstance.v2");
+    HANDLE instanceMutex = CreateMutexW(nullptr, TRUE, L"GitLocal.SingleInstance.v2");
     if (instanceMutex && GetLastError() == ERROR_ALREADY_EXISTS) {
         HWND existing = FindWindowW(APP_CLASS, nullptr);
         if (existing) {

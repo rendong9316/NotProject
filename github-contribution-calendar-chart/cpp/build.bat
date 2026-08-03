@@ -34,16 +34,19 @@ echo [RC ] app.rc
 rc /nologo /fo "build\app_res.res" "src\app.rc"
 if errorlevel 1 goto :error
 
-echo [LINK] heatmap.exe
-link /nologo /OUT:"build\heatmap.exe" /SUBSYSTEM:WINDOWS /MANIFEST:EMBED /DYNAMICBASE /NXCOMPAT /MACHINE:X64 ^
+echo [LINK] git_local.exe
+link /nologo /OUT:"build\git_local.exe" /SUBSYSTEM:WINDOWS /MANIFEST:EMBED /DYNAMICBASE /NXCOMPAT /MACHINE:X64 ^
     build\json.obj build\platform.obj build\cache_store.obj build\git_scan.obj ^
     build\state.obj build\ui_draw.obj build\ui_control.obj build\entry.obj build\app_res.res ^
     gdi32.lib gdiplus.lib comctl32.lib shell32.lib shlwapi.lib user32.lib advapi32.lib ole32.lib bcrypt.lib
 if errorlevel 1 goto :error
 
 echo.
-echo Build successful: %PROJECT_DIR%build\heatmap.exe
-for %%f in (build\heatmap.exe) do echo Size: %%~zf bytes
+echo Build successful: %PROJECT_DIR%build\git_local.exe
+for %%f in (build\git_local.exe) do echo Size: %%~zf bytes
+
+powershell -ExecutionPolicy Bypass -Command "$s=[Environment]::GetFolderPath('Desktop'); $p=Join-Path $s 'Git Local.lnk'; $w=New-Object -ComObject WScript.Shell; $sh=$w.CreateShortcut($p); $sh.TargetPath='%PROJECT_DIR%build\git_local.exe'; $sh.WorkingDirectory='%PROJECT_DIR%build'; $sh.Description='Git Local'; $sh.IconLocation='%PROJECT_DIR%build\git_local.exe,0'; $sh.Save(); Write-Host '[LNK] Desktop shortcut updated'"
+
 popd
 exit /b 0
 

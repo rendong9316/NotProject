@@ -1,6 +1,6 @@
-# 本地 Git 提交热力图 C++ 单体版
+# Git Local C++ 单体版
 
-这是一个面向 Windows 的本地 Git 提交统计软件。程序使用 Win32 API 和 GDI+ 绘制界面，不启动 Node.js 服务，不开放局域网端口，也不依赖 WebView。发布时只需要携带一个 `heatmap.exe`。
+这是一个面向 Windows 的本地 Git 提交统计软件。程序使用 Win32 API 和 GDI+ 绘制界面，不启动 Node.js 服务，不开放局域网端口，也不依赖 WebView。发布时只需要携带一个 `git_local.exe`。
 
 ## 构建
 
@@ -15,7 +15,7 @@
 构建脚本会自动定位 MSVC 环境，使用 `/MT` 静态链接 CRT，输出：
 
 ```text
-cpp\build\heatmap.exe
+cpp\build\git_local.exe
 ```
 
 程序是纯原生窗口应用，双击即可运行。也可以将桌面快捷方式的目标直接指向该 exe；启动后会打开本地原生窗口，不需要额外的服务进程。
@@ -25,13 +25,13 @@ cpp\build\heatmap.exe
 运行数据默认保存到：
 
 ```text
-%LOCALAPPDATA%\LocalGitHeatmap\
+%LOCALAPPDATA%\GitLocal\
 ├── config.json       扫描范围、作者筛选等配置
 ├── index.json        仓库索引、指纹和时间戳
 └── repositories\    每个仓库独立的提交日统计 JSON
 ```
 
-首次启动会将项目根目录的旧 `config.json` 和 `data\` 缓存迁移到上述目录。JSON 文件采用临时文件加替换的原子写入方式，程序异常退出时不会直接覆盖上一份完整缓存。备份整个 `LocalGitHeatmap` 目录即可迁移数据；删除该目录会触发下一次全量初始化。
+首次启动会将项目根目录的旧 `config.json` 和 `data\` 缓存迁移到上述目录。JSON 文件采用临时文件加替换的原子写入方式，程序异常退出时不会直接覆盖上一份完整缓存。备份整个 `GitLocal` 目录即可迁移数据；删除该目录会触发下一次全量初始化。
 
 ## 扫描和增量刷新
 
@@ -74,7 +74,7 @@ cpp/src/
 ## 诊断
 
 ```powershell
-.\cpp\build\heatmap.exe --diagnose
+.\cpp\build\git_local.exe --diagnose
 ```
 
 诊断模式会检查 JSON、UTF-8 原子文件、Git 可用性和旧缓存兼容性，退出码为 `0` 表示通过。

@@ -33,8 +33,8 @@
 #define CLR_DARK_GREEN_4      RGB(57,211,83)
 #define CLR_DARK_ACCENT       RGB(63,185,80)
 
-#define APP_CLASS             L"LocalGitHeatmapWindow"
-#define APP_TITLE             L"本地 Git 提交热力图"
+#define APP_CLASS             L"GitLocalWindow"
+#define APP_TITLE             L"Git Local"
 #define IDI_ICON              101
 #define IDC_SEARCH            2001
 #define WM_APP_OPERATION_DONE (WM_APP + 1)

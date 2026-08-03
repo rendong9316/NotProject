@@ -25,7 +25,7 @@ with sync_playwright() as playwright:
     page.goto("http://127.0.0.1:4783", wait_until="networkidle")
     page.wait_for_selector(".day")
 
-    assert page.title() == "本地 Git 提交热力图"
+    assert page.title() == "Git Local"
     assert page.locator(".repo-row").count() > 0
     assert page.locator(".day").count() >= 371
     assert "提交记录" in page.locator("h1").inner_text()

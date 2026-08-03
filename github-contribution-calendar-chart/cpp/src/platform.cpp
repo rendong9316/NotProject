@@ -184,7 +184,7 @@ bool CopyDirectoryJson(const std::wstring& source, const std::wstring& destinati
 std::wstring ApplicationDataDirectory() {
     wchar_t local[MAX_PATH] = {};
     if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, local)))
-        return JoinPath(local, L"LocalGitHeatmap");
+        return JoinPath(local, L"GitLocal");
     return JoinPath(ExeDirectory(), L"data");
 }
 

@@ -336,7 +336,7 @@ void UiDraw::DrawTopbar(HDC dc) {
     int titleHeight = ScaleIntHelper(32);
     int subtitleHeight = ScaleIntHelper(32);
     RECT title = {ScaleIntHelper(20), ScaleIntHelper(6), width_ - ScaleIntHelper(20), ScaleIntHelper(6) + titleHeight};
-    Text(dc, L"本地 Git 提交热力图", title, ScaleIntHelper(17), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
+    Text(dc, L"Git Local", title, ScaleIntHelper(17), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
          DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS, FW_SEMIBOLD);
 
     RECT subtitle = {ScaleIntHelper(20), ScaleIntHelper(titleHeight + 8), width_ - ScaleIntHelper(20), ScaleIntHelper(6) + titleHeight + subtitleHeight};
