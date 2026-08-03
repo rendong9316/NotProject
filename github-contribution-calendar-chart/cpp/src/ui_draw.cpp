@@ -396,15 +396,16 @@ void UiDraw::DrawSidebar(HDC dc) {
          ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
 
     // Draw sidebar resize handle indicator
+    // Visual zone mirrors the hover/click zone: sidebarWidth_±8px (16px total)
     const int resizeZone = 8;
-    RECT resizeHandle = {sidebarWidth_ - resizeZone, topbarRect_.bottom, sidebarWidth_, statusbarRect_.top};
+    RECT resizeHandle = {sidebarWidth_ - resizeZone, topbarRect_.bottom, sidebarWidth_ + resizeZone, statusbarRect_.top};
     if (sidebarDragHit_ >= 0 || sidebarResizeState_ == SidebarResizeState::Dragging) {
         Fill(dc, resizeHandle, ThemeColor(RGB(31,136,61), RGB(63,185,80)));
     } else {
-        // Subtle double-line indicator
+        // Subtle indicator: two 1px lines at left/right edges of the 16px zone
         const COLORREF hint = ThemeColor(RGB(208,215,222), RGB(48,54,61));
-        Fill(dc, {sidebarWidth_ - 3, topbarRect_.bottom, sidebarWidth_ - 2, statusbarRect_.top}, hint);
-        Fill(dc, {sidebarWidth_ - 1, topbarRect_.bottom, sidebarWidth_, statusbarRect_.top}, hint);
+        Fill(dc, {sidebarWidth_ - resizeZone, topbarRect_.bottom, sidebarWidth_ - resizeZone + 1, statusbarRect_.top}, hint);
+        Fill(dc, {sidebarWidth_ + resizeZone - 1, topbarRect_.bottom, sidebarWidth_ + resizeZone, statusbarRect_.top}, hint);
     }
 
     RECT heading = {ScaleIntHelper(14), topbarRect_.bottom + ScaleIntHelper(10),
@@ -880,7 +881,7 @@ void UiDraw::MouseMove(int x, int y) {
     // Sidebar resize hover detection
     if (sidebarResizeState_ == SidebarResizeState::None) {
         const int resizeZone = 8;
-        bool overZone = x >= sidebarWidth_ - resizeZone && x <= sidebarWidth_ &&
+        bool overZone = x >= sidebarWidth_ - resizeZone && x <= sidebarWidth_ + resizeZone &&
                         y >= topbarRect_.bottom && y <= statusbarRect_.top;
         if (overZone != (sidebarDragHit_ >= 0)) {
             sidebarDragHit_ = overZone ? 1 : -1;
@@ -909,8 +910,10 @@ void UiDraw::MouseLeave() {
         SetCursor(LoadCursorW(nullptr, IDC_ARROW));
     }
     if (sidebarResizeState_ == SidebarResizeState::Dragging) {
+        // Mouse left window during drag — cancel and release capture
         sidebarResizeState_ = SidebarResizeState::None;
         sidebarDragHit_ = -1;
+        ReleaseCapture();
         SetCursor(LoadCursorW(nullptr, IDC_ARROW));
     } else if (sidebarDragHit_ >= 0) {
         sidebarDragHit_ = -1;
@@ -932,6 +935,7 @@ void UiDraw::MouseDown(int x, int y) {
             sidebarResizeState_ = SidebarResizeState::Dragging;
             sidebarResizeStartX_ = x;
             sidebarResizeStartWidth_ = sidebarWidth_;
+            SetCapture(g_hwndMain);
             InvalidateRect(g_hwndMain, nullptr, FALSE);
             return;
         }
@@ -959,6 +963,7 @@ void UiDraw::MouseUp(int x, int y) {
         g_config.sidebarWidth = static_cast<int>(sidebarWidth_ / LayoutScale());
         std::wstring saveError;
         SaveAppConfig(g_config, saveError);
+        ReleaseCapture();
         SetCursor(LoadCursorW(nullptr, IDC_ARROW));
         InvalidateRect(g_hwndMain, nullptr, FALSE);
         return;
@@ -972,6 +977,7 @@ void UiDraw::MouseUp(int x, int y) {
         colResizeDragDelta_ = 0;
         colResizeStartDividerX_ = 0;
         colDragDivider_ = -1;
+        ReleaseCapture();
         SetCursor(LoadCursorW(nullptr, IDC_ARROW));
         return;
     }
