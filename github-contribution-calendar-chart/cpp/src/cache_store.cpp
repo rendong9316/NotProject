@@ -4,11 +4,39 @@
 #include "platform.h"
 
 #include <windows.h>
+#include <set>
 
 namespace {
 
 std::wstring JsonWide(const Json& value) { return value.isString() ? Utf8ToWide(value.string()) : L""; }
 Json JsonText(const std::wstring& value) { return Json(WideToUtf8(value)); }
+
+std::wstring Trimmed(const std::wstring& value) {
+    const size_t first = value.find_first_not_of(L" \t\r\n");
+    if (first == std::wstring::npos) return L"";
+    const size_t last = value.find_last_not_of(L" \t\r\n");
+    return value.substr(first, last - first + 1);
+}
+
+bool NormalizeUnique(std::vector<std::wstring>& values) {
+    std::vector<std::wstring> normalized;
+    std::set<std::wstring> seen;
+    normalized.reserve(values.size());
+    for (const std::wstring& value : values) {
+        const std::wstring trimmed = Trimmed(value);
+        if (trimmed.empty() || !seen.insert(Lowercase(trimmed)).second) continue;
+        normalized.push_back(trimmed);
+    }
+    if (normalized == values) return false;
+    values.swap(normalized);
+    return true;
+}
+
+bool NormalizeConfigLists(AppConfig& config) {
+    const bool authorsChanged = NormalizeUnique(config.authors);
+    const bool rootsChanged = NormalizeUnique(config.scanRoots);
+    return authorsChanged || rootsChanged;
+}
 
 Json RepositoryToJson(const Repository& repository) {
     Json value = Json::Object();
@@ -21,6 +49,7 @@ Json RepositoryToJson(const Repository& repository) {
     value["checkedAt"] = repository.checkedAt.empty() ? Json() : JsonText(repository.checkedAt);
     value["updatedAt"] = repository.updatedAt.empty() ? Json() : JsonText(repository.updatedAt);
     value["error"] = repository.error.empty() ? Json() : JsonText(repository.error);
+    value["historySaveTime"] = repository.historySaveTime.empty() ? Json() : JsonText(repository.historySaveTime);
     return value;
 }
 
@@ -34,6 +63,7 @@ Repository JsonToRepository(const Json& value) {
     repository.checkedAt = JsonWide(value.get("checkedAt"));
     repository.updatedAt = JsonWide(value.get("updatedAt"));
     repository.error = JsonWide(value.get("error"));
+    repository.historySaveTime = JsonWide(value.get("historySaveTime"));
     repository.available = value.get("available").boolean(false);
     return repository;
 }
@@ -151,7 +181,8 @@ bool CacheStore::LoadCommitsForDate(const std::wstring& repositoryId, const std:
 
 bool CacheStore::SaveHistory(const Repository& repository, const std::map<std::wstring, int>& days,
                              const std::vector<DayEntry::CommitEntry>& commits,
-                             std::wstring& error) const {
+                             std::wstring& error, std::wstring* saveTime) const {
+    const std::wstring filePath = RepositoryFile(repository.id);
     Json root = Json::Object();
     root["version"] = Json(2.0);
     root["historyVersion"] = Json(2.0);
@@ -174,7 +205,24 @@ bool CacheStore::SaveHistory(const Repository& repository, const std::map<std::w
         arr.push(item);
     }
     root["commits"] = arr;
-    return WriteUtf8FileAtomic(RepositoryFile(repository.id), root.Serialize() + "\n", error);
+    // Write the file first, then capture its mtime for future incremental checks.
+    bool success = WriteUtf8FileAtomic(filePath, root.Serialize() + "\n", error);
+    if (success && saveTime) {
+        HANDLE h = CreateFileW(filePath.c_str(), GENERIC_READ,
+                               FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                               nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (h != INVALID_HANDLE_VALUE) {
+            FILETIME ft = {};
+            if (GetFileTime(h, nullptr, nullptr, &ft)) {
+                wchar_t buf[32] = {};
+                _snwprintf_s(buf, _countof(buf), _TRUNCATE, L"%08x%08x",
+                             ft.dwHighDateTime, ft.dwLowDateTime);
+                *saveTime = buf;
+            }
+            CloseHandle(h);
+        }
+    }
+    return success;
 }
 
 bool CacheStore::HasCompleteHistory(const std::wstring& repositoryId) const {
@@ -187,6 +235,7 @@ bool CacheStore::HasCompleteHistory(const std::wstring& repositoryId) const {
 }
 
 bool LoadAppConfig(AppConfig& config, std::wstring& notice, std::wstring& error) {
+    config = AppConfig();
     std::wstring path = JoinPath(ApplicationDataDirectory(), L"config.json");
     if (!PathExists(path)) {
         const std::wstring projectConfig = FindProjectFile(L"config.json");
@@ -227,29 +276,41 @@ bool LoadAppConfig(AppConfig& config, std::wstring& notice, std::wstring& error)
             if (item.isNumber()) config.columnWidths.push_back(item.integer());
         }
     }
+    const bool normalized = NormalizeConfigLists(config);
     if (config.authors.empty()) config.includeAllAuthors = true;
+    if (normalized) {
+        std::wstring saveError;
+        if (SaveAppConfig(config, saveError)) {
+            const std::wstring message = L"已清理配置中的重复作者或扫描目录";
+            notice = notice.empty() ? message : notice + L"；" + message;
+        } else if (error.empty()) {
+            error = saveError;
+        }
+    }
     return true;
 }
 
 bool SaveAppConfig(const AppConfig& config, std::wstring& error) {
+    AppConfig normalized = config;
+    NormalizeConfigLists(normalized);
     std::wstring path = JoinPath(ApplicationDataDirectory(), L"config.json");
     Json root = Json::Object();
-    root["scanAllDrives"] = Json(config.scanAllDrives);
-    root["includeAllAuthors"] = Json(config.includeAllAuthors);
-    root["maxScanDepth"] = Json(config.maxScanDepth);
-    root["scanConcurrency"] = Json(config.scanConcurrency);
-    root["gitConcurrency"] = Json(config.gitConcurrency);
-    root["fontSize"] = Json(config.fontSize);
-    root["theme"] = Json(static_cast<double>(config.theme == Theme::Dark ? 1 : 0));
+    root["scanAllDrives"] = Json(normalized.scanAllDrives);
+    root["includeAllAuthors"] = Json(normalized.includeAllAuthors);
+    root["maxScanDepth"] = Json(normalized.maxScanDepth);
+    root["scanConcurrency"] = Json(normalized.scanConcurrency);
+    root["gitConcurrency"] = Json(normalized.gitConcurrency);
+    root["fontSize"] = Json(normalized.fontSize);
+    root["theme"] = Json(static_cast<double>(normalized.theme == Theme::Dark ? 1 : 0));
     Json authors = Json::Array();
-    for (const auto& a : config.authors) authors.push(JsonText(a));
+    for (const auto& a : normalized.authors) authors.push(JsonText(a));
     root["authors"] = authors;
     Json scanRoots = Json::Array();
-    for (const auto& r : config.scanRoots) scanRoots.push(JsonText(r));
+    for (const auto& r : normalized.scanRoots) scanRoots.push(JsonText(r));
     root["scanRoots"] = scanRoots;
     // Save column widths
     Json colWidthsJson = Json::Array();
-    for (const int w : config.columnWidths) colWidthsJson.push(Json(w));
+    for (const int w : normalized.columnWidths) colWidthsJson.push(Json(w));
     root["columnWidths"] = colWidthsJson;
     return WriteUtf8FileAtomic(path, root.Serialize() + "\n", error);
 }

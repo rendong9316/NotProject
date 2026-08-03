@@ -56,6 +56,25 @@ struct RepositoryUpdate {
 
 std::wstring TimestampWide() { return Utf8ToWide(IsoTimestampUtc()); }
 
+// Note: FileMtimeHex is no longer used for incremental refresh optimization
+// because .git/HEAD mtime is unreliable (HEAD is a symbolic ref). Kept for
+// potential future use or debugging.
+std::wstring FileMtimeHex(const std::wstring& path) {
+    HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                           nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h == INVALID_HANDLE_VALUE) return L"";
+    FILETIME ft = {};
+    BOOL ok = GetFileTime(h, nullptr, nullptr, &ft);
+    CloseHandle(h);
+    if (!ok) return L"";
+    std::wstring result;
+    result.reserve(16);
+    wchar_t buf[17] = {};
+    _snwprintf_s(buf, _countof(buf), _TRUNCATE, L"%08x%08x", ft.dwHighDateTime, ft.dwLowDateTime);
+    result = buf;
+    return result;
+}
+
 bool SamePath(const std::wstring& left, const std::wstring& right) {
     return Lowercase(left) == Lowercase(right);
 }
@@ -81,6 +100,12 @@ RepositoryUpdate UpdateRepository(const std::wstring& path, const Repository* ex
     update.repository.path = path;
     update.repository.checkedAt = TimestampWide();
     update.repository.filterSignature = GitScan::FilterSignature(g_config);
+
+    // Incremental check: skip CollectHistory only if fingerprint is unchanged.
+    // We do NOT use .git/HEAD mtime as an optimization because HEAD is a
+    // symbolic ref (contains "ref: refs/heads/main") that doesn't change when
+    // new commits are added to the current branch. Only the target ref file
+    // (e.g., .git/refs/heads/main) changes, so HEAD mtime is unreliable.
     std::wstring fingerprint;
     std::wstring error;
     if (!DirectoryExists(path) || !GitScan::ReadFingerprint(path, fingerprint, error)) {
@@ -93,7 +118,7 @@ RepositoryUpdate UpdateRepository(const std::wstring& path, const Repository* ex
     update.repository.error.clear();
     update.repository.fingerprint = fingerprint;
     const bool unchanged = existing && existing->fingerprint == fingerprint &&
-                           existing->filterSignature == update.repository.filterSignature &&
+                           GitScan::MatchesFilterSignature(g_config, existing->filterSignature) &&
                            g_store.HasCompleteHistory(update.repository.id);
     if (unchanged) {
         update.status = RepositoryUpdate::Unchanged;
@@ -109,12 +134,14 @@ RepositoryUpdate UpdateRepository(const std::wstring& path, const Repository* ex
         return update;
     }
     update.repository.updatedAt = TimestampWide();
-    if (!g_store.SaveHistory(update.repository, days, commits, error)) {
+    std::wstring saveTime;
+    if (!g_store.SaveHistory(update.repository, days, commits, error, &saveTime)) {
         update.repository.available = false;
         update.repository.error = error;
         update.status = RepositoryUpdate::Unavailable;
         return update;
     }
+    update.repository.historySaveTime = saveTime;
     update.status = existing ? RepositoryUpdate::Updated : RepositoryUpdate::Added;
     return update;
 }

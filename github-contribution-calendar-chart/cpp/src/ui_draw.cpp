@@ -126,6 +126,18 @@ void TextWrap(HDC dc, const std::wstring& value, RECT rect, int size, COLORREF c
     DeleteObject(font);
 }
 
+// Single-line text drawing helper
+void Text(HDC dc, const std::wstring& value, RECT rect, int size, COLORREF color,
+          UINT flags = DT_LEFT | DT_VCENTER | DT_SINGLELINE, int weight = FW_NORMAL) {
+    HFONT font = MakeFont(size, weight);
+    HFONT old = static_cast<HFONT>(SelectObject(dc, font));
+    SetTextColor(dc, color);
+    SetBkMode(dc, TRANSPARENT);
+    DrawTextW(dc, value.c_str(), static_cast<int>(value.size()), &rect, flags);
+    SelectObject(dc, old);
+    DeleteObject(font);
+}
+
 bool Contains(const RECT& rect, int x, int y) { return x >= rect.left && x < rect.right && y >= rect.top && y <= rect.bottom; }
 
 bool CopyTextToClipboard(HWND owner, const std::wstring& value) {

@@ -109,6 +109,25 @@ std::wstring NormalizePath(const std::wstring& path) {
     return output;
 }
 
+std::vector<std::wstring> CanonicalAuthors(const AppConfig& config) {
+    std::vector<std::wstring> authors = config.authors;
+    for (std::wstring& author : authors) author = Lowercase(author);
+    std::sort(authors.begin(), authors.end());
+    authors.erase(std::unique(authors.begin(), authors.end()), authors.end());
+    return authors;
+}
+
+std::wstring FilterSignatureForAuthors(const std::vector<std::wstring>& authors, bool includeAllAuthors) {
+    std::string value = "{\"authors\":[";
+    for (size_t index = 0; index < authors.size(); ++index) {
+        if (index) value += ',';
+        value += '"' + WideToUtf8(authors[index]) + '"';
+    }
+    value += "],\"includeAllAuthors\":";
+    value += includeAllAuthors ? "true}" : "false}";
+    return HashText(value);
+}
+
 } // namespace
 
 bool GitScan::RunGit(const std::vector<std::wstring>& arguments, std::string& output,
@@ -120,23 +139,49 @@ bool GitScan::RunGit(const std::vector<std::wstring>& arguments, std::string& ou
         error = L"创建 Git 输出管道失败：" + WindowsErrorMessage(GetLastError());
         return false;
     }
-    SetHandleInformation(readPipe, HANDLE_FLAG_INHERIT, 0);
+    if (!SetHandleInformation(readPipe, HANDLE_FLAG_INHERIT, 0)) {
+        error = L"配置 Git 输出管道失败：" + WindowsErrorMessage(GetLastError());
+        CloseHandle(readPipe);
+        CloseHandle(writePipe);
+        return false;
+    }
 
     std::wstring command = L"git.exe";
     for (const std::wstring& argument : arguments) command += L" " + QuoteArgument(argument);
     std::vector<wchar_t> mutableCommand(command.begin(), command.end());
     mutableCommand.push_back(L'\0');
 
-    STARTUPINFOW startup = {};
-    startup.cb = sizeof(startup);
-    startup.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    startup.wShowWindow = SW_HIDE;
-    startup.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-    startup.hStdOutput = writePipe;
-    startup.hStdError = writePipe;
+    SIZE_T attributeBytes = 0;
+    InitializeProcThreadAttributeList(nullptr, 1, 0, &attributeBytes);
+    std::vector<unsigned char> attributeStorage(attributeBytes);
+    STARTUPINFOEXW startup = {};
+    startup.StartupInfo.cb = sizeof(startup);
+    startup.lpAttributeList = reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(attributeStorage.data());
+    if (!InitializeProcThreadAttributeList(startup.lpAttributeList, 1, 0, &attributeBytes)) {
+        error = L"初始化 Git 进程属性失败：" + WindowsErrorMessage(GetLastError());
+        CloseHandle(readPipe);
+        CloseHandle(writePipe);
+        return false;
+    }
+    HANDLE inheritedHandles[] = {writePipe};
+    if (!UpdateProcThreadAttribute(startup.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                                   inheritedHandles, sizeof(inheritedHandles), nullptr, nullptr)) {
+        error = L"限制 Git 继承句柄失败：" + WindowsErrorMessage(GetLastError());
+        DeleteProcThreadAttributeList(startup.lpAttributeList);
+        CloseHandle(readPipe);
+        CloseHandle(writePipe);
+        return false;
+    }
+    startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    startup.StartupInfo.wShowWindow = SW_HIDE;
+    startup.StartupInfo.hStdInput = nullptr;
+    startup.StartupInfo.hStdOutput = writePipe;
+    startup.StartupInfo.hStdError = writePipe;
     PROCESS_INFORMATION process = {};
     const BOOL started = CreateProcessW(nullptr, mutableCommand.data(), nullptr, nullptr, TRUE,
-                                        CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process);
+                                        CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT, nullptr, nullptr,
+                                        &startup.StartupInfo, &process);
+    DeleteProcThreadAttributeList(startup.lpAttributeList);
     CloseHandle(writePipe);
     if (!started) {
         const DWORD code = GetLastError();
@@ -199,17 +244,24 @@ std::wstring GitScan::RepositoryId(const std::wstring& path) {
 }
 
 std::wstring GitScan::FilterSignature(const AppConfig& config) {
-    std::vector<std::wstring> authors = config.authors;
-    for (std::wstring& author : authors) author = Lowercase(author);
-    std::sort(authors.begin(), authors.end());
-    std::string value = "{\"authors\":[";
-    for (size_t index = 0; index < authors.size(); ++index) {
-        if (index) value += ',';
-        value += '"' + WideToUtf8(authors[index]) + '"';
+    return FilterSignatureForAuthors(CanonicalAuthors(config), config.includeAllAuthors);
+}
+
+bool GitScan::MatchesFilterSignature(const AppConfig& config, const std::wstring& signature) {
+    const std::vector<std::wstring> authors = CanonicalAuthors(config);
+    if (signature == FilterSignatureForAuthors(authors, config.includeAllAuthors)) return true;
+
+    // Older builds loaded the config twice and persisted a repeatedly doubled
+    // author list. Accept those equivalent signatures once so existing history
+    // caches can be migrated without another full git log.
+    std::vector<std::wstring> repeated = authors;
+    for (int copies = 2; copies <= 4096 && !authors.empty(); copies *= 2) {
+        const std::vector<std::wstring> previous = repeated;
+        repeated.insert(repeated.end(), previous.begin(), previous.end());
+        std::sort(repeated.begin(), repeated.end());
+        if (signature == FilterSignatureForAuthors(repeated, config.includeAllAuthors)) return true;
     }
-    value += "],\"includeAllAuthors\":";
-    value += config.includeAllAuthors ? "true}" : "false}";
-    return HashText(value);
+    return false;
 }
 
 bool GitScan::ReadFingerprint(const std::wstring& path, std::wstring& fingerprint, std::wstring& error) {

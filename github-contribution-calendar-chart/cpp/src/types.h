@@ -32,6 +32,7 @@ struct Repository {
     std::wstring checkedAt;
     std::wstring updatedAt;
     std::wstring error;
+    std::wstring historySaveTime;  // FILETIME string recorded when history was last saved
     bool available = false;
     int yearTotal = 0;
 };

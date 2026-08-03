@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <cstdio>
 #include <string>
+#include <thread>
+#include <vector>
 
 namespace {
 
@@ -53,6 +55,58 @@ int RunDiagnostics() {
         std::printf("FAIL git: %s\n", WideToUtf8(error).c_str());
         passed = false;
     } else std::printf("PASS %s\n", WideToUtf8(gitVersion).c_str());
+
+    AppConfig loadedConfig;
+    std::wstring configNotice;
+    error.clear();
+    if (!LoadAppConfig(loadedConfig, configNotice, error)) {
+        std::printf("FAIL config load: %s\n", WideToUtf8(error).c_str());
+        passed = false;
+    } else {
+        const size_t authorCount = loadedConfig.authors.size();
+        const size_t rootCount = loadedConfig.scanRoots.size();
+        configNotice.clear();
+        error.clear();
+        if (!LoadAppConfig(loadedConfig, configNotice, error) || loadedConfig.authors.size() != authorCount ||
+            loadedConfig.scanRoots.size() != rootCount) {
+            std::printf("FAIL config load is not idempotent\n");
+            passed = false;
+        } else std::printf("PASS config normalization/idempotence\n");
+    }
+
+    AppConfig uniqueAuthors;
+    uniqueAuthors.authors.push_back(L"rendong9316@163.com");
+    AppConfig repeatedAuthors = uniqueAuthors;
+    repeatedAuthors.authors.resize(512, L"rendong9316@163.com");
+    const std::wstring legacySignature =
+        L"d734a2c8de4edf2826203e090bbcbe8ed4249dfccb3ecd9d6fcd3722f9c0509f";
+    AppConfig multipleAuthors;
+    multipleAuthors.authors = {L"b@example.com", L"a@example.com"};
+    const std::wstring legacyMultipleSignature =
+        L"d8ef5a5ab24fccce2594cc48ac69109195c7536c39bcc550bfed4f34c0d3ae39";
+    if (GitScan::FilterSignature(uniqueAuthors) != GitScan::FilterSignature(repeatedAuthors) ||
+        !GitScan::MatchesFilterSignature(uniqueAuthors, legacySignature) ||
+        !GitScan::MatchesFilterSignature(multipleAuthors, legacyMultipleSignature)) {
+        std::printf("FAIL canonical/legacy author signature compatibility\n");
+        passed = false;
+    } else std::printf("PASS canonical/legacy author signatures\n");
+
+    const std::wstring diagnosticRepository = ParentPath(ExeDirectory());
+    std::vector<int> fingerprintResults(12, 0);
+    std::vector<std::thread> fingerprintWorkers;
+    for (size_t index = 0; index < fingerprintResults.size(); ++index) {
+        fingerprintWorkers.emplace_back([&, index]() {
+            std::wstring fingerprint;
+            std::wstring fingerprintError;
+            fingerprintResults[index] = GitScan::ReadFingerprint(
+                diagnosticRepository, fingerprint, fingerprintError) && !fingerprint.empty() ? 1 : 0;
+        });
+    }
+    for (std::thread& worker : fingerprintWorkers) worker.join();
+    if (std::find(fingerprintResults.begin(), fingerprintResults.end(), 0) != fingerprintResults.end()) {
+        std::printf("FAIL concurrent git process isolation\n");
+        passed = false;
+    } else std::printf("PASS concurrent git process isolation\n");
 
     const std::wstring projectIndex = FindProjectFile(L"data\\index.json");
     if (projectIndex.empty()) {
@@ -116,8 +170,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR commandLine, int) {
         Gdiplus::GdiplusShutdown(gdiplusToken);
         return 1;
     }
-    { std::wstring notice, error; LoadAppConfig(g_config, notice, error); }
-    ApplyDarkMode(window, g_config.theme == Theme::Dark);
     ShowWindow(window, SW_SHOWMAXIMIZED);
     UpdateWindow(window);
 

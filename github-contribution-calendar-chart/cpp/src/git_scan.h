@@ -13,6 +13,7 @@ public:
 
     static std::wstring RepositoryId(const std::wstring& path);
     static std::wstring FilterSignature(const AppConfig& config);
+    static bool MatchesFilterSignature(const AppConfig& config, const std::wstring& signature);
     static bool ReadFingerprint(const std::wstring& path, std::wstring& fingerprint, std::wstring& error);
     static bool CollectHistory(const std::wstring& path, const AppConfig& config,
                                std::map<std::wstring, int>& days,
