@@ -3,6 +3,7 @@ package com.sky.service.impl;
 import com.sky.constant.MessageConstant;
 import com.sky.constant.PasswordConstant;
 import com.sky.constant.StatusConstant;
+import com.sky.context.BaseContext;
 import com.sky.dto.EmployeeDTO;
 import com.sky.dto.EmployeeLoginDTO;
 import com.sky.entity.Employee;
@@ -80,8 +81,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setUpdateTime(LocalDateTime.now());
         //设置创建人/修改人id，先写死一个值，后期完善。后缀L表示是Long长整型类型
         // TODO 后期需要改为动态获取操作者的员工id
-        employee.setCreateUser(666L);
-        employee.setUpdateUser(666L);
+        employee.setCreateUser(BaseContext.getCurrentId());
+        employee.setUpdateUser(BaseContext.getCurrentId());
 
         //对象都封装完毕后，需要调用持久层方法
         employeeMapper.insert(employee);
