@@ -48,6 +48,13 @@ int RunDiagnostics() {
         passed = false;
     } else std::printf("PASS utf8 atomic filesystem\n");
     DeleteFileW(testFile.c_str());
+
+    const std::wstring missingRepository = JoinPath(testDirectory, L"deleted-repository");
+    if (ProbeDirectory(testDirectory) != DirectoryState::Exists ||
+        ProbeDirectory(missingRepository) != DirectoryState::Missing) {
+        std::printf("FAIL deleted repository path detection\n");
+        passed = false;
+    } else std::printf("PASS deleted repository path detection\n");
     RemoveDirectoryW(testDirectory.c_str());
 
     std::wstring gitVersion;

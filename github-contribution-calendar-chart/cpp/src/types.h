@@ -72,6 +72,7 @@ struct OperationSummary {
     int added = 0;
     int updated = 0;
     int unchanged = 0;
+    int removed = 0;
     int unavailable = 0;
     unsigned long long durationMs = 0;
 };

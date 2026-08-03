@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+enum class DirectoryState { Exists, Missing, Inaccessible };
+
 std::wstring Utf8ToWide(const std::string& value);
 std::string WideToUtf8(const std::wstring& value);
 std::wstring JoinPath(const std::wstring& left, const std::wstring& right);
@@ -15,6 +17,7 @@ std::wstring FormatDuration(unsigned long long milliseconds);
 
 bool PathExists(const std::wstring& path);
 bool DirectoryExists(const std::wstring& path);
+DirectoryState ProbeDirectory(const std::wstring& path);
 bool EnsureDirectory(const std::wstring& path);
 bool ReadUtf8File(const std::wstring& path, std::string& content, std::wstring& error);
 bool WriteUtf8FileAtomic(const std::wstring& path, const std::string& content, std::wstring& error);

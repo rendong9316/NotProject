@@ -85,6 +85,32 @@ bool DirectoryExists(const std::wstring& path) {
     return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 }
 
+DirectoryState ProbeDirectory(const std::wstring& path) {
+    const DWORD attributes = GetFileAttributesW(path.c_str());
+    if (attributes != INVALID_FILE_ATTRIBUTES)
+        return (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0 ? DirectoryState::Exists : DirectoryState::Missing;
+
+    const DWORD error = GetLastError();
+    if (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND && error != ERROR_INVALID_NAME)
+        return DirectoryState::Inaccessible;
+
+    std::wstring ancestor = ParentPath(path);
+    while (!ancestor.empty()) {
+        const DWORD ancestorAttributes = GetFileAttributesW(ancestor.c_str());
+        if (ancestorAttributes != INVALID_FILE_ATTRIBUTES) return DirectoryState::Missing;
+
+        const DWORD ancestorError = GetLastError();
+        if (ancestorError != ERROR_FILE_NOT_FOUND && ancestorError != ERROR_PATH_NOT_FOUND &&
+            ancestorError != ERROR_INVALID_NAME)
+            return DirectoryState::Inaccessible;
+
+        const std::wstring parent = ParentPath(ancestor);
+        if (parent.empty() || parent == ancestor) break;
+        ancestor = parent;
+    }
+    return DirectoryState::Inaccessible;
+}
+
 bool EnsureDirectory(const std::wstring& path) {
     if (DirectoryExists(path)) return true;
     return SHCreateDirectoryExW(nullptr, path.c_str(), nullptr) == ERROR_SUCCESS || DirectoryExists(path);

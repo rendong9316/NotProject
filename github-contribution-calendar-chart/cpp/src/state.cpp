@@ -51,7 +51,7 @@ std::atomic<bool> g_cancel(false);
 
 struct RepositoryUpdate {
     Repository repository;
-    enum Status { Added, Updated, Unchanged, Unavailable } status = Unavailable;
+    enum Status { Added, Updated, Unchanged, Removed, Unavailable } status = Unavailable;
 };
 
 std::wstring TimestampWide() { return Utf8ToWide(IsoTimestampUtc()); }
@@ -106,9 +106,25 @@ RepositoryUpdate UpdateRepository(const std::wstring& path, const Repository* ex
     // symbolic ref (contains "ref: refs/heads/main") that doesn't change when
     // new commits are added to the current branch. Only the target ref file
     // (e.g., .git/refs/heads/main) changes, so HEAD mtime is unreliable.
+    const DirectoryState initialState = ProbeDirectory(path);
+    if (initialState == DirectoryState::Missing) {
+        update.status = RepositoryUpdate::Removed;
+        return update;
+    }
+    if (initialState == DirectoryState::Inaccessible) {
+        update.repository.available = false;
+        update.repository.error = L"仓库路径当前不可用";
+        update.status = RepositoryUpdate::Unavailable;
+        return update;
+    }
+
     std::wstring fingerprint;
     std::wstring error;
-    if (!DirectoryExists(path) || !GitScan::ReadFingerprint(path, fingerprint, error)) {
+    if (!GitScan::ReadFingerprint(path, fingerprint, error)) {
+        if (ProbeDirectory(path) == DirectoryState::Missing) {
+            update.status = RepositoryUpdate::Removed;
+            return update;
+        }
         update.repository.available = false;
         update.repository.error = error.empty() ? L"仓库路径当前不可用" : error;
         update.status = RepositoryUpdate::Unavailable;
@@ -173,6 +189,7 @@ void CountResult(OperationSummary& summary, RepositoryUpdate::Status status) {
     if (status == RepositoryUpdate::Added) ++summary.added;
     else if (status == RepositoryUpdate::Updated) ++summary.updated;
     else if (status == RepositoryUpdate::Unchanged) ++summary.unchanged;
+    else if (status == RepositoryUpdate::Removed) ++summary.removed;
     else ++summary.unavailable;
 }
 
@@ -186,6 +203,7 @@ void RunOperation(OperationKind kind, std::vector<Repository> existing,
     result->lastDiscovery = previousDiscovery;
     result->lastRefresh = previousRefresh;
     result->summary.kind = kind == OperationKind::Discover ? L"discover" : L"refresh";
+    std::vector<std::wstring> removedRepositoryIds;
 
     if (kind == OperationKind::Discover) {
         result->roots = ResolveRoots();
@@ -213,6 +231,11 @@ void RunOperation(OperationKind kind, std::vector<Repository> existing,
             }
             for (const Repository& old : existing) {
                 if (foundIds.count(old.id) || old.updatedAt.empty()) continue;
+                if (ProbeDirectory(old.path) == DirectoryState::Missing) {
+                    removedRepositoryIds.push_back(old.id);
+                    CountResult(result->summary, RepositoryUpdate::Removed);
+                    continue;
+                }
                 Repository missing = old;
                 missing.available = false;
                 missing.error = L"仓库路径当前不可用";
@@ -228,6 +251,11 @@ void RunOperation(OperationKind kind, std::vector<Repository> existing,
         const std::vector<RepositoryUpdate> updates = UpdateMany(work);
         result->repositories.clear();
         for (const RepositoryUpdate& update : updates) {
+            if (update.status == RepositoryUpdate::Removed) {
+                removedRepositoryIds.push_back(update.repository.id);
+                CountResult(result->summary, update.status);
+                continue;
+            }
             if (update.status != RepositoryUpdate::Unavailable || !update.repository.updatedAt.empty())
                 result->repositories.push_back(update.repository);
             CountResult(result->summary, update.status);
@@ -241,8 +269,12 @@ void RunOperation(OperationKind kind, std::vector<Repository> existing,
     result->summary.durationMs = GetTickCount64() - started;
     if (!g_cancel.load() && result->error.empty()) {
         std::wstring saveError;
-        if (!g_store.SaveIndex(result->repositories, result->roots, result->lastDiscovery, result->lastRefresh, saveError))
+        if (!g_store.SaveIndex(result->repositories, result->roots, result->lastDiscovery, result->lastRefresh, saveError)) {
             result->error = saveError;
+        } else {
+            for (const std::wstring& id : removedRepositoryIds)
+                DeleteFileW(g_store.RepositoryFile(id).c_str());
+        }
     }
     if (!PostMessageW(g_hwndMain, WM_APP_OPERATION_DONE, 0, reinterpret_cast<LPARAM>(result))) delete result;
 }
@@ -364,7 +396,8 @@ void HandleOperationDone(LPARAM resultPointer) {
         g_status = (summary.kind == L"discover" ? L"发现完成：" : L"刷新完成：") +
             FormatInteger(summary.checked) + L" 个项目，新增 " + FormatInteger(summary.added) +
             L"，更新 " + FormatInteger(summary.updated) + L"，未变化 " + FormatInteger(summary.unchanged) +
-            L"，不可用 " + FormatInteger(summary.unavailable) + L"，耗时 " + FormatDuration(summary.durationMs);
+            L"，已移除 " + FormatInteger(summary.removed) + L"，不可用 " +
+            FormatInteger(summary.unavailable) + L"，耗时 " + FormatDuration(summary.durationMs);
         g_ui.ClearDaySelection();
         RebuildContributions();
         // Compute yearTotal for all repos (independent of selection) and sort sidebar
