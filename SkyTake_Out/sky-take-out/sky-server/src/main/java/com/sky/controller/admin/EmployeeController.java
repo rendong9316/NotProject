@@ -104,7 +104,7 @@ public class EmployeeController {
     public Result<PageResult>page(EmployeePageQueryDTO employeePageQueryDTO){
         log.info("员工分页查询");
         PageResult pageResult = employeeService.pageQuery(employeePageQueryDTO);
-        return pageResult;
+        return Result.success(pageResult);
     }
 
 }
