@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
@@ -105,7 +106,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         PageHelper.startPage(employeePageQueryDTO.getPage(),employeePageQueryDTO.getPageSize());
         //上面这个是个小插件，帮助动态拼接分页查询语句
         Page<Employee> page = employeeMapper.pageQuery(employeePageQueryDTO);
-        return null;
+        PageResult result = new PageResult(page.getTotal(),page.getResult());
+        return result;
     }
 
 
