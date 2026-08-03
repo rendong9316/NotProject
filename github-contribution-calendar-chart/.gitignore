@@ -1,8 +1,0 @@
-node_modules/
-dist/
-test-artifacts/
-heatmap.log
-heatmap-error.log
-data/
-cpp/build/
-cpp/*.exe
