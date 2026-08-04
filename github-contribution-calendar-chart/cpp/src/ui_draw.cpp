@@ -778,10 +778,6 @@ bool UiDraw::Click(int x, int y) {
             }
         }
     }
-    // Close detail panel when clicking outside
-    if (selectedDay_ >= 0 && !Contains(detailPanelRect_, x, y) && !Contains(calendarRect_, x, y)) {
-        ClearDaySelection(); return true;
-    }
     return false;
 }
 

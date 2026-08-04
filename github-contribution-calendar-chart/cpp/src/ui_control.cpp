@@ -118,7 +118,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         return 0;
     }
     case WM_KEYDOWN:
-        if (wParam == VK_ESCAPE) { g_ui.ClearDaySelection(); return 0; }
         if (wParam == VK_F5) { StartRefresh(); return 0; }
         if (wParam == VK_F6) { StartDiscovery(); return 0; }
         if (wParam == VK_LEFT) { ChangeYear(-1); return 0; }
