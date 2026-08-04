@@ -294,7 +294,7 @@ void UiDraw::ComputeLayout(int width, int height) {
 
     const int statusHeight = std::max(ScaleIntHelper(42), FontPixels(11) + ScaleIntHelper(16));
     statusbarRect_ = {0, std::max(topbarHeight, height - statusHeight), width, height};
-    if (colResizeState_ != ColResizeState::Dragging || colResizeColumn_ != -1)
+    if (colResizeState_ != ColResizeState::Dragging || colResizeColumn_ >= 0)
         sidebarWidth_ = std::min(ScaleIntHelper(g_config.sidebarWidth), std::max(ScaleIntHelper(190), width * 36 / 100));
 
     const int headingTop = topbarRect_.bottom + ScaleIntHelper(10);
@@ -857,12 +857,13 @@ void UiDraw::MouseMove(int x, int y) {
         const int delta = x - colResizeEndX_;
         const int minWidth = ScaleIntHelper(190);
         const int maxWidth = std::min(ScaleIntHelper(600), width_ / 2);
-        int newWidth = sidebarResizeStartWidth_ + delta;
+        int newWidth = sidebarResizeStartWidth_ + colResizeDragDelta_ + delta;
         newWidth = std::max(minWidth, std::min(maxWidth, newWidth));
         if (newWidth != sidebarWidth_) {
             sidebarWidth_ = newWidth;
             if (g_hwndSearch) LayoutSearch(g_hwndSearch);
         }
+        colResizeDragDelta_ += delta;
         colResizeEndX_ = x;
         InvalidateRect(g_hwndMain, nullptr, FALSE);
         return;
