@@ -1122,7 +1122,7 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
     // Draw resize handle on header (hover or drag active)
     const int kHandleH = ScaleIntHelper(16);
     if (colDragDivider_ >= 0 && colResizeState_ == ColResizeState::None) {
-        const int dx = colX[colDragDivider_];
+        const int dx = colX[colDragDivider_ + 1];
         const int dy = columns.top + (columnsHeight - kHandleH) / 2;
         RECT handleRect = {dx - 2, dy, dx + 2, dy + kHandleH};
         Fill(dc, handleRect, ThemeColor(RGB(31,136,61), RGB(63,185,80)));
@@ -1132,7 +1132,7 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
     if (colResizeState_ == ColResizeState::Dragging && colResizeColumn_ >= 0) {
         // Compute current divider position based on modified colWidths
         GetColumnRects(panel, inset, colWidths_, colX);
-        const int guideX = colX[colResizeColumn_];
+        const int guideX = colX[colResizeColumn_ + 1];
         const int guideColor = ThemeColor(RGB(31,136,61), RGB(63,185,80));
         HPEN pen = CreatePen(PS_DOT, 1, guideColor);
         HPEN oldPen = static_cast<HPEN>(SelectObject(dc, pen));
