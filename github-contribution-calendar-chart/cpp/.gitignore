@@ -5,7 +5,6 @@ build/*.pdb
 build/*.log
 build/*.txt
 build/*.png
-build/agent/
 agent-host/bin/
 agent-host/obj/
 tests/**/bin/

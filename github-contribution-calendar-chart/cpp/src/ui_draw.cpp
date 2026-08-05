@@ -167,6 +167,46 @@ int WrappedTextHeight(HDC dc, const std::wstring& value, int width, int size, in
                     static_cast<int>(measure.bottom - measure.top));
 }
 
+// Find the character index at pixel position (x, y) within a wrapped text block.
+// Returns -1 if y is outside the text area.
+int AgentCharIndexAt(HDC dc, const std::wstring& text, int x, int y, int contentW, int fontSize) {
+    if (text.empty() || contentW <= 0) return -1;
+    HFONT font = MakeFont(FontFromLayoutPixels(fontSize), FW_NORMAL);
+    HFONT old = static_cast<HFONT>(SelectObject(dc, font));
+    int curY = 0;
+    int i = 0;
+    int n = static_cast<int>(text.size());
+    while (i < n) {
+        RECT m = {0, 0, contentW, 0};
+        int chars = n - i;
+        DrawTextW(dc, text.c_str() + i, chars, &m, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_CALCRECT);
+        int lh = m.bottom - m.top;
+        if (lh <= 0) { ++i; continue; }
+        int lineBottom = curY + lh;
+        if (y >= curY && y < lineBottom) {
+            int j = i;
+            while (j < n) {
+                RECT cm = {0, 0, contentW, 0};
+                DrawTextW(dc, text.c_str() + i, j - i + 1, &cm, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_CALCRECT);
+                if (x < cm.right - cm.left) {
+                    SelectObject(dc, old);
+                    DeleteObject(font);
+                    return j;
+                }
+                ++j;
+            }
+            SelectObject(dc, old);
+            DeleteObject(font);
+            return n;
+        }
+        curY = lineBottom;
+        i = j;
+    }
+    SelectObject(dc, old);
+    DeleteObject(font);
+    return -1;
+}
+
 bool Contains(const RECT& rect, int x, int y) { return x >= rect.left && x < rect.right && y >= rect.top && y <= rect.bottom; }
 
 constexpr int kAgentHeaderHeight = 48;
@@ -811,18 +851,24 @@ bool UiDraw::Click(int x, int y) {
     if (repository >= 0) { ToggleRepository(g_repos[repository].id); return true; }
     if (aiWorkspace_ && Contains(detailPanelRect_, x, y)) {
         const int headerH = ScaleIntHelper(kAgentHeaderHeight);
+        // Copy button hit test (shown after text selection)
+        if (!agentTextSelection_.copyBtnRect.isempty() && Contains(agentTextSelection_.copyBtnRect, x, y)) {
+            if (AgentCopySelected()) AgentClearSelection();
+            return true;
+        }
         RECT closeRect = {detailPanelRect_.right - ScaleIntHelper(30), detailPanelRect_.top,
                           detailPanelRect_.right, detailPanelRect_.top + headerH};
-        if (Contains(closeRect, x, y)) { CloseAgentWorkspace(); return true; }
+        if (Contains(closeRect, x, y)) { CloseAgentWorkspace(); AgentClearSelection(); return true; }
         if (AgentConversationBtnHitTest(x, y, detailPanelRect_)) {
+            AgentClearSelection();
             POINT menuPoint = {AgentHeaderActionRect(detailPanelRect_, 2).left,
                                detailPanelRect_.top + headerH};
             ClientToScreen(g_hwndMain, &menuPoint);
             AgentShowConversationMenu(g_hwndMain, menuPoint.x, menuPoint.y);
             return true;
         }
-        if (AgentNewBtnHitTest(x, y, detailPanelRect_)) { AgentNewConversation(); return true; }
-        if (AgentClearBtnHitTest(x, y, detailPanelRect_)) { AgentClearConversation(); return true; }
+        if (AgentNewBtnHitTest(x, y, detailPanelRect_)) { AgentClearSelection(); AgentNewConversation(); return true; }
+        if (AgentClearBtnHitTest(x, y, detailPanelRect_)) { AgentClearSelection(); AgentClearConversation(); return true; }
         if (AgentSendBtnHitTest(x, y, detailPanelRect_)) {
             if (AgentIsBusy()) { AgentCancel(); return true; }
             HWND editHwnd = GetDlgItem(g_hwndMain, IDC_AGENT_INPUT);
@@ -835,7 +881,9 @@ bool UiDraw::Click(int x, int y) {
             }
             return true;
         }
-        if (AgentInputHitTest(x, y, detailPanelRect_)) { SetFocus(g_hwndAgentInput); return true; }
+        if (AgentInputHitTest(x, y, detailPanelRect_)) { AgentClearSelection(); SetFocus(g_hwndAgentInput); return true; }
+        // Click in message area — clear selection
+        if (Contains(detailPanelRect_, x, y)) { AgentClearSelection(); }
         return true;
     }
     // Column resize start
@@ -1088,6 +1136,22 @@ void UiDraw::MouseLeave() {
 }
 
 void UiDraw::MouseDown(int x, int y) {
+    // Start agent text selection
+    if (aiWorkspace_ && g_agentSession.active && Contains(detailPanelRect_, x, y)) {
+        int msgIdx = AgentMessageAt(x, y);
+        if (msgIdx >= 0) {
+            agentDragStartX_ = x;
+            agentDragStartY_ = y;
+            agentTextSelecting_ = true;
+            agentTextSelection_.messageIndex = msgIdx;
+            agentTextSelection_.charStart = AgentCharIndexAt(x, y, msgIdx, 0);
+            agentTextSelection_.charEnd = agentTextSelection_.charStart;
+            agentTextSelection_.selRect = {};
+            agentTextSelection_.copyBtnRect = {};
+            InvalidateRect(g_hwndMain, nullptr, FALSE);
+            return;
+        }
+    }
     // Start sidebar resize
     if (colResizeState_ == ColResizeState::None && colDragDivider_ == -2) {
         colResizeState_ = ColResizeState::Dragging;
@@ -1113,6 +1177,33 @@ void UiDraw::MouseDown(int x, int y) {
 }
 
 void UiDraw::MouseUp(int x, int y) {
+    // Finalize agent text selection
+    if (agentTextSelecting_) {
+        bool draggedEnough = (std::abs(x - agentDragStartX_) > 3 || std::abs(y - agentDragStartY_) > 3);
+        if (!draggedEnough) {
+            // Too small a drag — treat as click, cancel selection
+            AgentClearSelection();
+        } else {
+            // Update final selection
+            int msgIdx = AgentMessageAt(x, y);
+            if (msgIdx >= 0) {
+                agentTextSelection_.messageIndex = msgIdx;
+                agentTextSelection_.charEnd = AgentCharIndexAt(x, y, msgIdx, 0);
+            }
+            // Normalize
+            if (agentTextSelection_.charStart > agentTextSelection_.charEnd)
+                std::swap(agentTextSelection_.charStart, agentTextSelection_.charEnd);
+            // Compute selection rect
+            AgentUpdateSelection(x, y);
+            // If no valid selection, clear
+            if (agentTextSelection_.charStart < 0 || agentTextSelection_.charEnd < 0 ||
+                agentTextSelection_.messageIndex < 0) {
+                AgentClearSelection();
+            }
+        }
+        InvalidateRect(g_hwndMain, nullptr, FALSE);
+        return;
+    }
     // End sidebar resize — persist to config
     if (colResizeState_ == ColResizeState::Dragging && colResizeColumn_ < 0) {
         colResizeState_ = ColResizeState::None;
@@ -1391,6 +1482,230 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
 }
 
 // ── Agent chat panel drawing ─────────────────────────────────────────────────
+
+// Find which message (by index) contains pixel position (x, y) in scroll coordinates.
+// Returns -1 if not in any message area.
+int UiDraw::AgentMessageAt(int x, int y) const {
+    if (!g_agentSession.active) return -1;
+    RECT panel = detailPanelRect_;
+    if (panel.bottom <= panel.top) return -1;
+    const int inset = ScaleIntHelper(12);
+    const int headerH = ScaleIntHelper(kAgentHeaderHeight);
+    const int inputH = ScaleIntHelper(kAgentInputHeight);
+    RECT msgRect = {panel.left + inset, panel.top + headerH + ScaleIntHelper(6),
+                    panel.right - inset, panel.bottom - inputH - ScaleIntHelper(14)};
+    if (!Contains(msgRect, x, y)) return -1;
+
+    const int contentRight = msgRect.right - ScaleIntHelper(10);
+    const int contentWidth = std::max(1, contentRight - msgRect.left);
+    const int userBubbleWidth = std::max(ScaleIntHelper(120),
+        std::min(ScaleIntHelper(520), contentWidth * 4 / 5));
+
+    int curY = msgRect.top - agentScroll_;
+    for (size_t i = 0; i < g_agentSession.history.size(); ++i) {
+        const auto& msg = g_agentSession.history[i];
+        int height = 0;
+        if (msg.kind == ChatMessage::System) {
+            height = WrappedTextHeight(nullptr, msg.text, contentWidth - ScaleIntHelper(20), ScaleIntHelper(13)) +
+                     ScaleIntHelper(12) + ScaleIntHelper(8);
+        } else if (msg.kind == ChatMessage::User) {
+            height = WrappedTextHeight(nullptr, msg.text, userBubbleWidth - ScaleIntHelper(24), ScaleIntHelper(kAgentBodyFont)) +
+                     ScaleIntHelper(16) + ScaleIntHelper(10);
+        } else if (msg.kind == ChatMessage::Assistant) {
+            height = msg.text.empty() ? 0 : WrappedTextHeight(nullptr, msg.text, contentWidth, ScaleIntHelper(kAgentBodyFont)) +
+                     ScaleIntHelper(10);
+        } else {
+            height = std::max(ScaleIntHelper(34), FontPixels(kAgentMetaFont) + ScaleIntHelper(16)) +
+                     ScaleIntHelper(8);
+        }
+        if (height <= 0) continue;
+        if (y >= curY && y < curY + height) return static_cast<int>(i);
+        curY += height;
+    }
+    return -1;
+}
+
+// Find character index within a message at pixel (x, y).
+// msgScroll is the vertical scroll offset of this specific message.
+int UiDraw::AgentCharIndexAt(int x, int y, int msgIndex, int msgScroll) const {
+    if (msgIndex < 0 || msgIndex >= static_cast<int>(g_agentSession.history.size())) return -1;
+    const auto& msg = g_agentSession.history[msgIndex];
+    if (msg.kind != ChatMessage::User && msg.kind != ChatMessage::Assistant) return -1;
+    RECT panel = detailPanelRect_;
+    if (panel.bottom <= panel.top) return -1;
+    const int inset = ScaleIntHelper(12);
+    const int headerH = ScaleIntHelper(kAgentHeaderHeight);
+    const int inputH = ScaleIntHelper(kAgentInputHeight);
+    RECT msgRect = {panel.left + inset, panel.top + headerH + ScaleIntHelper(6),
+                    panel.right - inset, panel.bottom - inputH - ScaleIntHelper(14)};
+    const int contentRight = msgRect.right - ScaleIntHelper(10);
+    const int contentWidth = std::max(1, contentRight - msgRect.left);
+    const int userBubbleWidth = std::max(ScaleIntHelper(120),
+        std::min(ScaleIntHelper(520), contentWidth * 4 / 5));
+    int msgFontSize = (msg.kind == ChatMessage::User) ? kAgentBodyFont : kAgentBodyFont;
+    int relY = y - (msgRect.top - agentScroll_ + msgScroll);
+    return AgentCharIndexAt(nullptr, msg.text, x - msgRect.left, relY, contentWidth, msgFontSize);
+}
+
+void UiDraw::AgentClearSelection() {
+    agentTextSelecting_ = false;
+    agentTextSelection_.messageIndex = -1;
+    agentTextSelection_.charStart = -1;
+    agentTextSelection_.charEnd = -1;
+    agentTextSelection_.selRect = {};
+    agentTextSelection_.copyBtnRect = {};
+}
+
+void UiDraw::AgentStartSelection(int x, int y) {
+    int msgIdx = AgentMessageAt(x, y);
+    if (msgIdx < 0) return;
+    agentTextSelecting_ = true;
+    agentTextSelection_.messageIndex = msgIdx;
+    agentTextSelection_.charStart = AgentCharIndexAt(x, y, msgIdx, 0);
+    agentTextSelection_.charEnd = agentTextSelection_.charStart;
+    agentDragStartX_ = x;
+    agentDragStartY_ = y;
+    InvalidateRect(g_hwndMain, nullptr, FALSE);
+}
+
+void UiDraw::AgentUpdateSelection(int x, int y) {
+    if (!agentTextSelecting_) return;
+    int msgIdx = AgentMessageAt(x, y);
+    if (msgIdx < 0) {
+        AgentClearSelection();
+        return;
+    }
+    // If moved to a different message, use that message's char index
+    if (msgIdx != agentTextSelection_.messageIndex) {
+        agentTextSelection_.messageIndex = msgIdx;
+    }
+    int charIdx = AgentCharIndexAt(x, y, msgIdx, 0);
+    if (charIdx >= 0) agentTextSelection_.charEnd = charIdx;
+
+    // Compute selection rect: full rectangle covering from start to end messages
+    RECT panel = detailPanelRect_;
+    if (panel.bottom <= panel.top) return;
+    const int inset = ScaleIntHelper(12);
+    const int headerH = ScaleIntHelper(kAgentHeaderHeight);
+    const int inputH = ScaleIntHelper(kAgentInputHeight);
+    RECT msgRect = {panel.left + inset, panel.top + headerH + ScaleIntHelper(6),
+                    panel.right - inset, panel.bottom - inputH - ScaleIntHelper(14)};
+
+    int curY = msgRect.top - agentScroll_;
+    int startMsg = std::min(agentTextSelection_.messageIndex,
+                            std::max(0, agentTextSelection_.messageIndex));
+    int endMsg = std::max(agentTextSelection_.messageIndex,
+                          std::min(static_cast<int>(g_agentSession.history.size()) - 1,
+                                   agentTextSelection_.messageIndex));
+    // Find top and bottom Y of selected range
+    int topY = curY;
+    int bottomY = curY;
+    for (size_t i = 0; i < g_agentSession.history.size(); ++i) {
+        const auto& m = g_agentSession.history[i];
+        int h = 0;
+        if (m.kind == ChatMessage::System) {
+            h = WrappedTextHeight(nullptr, m.text, msgRect.right - msgRect.left - ScaleIntHelper(20), ScaleIntHelper(13)) + ScaleIntHelper(12) + ScaleIntHelper(8);
+        } else if (m.kind == ChatMessage::User) {
+            h = WrappedTextHeight(nullptr, m.text, 0, kAgentBodyFont) + ScaleIntHelper(16) + ScaleIntHelper(10);
+        } else if (m.kind == ChatMessage::Assistant) {
+            h = m.text.empty() ? 0 : WrappedTextHeight(nullptr, m.text, msgRect.right - msgRect.left, ScaleIntHelper(kAgentBodyFont)) + ScaleIntHelper(10);
+        } else {
+            h = std::max(ScaleIntHelper(34), FontPixels(kAgentMetaFont) + ScaleIntHelper(16)) + ScaleIntHelper(8);
+        }
+        if (i < static_cast<size_t>(startMsg)) { curY += h; continue; }
+        if (i == static_cast<size_t>(startMsg)) topY = curY;
+        if (i <= static_cast<size_t>(endMsg)) bottomY = curY + h;
+        curY += h;
+    }
+
+    int startChar = std::min(agentTextSelection_.charStart, agentTextSelection_.charEnd);
+    int endChar = std::max(agentTextSelection_.charStart, agentTextSelection_.charEnd);
+
+    // Adjust rects based on character positions
+    if (startMsg == endMsg) {
+        // Single message: narrow rect
+        const auto& msg = g_agentSession.history[startMsg];
+        int msgFontSize = kAgentBodyFont;
+        int startCX = startChar >= 0 ? AgentCharIndexAt(nullptr, msg.text, 0, 0, msgRect.right - msgRect.left, msgFontSize) : 0;
+        int endCX = endChar >= 0 ? AgentCharIndexAt(nullptr, msg.text, 0, 0, msgRect.right - msgRect.left, msgFontSize) : msg.text.size();
+        // Simplified: use full message bounds for now
+        agentTextSelection_.selRect = {msgRect.left, topY, msgRect.right, bottomY};
+    } else {
+        // Multi-message: full row selection
+        int leftX = msgRect.left;
+        int rightX = msgRect.right;
+        agentTextSelection_.selRect = {leftX, topY, rightX, bottomY};
+    }
+
+    // Position copy button at top of selection
+    agentTextSelection_.copyBtnRect = {agentTextSelection_.selRect.right - ScaleIntHelper(56),
+                                       agentTextSelection_.selRect.top - ScaleIntHelper(22),
+                                       agentTextSelection_.selRect.right,
+                                       agentTextSelection_.selRect.top - ScaleIntHelper(4)};
+    InvalidateRect(g_hwndMain, nullptr, FALSE);
+}
+
+void UiDraw::AgentFinishSelection() {
+    // Finalize: if selection has valid content, keep it visible; otherwise clear
+    bool hasContent = (agentTextSelection_.charStart >= 0 && agentTextSelection_.charEnd >= 0);
+    if (!hasContent) {
+        AgentClearSelection();
+    } else {
+        // Normalize: ensure charStart <= charEnd
+        if (agentTextSelection_.charStart > agentTextSelection_.charEnd)
+            std::swap(agentTextSelection_.charStart, agentTextSelection_.charEnd);
+    }
+    agentTextSelecting_ = false;
+}
+
+void UiDraw::AgentDrawSelection(HDC dc) const {
+    if (!agentTextSelecting_ && agentTextSelection_.messageIndex < 0) return;
+    if (!g_agentSession.active) return;
+    if (agentTextSelection_.selRect.left >= agentTextSelection_.selRect.right ||
+        agentTextSelection_.selRect.top >= agentTextSelection_.selRect.bottom) return;
+
+    // Draw selection highlight (semi-transparent blue)
+    HBRUSH selBrush = CreateSolidBrush(RGB(100, 149, 237));
+    if (selBrush) {
+        FillRect(dc, &agentTextSelection_.selRect, selBrush);
+        DeleteObject(selBrush);
+    }
+}
+
+void UiDraw::AgentDrawCopyButton(HDC dc) const {
+    if (agentTextSelection_.copyBtnRect.left < 0 || agentTextSelection_.copyBtnRect.top < 0) return;
+    // Draw copy button
+    const RECT& btn = agentTextSelection_.copyBtnRect;
+    HBRUSH btnBrush = CreateSolidBrush(ThemeColor(RGB(44, 62, 80), RGB(55, 65, 81)));
+    HPEN btnPen = CreatePen(PS_SOLID, 0, ThemeColor(RGB(66, 133, 244), RGB(99, 179, 237)));
+    if (btnBrush && btnPen) {
+        HGDIOBJ oldBrush = SelectObject(dc, btnBrush);
+        HGDIOBJ oldPen = SelectObject(dc, btnPen);
+        RoundRect(dc, btn, 4, ThemeColor(RGB(44, 62, 80), RGB(55, 65, 81)),
+                  ThemeColor(RGB(66, 133, 244), RGB(99, 179, 237)));
+        RECT textRect = btn;
+        Text(dc, L"复制", textRect, ScaleIntHelper(11),
+             ThemeColor(RGB(255, 255, 255), RGB(255, 255, 255)),
+             DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        SelectObject(dc, oldPen);
+        SelectObject(dc, oldBrush);
+    }
+    if (btnBrush) DeleteObject(btnBrush);
+    if (btnPen) DeleteObject(btnPen);
+}
+
+bool UiDraw::AgentCopySelected() const {
+    if (agentTextSelection_.messageIndex < 0) return false;
+    if (agentTextSelection_.charStart < 0 || agentTextSelection_.charEnd < 0) return false;
+    if (agentTextSelection_.messageIndex >= static_cast<int>(g_agentSession.history.size())) return false;
+    const auto& msg = g_agentSession.history[agentTextSelection_.messageIndex];
+    if (msg.kind != ChatMessage::User && msg.kind != ChatMessage::Assistant) return false;
+    int start = std::min(agentTextSelection_.charStart, agentTextSelection_.charEnd);
+    int end = std::max(agentTextSelection_.charStart, agentTextSelection_.charEnd);
+    if (start >= static_cast<int>(msg.text.size()) || start >= end) return false;
+    std::wstring selected = msg.text.substr(static_cast<size_t>(start), static_cast<size_t>(end - start));
+    return CopyTextToClipboard(g_hwndMain, selected);
+}
 
 void UiDraw::DrawAgentPanel(HDC dc) {
     if (!g_agentSession.active) return;
