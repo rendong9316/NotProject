@@ -12,6 +12,7 @@ public:
     explicit Json(bool value);
     explicit Json(int value);
     explicit Json(double value);
+    explicit Json(const char* value);
     explicit Json(const std::string& value);
 
     static Json Array();

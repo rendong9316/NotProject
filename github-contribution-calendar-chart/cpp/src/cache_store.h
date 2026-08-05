@@ -17,6 +17,8 @@ public:
     bool LoadDays(const std::wstring& repositoryId, std::map<std::wstring, int>& days, std::wstring& error) const;
     bool LoadCommitsForDate(const std::wstring& repositoryId, const std::wstring& date,
                             std::vector<DayEntry::CommitEntry>& commits, std::wstring& error) const;
+    bool LoadAllCommits(const std::wstring& repositoryId,
+                        std::vector<DayEntry::CommitEntry>& commits, std::wstring& error) const;
     bool SaveHistory(const Repository& repository, const std::map<std::wstring, int>& days,
                      const std::vector<DayEntry::CommitEntry>& commits,
                      std::wstring& error, std::wstring* saveTime = nullptr) const;

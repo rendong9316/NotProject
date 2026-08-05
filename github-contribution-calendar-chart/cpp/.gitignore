@@ -1,0 +1,16 @@
+# Native and .NET build intermediates
+build/*.obj
+build/*.res
+build/*.pdb
+build/*.log
+build/*.txt
+build/*.png
+build/agent/
+agent-host/bin/
+agent-host/obj/
+tests/**/bin/
+tests/**/obj/
+
+# Python caches
+__pycache__/
+*.pyc

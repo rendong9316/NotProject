@@ -233,6 +233,7 @@ Json::Json() : type_(Type::Null), boolean_(false), number_(0) {}
 Json::Json(bool value) : type_(Type::Boolean), boolean_(value), number_(0) {}
 Json::Json(int value) : type_(Type::Number), boolean_(false), number_(static_cast<double>(value)) {}
 Json::Json(double value) : type_(Type::Number), boolean_(false), number_(value) {}
+Json::Json(const char* value) : type_(Type::String), boolean_(false), number_(0), string_(value ? value : "") {}
 Json::Json(const std::string& value) : type_(Type::String), boolean_(false), number_(0), string_(value) {}
 
 Json Json::Array() { Json value; value.type_ = Type::Array; return value; }

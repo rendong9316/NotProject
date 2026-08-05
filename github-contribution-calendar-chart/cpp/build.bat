@@ -22,7 +22,11 @@ if errorlevel 1 (
 )
 
 set "COMMON=/nologo /std:c++17 /O2 /EHsc /MT /utf-8 /permissive- /W4 /DUNICODE /D_UNICODE /D_CRT_SECURE_NO_WARNINGS /DNOMINMAX /c"
-set "SOURCES=json platform cache_store git_scan state ui_draw ui_control entry"
+set "SOURCES=json platform cache_store git_scan state ai_tools ai_agent ui_draw ui_control entry"
+
+echo [DOTNET] GitLocal.Agent
+dotnet publish "agent-host\GitLocal.Agent.csproj" -c Release -r win-x64 --self-contained true -o "build\agent" /p:PublishAot=true
+if errorlevel 1 goto :error
 
 for %%s in (%SOURCES%) do (
     echo [CXX] %%s.cpp
@@ -37,7 +41,7 @@ if errorlevel 1 goto :error
 echo [LINK] git_local.exe
 link /nologo /OUT:"build\git_local.exe" /SUBSYSTEM:WINDOWS /MANIFEST:EMBED /DYNAMICBASE /NXCOMPAT /MACHINE:X64 ^
     build\json.obj build\platform.obj build\cache_store.obj build\git_scan.obj ^
-    build\state.obj build\ui_draw.obj build\ui_control.obj build\entry.obj build\app_res.res ^
+    build\state.obj build\ai_tools.obj build\ai_agent.obj build\ui_draw.obj build\ui_control.obj build\entry.obj build\app_res.res ^
     gdi32.lib gdiplus.lib comctl32.lib shell32.lib shlwapi.lib user32.lib advapi32.lib ole32.lib bcrypt.lib
 if errorlevel 1 goto :error
 
