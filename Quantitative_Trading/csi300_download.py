@@ -1,3 +1,24 @@
+"""
+脚本名称: csi300_download.py (v1 - 初始版)
+功能: 下载沪深300成分股前复权日线数据
+数据源: akshare (底层调用新浪/腾讯财经接口)
+运行时间: 2026-08-06
+状态: ❌ 已弃用 — 此版本在网络不稳定时失败率极高（仅40/300成功）
+
+用法:
+    python csi300_download.py
+
+输出:
+    ./csi300_daily_data/ 目录下每只股票一个CSV文件
+
+依赖:
+    pip install akshare pandas
+
+缺陷与注意事项:
+1. akshare底层接口限流严格，同一IP短时间内请求过多会被远程服务器断开连接
+2. 重试策略不够智能，固定等待时间不够灵活
+3. 建议改用 v3 版本（Baostock主力版）
+"""
 import akshare as ak
 import pandas as pd
 import os
