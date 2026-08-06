@@ -8,6 +8,7 @@
 #include "state.h"
 
 #include <windows.h>
+#include <windowsx.h>
 #include <sddl.h>
 #include <commctrl.h>
 #include <algorithm>
@@ -389,6 +390,19 @@ bool LaunchSidecar(const std::wstring& pipeName) {
     return true;
 }
 
+LRESULT CALLBACK AgentMessagesSubclass(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
+                                        UINT_PTR, DWORD_PTR) {
+    if (message == WM_LBUTTONDOWN || message == WM_RBUTTONUP) {
+        // Forward to parent so header buttons still respond
+        POINT p = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+        ClientToScreen(window, &p);
+        ScreenToClient(g_hwndMain, &p);
+        PostMessageW(g_hwndMain, message, wParam, MAKELPARAM(p.x, p.y));
+    }
+    if (message == WM_NCDESTROY) RemoveWindowSubclass(window, AgentMessagesSubclass, 2);
+    return DefSubclassProc(window, message, wParam, lParam);
+}
+
 LRESULT CALLBACK AgentInputSubclass(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
                                     UINT_PTR, DWORD_PTR) {
     if (message == WM_KEYDOWN && wParam == VK_RETURN && !(GetKeyState(VK_SHIFT) & 0x8000)) {
@@ -543,6 +557,15 @@ void AgentStart(const std::wstring& dayDate) {
                      reinterpret_cast<LPARAM>(L"输入问题，Enter发送，Shift+Enter换行"));
         SetWindowSubclass(g_hwndAgentInput, AgentInputSubclass, 1, 0);
     }
+    if (!g_hwndAgentMessages) {
+        g_hwndAgentMessages = CreateWindowExW(0, L"EDIT", L"",
+            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL,
+            0, 0, 0, 0, g_hwndMain, reinterpret_cast<HMENU>(IDC_AGENT_MESSAGES),
+            GetModuleHandleW(nullptr), nullptr);
+        AgentRefreshMessagesFont();
+        SetWindowSubclass(g_hwndAgentMessages, AgentMessagesSubclass, 2, 0);
+    }
+    AgentRefreshMessagesContent();
     SetFocus(g_hwndAgentInput);
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }
@@ -550,6 +573,7 @@ void AgentStart(const std::wstring& dayDate) {
 void AgentStop() {
     g_agentSession.active = false;
     if (g_hwndAgentInput) { DestroyWindow(g_hwndAgentInput); g_hwndAgentInput = nullptr; }
+    if (g_hwndAgentMessages) { DestroyWindow(g_hwndAgentMessages); g_hwndAgentMessages = nullptr; }
     if (g_agentFont) { DeleteObject(g_agentFont); g_agentFont = nullptr; }
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }
@@ -744,6 +768,37 @@ void AgentRefreshInputFont() {
     SendMessageW(g_hwndAgentInput, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
     if (g_agentFont) DeleteObject(g_agentFont);
     g_agentFont = font;
+}
+
+void AgentRefreshMessagesFont() {
+    if (!g_hwndAgentMessages) return;
+    const int pixels = std::max(13, static_cast<int>(std::lround(14.0 * g_fontScale)));
+    HFONT font = CreateFontW(-pixels, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+        DEFAULT_PITCH | FF_DONTCARE, FONT_FAMILY);
+    if (!font) return;
+    SendMessageW(g_hwndAgentMessages, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
+}
+
+void AgentRefreshMessagesContent() {
+    if (!g_hwndAgentMessages || !g_agentSession.active) return;
+    std::wstring text;
+    for (const auto& msg : g_agentSession.history) {
+        if (msg.kind == ChatMessage::System) {
+            text += L"[系统] " + msg.text + L"\n";
+        } else if (msg.kind == ChatMessage::User) {
+            text += L"[用户] " + msg.text + L"\n";
+        } else if (msg.kind == ChatMessage::Assistant) {
+            if (!msg.text.empty()) text += msg.text + L"\n";
+        } else if (msg.kind == ChatMessage::Tool) {
+            text += L"[工具] " + msg.text + L"\n";
+        }
+    }
+    if (g_agentBusy) text += L"AI 思考中…\n";
+    // Replace the text in the edit control
+    SetWindowTextW(g_hwndAgentMessages, text.c_str());
+    // Scroll to bottom
+    SendMessageW(g_hwndAgentMessages, EM_SCROLLCARET, 0, 0);
 }
 
 bool AgentInputHitTest(int x, int y, const RECT& panelRect) {

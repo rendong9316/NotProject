@@ -38,6 +38,7 @@
 #define IDI_ICON              101
 #define IDC_SEARCH            2001
 #define IDC_AGENT_INPUT       2002
+#define IDC_AGENT_MESSAGES    2003
 #define WM_APP_OPERATION_DONE (WM_APP + 1)
 #define WM_APP_PROGRESS       (WM_APP + 2)
 #define WM_APP_AI_RESULT      (WM_APP + 3)

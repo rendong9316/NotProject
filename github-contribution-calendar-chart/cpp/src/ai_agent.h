@@ -43,6 +43,8 @@ void AgentNewConversation();
 void AgentClearConversation();
 void AgentShowConversationMenu(HWND owner, int screenX, int screenY);
 void AgentRefreshInputFont();
+void AgentRefreshMessagesFont();
+void AgentRefreshMessagesContent();
 bool AgentInputHitTest(int x, int y, const RECT& panelRect);
 bool AgentSendBtnHitTest(int x, int y, const RECT& panelRect);
 bool AgentConversationBtnHitTest(int x, int y, const RECT& panelRect);

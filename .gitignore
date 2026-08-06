@@ -1,0 +1,68 @@
+# ==================== Nginx日志(原有保留) ====================
+# Nginx logs
+**/nginx-1.20.2/logs/*.log
+**/nginx-1.20.2/logs/*.pid
+
+# ==================== 图片全部忽略 ====================
+# 常见图片格式
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.webp
+*.svg
+*.ico
+
+# ==================== 表格、数据文件 ====================
+*.csv
+*.xls
+*.xlsx
+*.ods
+*.jsonl
+*.parquet
+
+# ==================== 压缩包 ====================
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.bz2
+
+# ==================== 临时/二进制/导出文件 ====================
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.log     # 全部日志文件
+*.pid
+
+# ==================== Java SpringBoot项目专用(苍穹外卖) ====================
+# maven编译输出
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDEA 配置文件
+.idea/
+*.iml
+*.iws
+*.out
+
+# eclipse
+.classpath
+.project
+.settings/
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# 操作系统生成垃圾文件
+.DS_Store
+Thumbs.db
+
+# ==================== 本地上传图片文件夹（你的ALiYunFileAddress，不要提交图片仓库） ====================
+**/ALiYunFileAddress/
+**/upload/

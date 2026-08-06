@@ -1,0 +1,14 @@
+[json]
+[platform]
+[cache_store]
+[git_scan]
+[state]
+[ai_tools]
+[ai_agent]
+[ui_draw]
+[ui_control]
+[entry]
+[rc]
+[link]
+LINK : fatal error LNK1181: 无法打开输入文件“obj\json.obj”
+Build FAILED

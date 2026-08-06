@@ -15,6 +15,7 @@
 
 HWND g_hwndMain = nullptr;
 HWND g_hwndSearch = nullptr;
+HWND g_hwndAgentMessages = nullptr;
 Theme g_theme = Theme::Light;
 bool g_loading = false;
 OperationKind g_operationKind = OperationKind::None;

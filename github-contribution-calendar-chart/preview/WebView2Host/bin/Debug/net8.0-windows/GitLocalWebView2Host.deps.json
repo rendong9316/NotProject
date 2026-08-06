@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "GitLocalWebView2Host/1.0.0": {
+        "runtime": {
+          "GitLocalWebView2Host.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "GitLocalWebView2Host/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

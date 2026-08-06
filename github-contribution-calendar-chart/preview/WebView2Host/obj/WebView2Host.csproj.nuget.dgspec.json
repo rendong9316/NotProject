@@ -1,0 +1,71 @@
+{
+  "format": 1,
+  "restore": {
+    "D:\\Desktop\\NotProjext\\github-contribution-calendar-chart\\preview\\WebView2Host\\WebView2Host.csproj": {}
+  },
+  "projects": {
+    "D:\\Desktop\\NotProjext\\github-contribution-calendar-chart\\preview\\WebView2Host\\WebView2Host.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\Desktop\\NotProjext\\github-contribution-calendar-chart\\preview\\WebView2Host\\WebView2Host.csproj",
+        "projectName": "GitLocalWebView2Host",
+        "projectPath": "D:\\Desktop\\NotProjext\\github-contribution-calendar-chart\\preview\\WebView2Host\\WebView2Host.csproj",
+        "packagesPath": "C:\\Users\\rendong\\.nuget\\packages\\",
+        "outputPath": "D:\\Desktop\\NotProjext\\github-contribution-calendar-chart\\preview\\WebView2Host\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "D:\\Desktop\\NotProjext\\github-contribution-calendar-chart\\preview\\NuGet.Config",
+          "C:\\Users\\rendong\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0-windows"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {},
+          "https://repo.huaweicloud.com/nuget/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0-windows7.0": {
+            "targetAlias": "net8.0-windows",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0-windows7.0": {
+          "targetAlias": "net8.0-windows",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            },
+            "Microsoft.WindowsDesktop.App.WindowsForms": {
+              "privateAssets": "none"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.423/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

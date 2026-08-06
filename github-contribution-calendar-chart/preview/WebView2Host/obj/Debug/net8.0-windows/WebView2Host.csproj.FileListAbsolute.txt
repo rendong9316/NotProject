@@ -1,0 +1,15 @@
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\obj\Debug\net8.0-windows\WebView2Host.GeneratedMSBuildEditorConfig.editorconfig
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\obj\Debug\net8.0-windows\WebView2Host.AssemblyInfoInputs.cache
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\obj\Debug\net8.0-windows\WebView2Host.AssemblyInfo.cs
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\obj\Debug\net8.0-windows\WebView2Host.csproj.CoreCompileInputs.cache
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\obj\Debug\net8.0-windows\WebView2Host.sourcelink.json
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\bin\Debug\net8.0-windows\GitLocalWebView2Host.exe
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\bin\Debug\net8.0-windows\GitLocalWebView2Host.deps.json
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\bin\Debug\net8.0-windows\GitLocalWebView2Host.runtimeconfig.json
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\bin\Debug\net8.0-windows\GitLocalWebView2Host.dll
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\bin\Debug\net8.0-windows\GitLocalWebView2Host.pdb
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\obj\Debug\net8.0-windows\GitLocalWebView2Host.dll
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\obj\Debug\net8.0-windows\refint\GitLocalWebView2Host.dll
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\obj\Debug\net8.0-windows\GitLocalWebView2Host.pdb
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\obj\Debug\net8.0-windows\WebView2Host.genruntimeconfig.cache
+D:\Desktop\NotProjext\github-contribution-calendar-chart\preview\WebView2Host\obj\Debug\net8.0-windows\ref\GitLocalWebView2Host.dll

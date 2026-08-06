@@ -10,6 +10,7 @@
 
 extern HWND g_hwndMain;
 extern HWND g_hwndSearch;
+extern HWND g_hwndAgentMessages;
 extern Theme g_theme;
 extern bool g_loading;
 extern OperationKind g_operationKind;

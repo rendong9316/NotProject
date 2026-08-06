@@ -25,33 +25,6 @@ public:
     void OpenAgentWorkspace(const std::wstring& dayDate = L"");
     void CloseAgentWorkspace();
 
-    // Agent text selection state
-    struct AgentTextSelection {
-        int messageIndex = -1;
-        int charStart = -1;
-        int charEnd = -1;
-        // Screen-space rect for selection highlight
-        RECT selRect = {};
-        // Copy button rect
-        RECT copyBtnRect = {};
-    };
-
-private:
-    void ComputeLayout(int width, int height);
-    int RepositoryAt(int x, int y) const;
-    int CommitAt(int x, int y) const;
-    int AgentMessageAt(int x, int y) const;
-    int AgentCharIndexAt(int x, int y, int msgIndex, int scroll) const;
-    void AgentClearSelection();
-    void AgentStartSelection(int x, int y);
-    void AgentUpdateSelection(int x, int y);
-    void AgentFinishSelection();
-    void AgentDrawSelection(HDC dc) const;
-    void AgentDrawCopyButton(HDC dc) const;
-    bool AgentCopySelected() const;
-    void MouseDown(int x, int y);
-    void MouseUp(int x, int y);
-
 private:
     void ComputeLayout(int width, int height);
     int RepositoryAt(int x, int y) const;
@@ -101,10 +74,6 @@ private:
     int mouseX_ = 0;
     int mouseY_ = 0;
     bool aiWorkspace_ = false;
-    bool agentTextSelecting_ = false;
-    int agentDragStartX_ = 0;
-    int agentDragStartY_ = 0;
-    AgentTextSelection agentTextSelection_;
 
     // Column resize state
     enum class ColResizeState { None, Dragging };
