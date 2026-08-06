@@ -19,29 +19,27 @@ public class MyQueue {
     }
 
     public int pop() {
-        stackout=updown(stackin);
-        stackout.pop();
-        stackin=updown(stackout);
+        updown(stackin,stackout);
         return stackout.pop();
 
     }
 
     public int peek() {
-        stackout=updown(stackin);
+        updown(stackin,stackout);
         return stackout.peek();
     }
 
     public boolean empty() {
-        return stackin.isEmpty();
+        return stackin.isEmpty()&&stackout.isEmpty();
     }
     //自定义颠倒stack中所有元素的 函数
-    public Deque<Integer> updown(Deque<Integer> stackin){
-        Deque<Integer> stacktem = new ArrayDeque<>();
-        while(stackin.isEmpty()!=true){
-            stacktem.push(stackin.pop());
-        }
-        return stacktem;
+    public void updown(Deque<Integer> stackin,Deque<Integer> stackout){
 
+        //使用惰性转移策略，可使均摊时间复杂度降到o1
+        if(!stackout.isEmpty()){return;}
+        while(!stackin.isEmpty()){
+            stackout.push(stackin.pop());
+        }
     }
 }
 
