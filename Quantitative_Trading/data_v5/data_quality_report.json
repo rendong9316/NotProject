@@ -1,11 +1,19 @@
 {
-  "raw_files": 300,
-  "adjusted_files": 300,
+  "raw_files": 493,
+  "adjusted_files": 493,
   "errors": [],
   "warnings": [
-    "4 traded rows have VWAP outside raw OHLC by more than 0.1%"
+    "5 traded rows have VWAP outside raw OHLC by more than 0.1%"
   ],
   "vwap_outliers": [
+    {
+      "file": "300888_稳健医疗.csv",
+      "date": "2020-12-09",
+      "vwap": 117.38608021753832,
+      "low": 143.8,
+      "high": 151.45,
+      "deviation": 0.18368511670696583
+    },
     {
       "file": "300896_爱美客.csv",
       "date": "2020-12-09",
@@ -39,6 +47,6 @@
       "deviation": 0.29514408931460756
     }
   ],
-  "rows": 459786,
-  "suspended_rows": 842
+  "rows": 760363,
+  "suspended_rows": 1699
 }

@@ -1,0 +1,13 @@
+{
+  "created_at": "2026-08-06T19:49:32",
+  "start_date": "2020-01-01",
+  "end_date": "2026-08-05",
+  "target_stock_count": 493,
+  "covered_before_run": 493,
+  "requested": 0,
+  "results": [],
+  "final_raw_files": 493,
+  "final_adjusted_files": 493,
+  "covered_after_run": 493,
+  "missing_after_run": []
+}

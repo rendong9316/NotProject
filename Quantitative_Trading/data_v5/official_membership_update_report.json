@@ -1,0 +1,165 @@
+{
+  "updated_at": "2026-08-07T16:06:04",
+  "database": "data_v5\\csi300_2020_present.sqlite",
+  "backup": "data_v5\\backups\\csi300_2020_present_before_official_membership_20260807_160604.sqlite",
+  "official_input": "CSI300_remake_report.xlsx",
+  "official_input_sha256": "d5cd81d46d8c3324038ffc2a93f452bd85bfd60e28dde5152a114e532790a590",
+  "scope": "official_regular_adjustments_only",
+  "temporary_adjustments_included": false,
+  "after_close_rule_from": "2021-01-01",
+  "official_event_count": 14,
+  "official_change_rows": 247,
+  "snapshot_dates": [
+    "2019-12-30",
+    "2020-06-15",
+    "2020-12-14",
+    "2021-06-15",
+    "2021-12-13",
+    "2022-06-13",
+    "2022-12-12",
+    "2023-06-12",
+    "2023-12-11",
+    "2024-06-17",
+    "2024-12-16",
+    "2025-06-16",
+    "2025-12-15",
+    "2026-06-15"
+  ],
+  "matches": [
+    {
+      "event_date": "2019-12-16",
+      "valid_from": "2019-12-30",
+      "matched_observed_date": "2019-12-30",
+      "previous_observed_date": null,
+      "change_count": 16,
+      "baseline_cross_check": true
+    },
+    {
+      "event_date": "2020-06-15",
+      "valid_from": "2020-06-15",
+      "matched_observed_date": "2020-06-15",
+      "previous_observed_date": "2019-12-30",
+      "change_count": 21,
+      "baseline_cross_check": false
+    },
+    {
+      "event_date": "2020-12-14",
+      "valid_from": "2020-12-14",
+      "matched_observed_date": "2020-12-14",
+      "previous_observed_date": "2020-06-15",
+      "change_count": 26,
+      "baseline_cross_check": false
+    },
+    {
+      "event_date": "2021-06-11",
+      "valid_from": "2021-06-15",
+      "matched_observed_date": "2021-07-19",
+      "previous_observed_date": "2020-12-14",
+      "change_count": 25,
+      "baseline_cross_check": false
+    },
+    {
+      "event_date": "2021-12-10",
+      "valid_from": "2021-12-13",
+      "matched_observed_date": "2022-01-17",
+      "previous_observed_date": "2021-07-19",
+      "change_count": 28,
+      "baseline_cross_check": false
+    },
+    {
+      "event_date": "2022-06-10",
+      "valid_from": "2022-06-13",
+      "matched_observed_date": "2022-06-13",
+      "previous_observed_date": "2022-01-17",
+      "change_count": 28,
+      "baseline_cross_check": false
+    },
+    {
+      "event_date": "2022-12-09",
+      "valid_from": "2022-12-12",
+      "matched_observed_date": "2023-03-20",
+      "previous_observed_date": "2022-06-13",
+      "change_count": 15,
+      "baseline_cross_check": false
+    },
+    {
+      "event_date": "2023-06-09",
+      "valid_from": "2023-06-12",
+      "matched_observed_date": "2023-06-12",
+      "previous_observed_date": "2023-03-20",
+      "change_count": 9,
+      "baseline_cross_check": false
+    },
+    {
+      "event_date": "2023-12-08",
+      "valid_from": "2023-12-11",
+      "matched_observed_date": "2023-12-11",
+      "previous_observed_date": "2023-06-12",
+      "change_count": 14,
+      "baseline_cross_check": false
+    },
+    {
+      "event_date": "2024-06-14",
+      "valid_from": "2024-06-17",
+      "matched_observed_date": "2024-06-17",
+      "previous_observed_date": "2023-12-11",
+      "change_count": 12,
+      "baseline_cross_check": false
+    },
+    {
+      "event_date": "2024-12-13",
+      "valid_from": "2024-12-16",
+      "matched_observed_date": "2024-12-16",
+      "previous_observed_date": "2024-06-17",
+      "change_count": 16,
+      "baseline_cross_check": false
+    },
+    {
+      "event_date": "2025-06-13",
+      "valid_from": "2025-06-16",
+      "matched_observed_date": "2025-06-16",
+      "previous_observed_date": "2025-03-10",
+      "change_count": 7,
+      "baseline_cross_check": false
+    },
+    {
+      "event_date": "2025-12-12",
+      "valid_from": "2025-12-15",
+      "matched_observed_date": "2025-12-15",
+      "previous_observed_date": "2025-09-08",
+      "change_count": 11,
+      "baseline_cross_check": false
+    },
+    {
+      "event_date": "2026-06-12",
+      "valid_from": "2026-06-15",
+      "matched_observed_date": "2026-06-15",
+      "previous_observed_date": "2025-12-15",
+      "change_count": 19,
+      "baseline_cross_check": false
+    }
+  ],
+  "before": {
+    "snapshot_dates": 18,
+    "snapshot_rows": 5400,
+    "interval_rows": 535
+  },
+  "after": {
+    "integrity": "ok",
+    "snapshot_rows": 4200,
+    "snapshot_dates": 14,
+    "interval_rows": 533,
+    "daily_rows": 479100,
+    "bad_snapshot_sizes": 0,
+    "bad_daily_sizes": 0,
+    "missing_daily_prices": 133
+  },
+  "daily_membership_diff": {
+    "changed_trading_dates": 246,
+    "first_changed_date": "2021-06-15",
+    "last_changed_date": "2025-12-12",
+    "removed_member_days": 2366,
+    "added_member_days": 2366
+  },
+  "derived_membership_csv": "data_v5\\membership_snapshots_official_regular.csv"
+}

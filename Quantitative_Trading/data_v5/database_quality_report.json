@@ -1,0 +1,26 @@
+{
+  "database": "data_v5\\csi300_2020_present.sqlite",
+  "errors": [],
+  "warnings": [
+    "133 member rows have no source price and remain non-tradeable",
+    "temporary constituent adjustments are intentionally omitted",
+    "140 recorded data warnings"
+  ],
+  "counts": {
+    "security": 493,
+    "trading_calendar": 1597,
+    "daily_price_raw": 760363,
+    "daily_price_adjusted": 760363,
+    "components_snapshot": 300,
+    "membership_snapshots": 4200,
+    "membership_weight_intervals": 4200,
+    "universe_membership": 533,
+    "daily_universe": 479100,
+    "membership_scope": "official_regular_adjustments_only",
+    "official_adjustments": 247,
+    "baostock_membership_snapshots_raw": 5400,
+    "quality_issues": {
+      "warning": 140
+    }
+  }
+}

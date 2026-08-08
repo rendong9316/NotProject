@@ -1,0 +1,27 @@
+{
+  "created_at": "2026-08-06T19:58:57",
+  "database": "data_v5\\csi300_2020_present.sqlite",
+  "dataset_root": "data_v5",
+  "membership_input": "data_v5\\membership_snapshots_official_regular.csv",
+  "result": {
+    "securities": 493,
+    "price_rows": 760363,
+    "membership_rows": 4200,
+    "weight_intervals": 4200,
+    "intervals": 533,
+    "missing_member_prices": 0,
+    "missing_daily_prices": 133
+  },
+  "membership_snapshot_sources": [
+    "baostock_baseline_official_change_cross_checked",
+    "csindex_official_regular_manual_reconstruction"
+  ],
+  "membership_officially_verified": true,
+  "weights_available": false,
+  "membership_updated_at": "2026-08-07T16:06:04",
+  "membership_official_input": "CSI300_remake_report.xlsx",
+  "membership_official_input_sha256": "d5cd81d46d8c3324038ffc2a93f452bd85bfd60e28dde5152a114e532790a590",
+  "membership_scope": "official_regular_adjustments_only",
+  "temporary_adjustments_included": false,
+  "membership_after_close_rule_from": "2021-01-01"
+}
