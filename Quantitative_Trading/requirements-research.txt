@@ -1,0 +1,7 @@
+backtrader==1.9.78.123
+baostock==0.9.3
+akshare==1.18.81
+matplotlib==3.8.3
+numpy==1.26.4
+pandas==2.2.2
+pytest==8.3.5

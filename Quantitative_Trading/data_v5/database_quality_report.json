@@ -4,7 +4,9 @@
   "warnings": [
     "133 member rows have no source price and remain non-tradeable",
     "temporary constituent adjustments are intentionally omitted",
-    "140 recorded data warnings"
+    "17 events require adjustment-factor fallback",
+    "54 explicit actions have small return residuals",
+    "143 recorded data warnings"
   ],
   "counts": {
     "security": 493,
@@ -19,8 +21,15 @@
     "membership_scope": "official_regular_adjustments_only",
     "official_adjustments": 247,
     "baostock_membership_snapshots_raw": 5400,
+    "daily_security_status": 760363,
+    "daily_security_status_st_rows": 5370,
+    "corporate_actions": 7949,
+    "corporate_action_download_status": 493,
+    "adjustment_factor_events": 3384,
+    "corporate_action_factor_only": 17,
+    "corporate_action_review": 54,
     "quality_issues": {
-      "warning": 140
+      "warning": 143
     }
   }
 }

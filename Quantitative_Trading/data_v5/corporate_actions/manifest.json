@@ -1,0 +1,21 @@
+{
+  "created_at": "2026-08-10T01:47:26",
+  "files": {
+    "corporate_actions.csv": {
+      "rows": 7949,
+      "sha256": "f4a030e08de45bb7738ee7ed56e61494a87e4c38fa70f87188086789bb7f37db"
+    },
+    "corporate_action_download_status.csv": {
+      "rows": 493,
+      "sha256": "d06067d1ee99de410e65865bbb959f71ec91ee47b8b06d87bae1fe71e713961f"
+    },
+    "corporate_action_daily.csv": {
+      "rows": 7915,
+      "sha256": "73ab968a682316dc1a4709d98143343247aca504731f070e8227481338a3ffff"
+    },
+    "adjustment_factor_events.csv": {
+      "rows": 3384,
+      "sha256": "d6eb8f3892b35fb3ef6185f309334d1c0cc930cf208520fcc28b961c66cf56eb"
+    }
+  }
+}

@@ -83,6 +83,91 @@ def validate(path: Path) -> dict:
                     report["errors"].append("raw Baostock membership audit snapshots are empty")
         if metadata.get("temporary_adjustments_included") == "False":
             report["warnings"].append("temporary constituent adjustments are intentionally omitted")
+        if not object_exists(conn, "daily_security_status"):
+            report["errors"].append(
+                "daily historical ST status is missing; run build_security_status.py"
+            )
+        else:
+            counts["daily_security_status"] = scalar(
+                conn, "SELECT COUNT(*) FROM daily_security_status"
+            )
+            status_missing = scalar(
+                conn,
+                "SELECT COUNT(*) FROM daily_price_raw AS r "
+                "LEFT JOIN daily_security_status AS s USING(date, stock_code) "
+                "WHERE s.stock_code IS NULL",
+            )
+            status_extra = scalar(
+                conn,
+                "SELECT COUNT(*) FROM daily_security_status AS s "
+                "LEFT JOIN daily_price_raw AS r USING(date, stock_code) "
+                "WHERE r.stock_code IS NULL",
+            )
+            status_disagreements = scalar(
+                conn,
+                "SELECT COUNT(*) FROM daily_price_raw AS r "
+                "JOIN daily_security_status AS s USING(date, stock_code) "
+                "WHERE r.trade_status <> s.trade_status",
+            )
+            if status_missing or status_extra or status_disagreements:
+                report["errors"].append(
+                    "daily security status does not reconcile: "
+                    f"missing={status_missing}, extra={status_extra}, "
+                    f"trade_status_disagreements={status_disagreements}"
+                )
+            counts["daily_security_status_st_rows"] = scalar(
+                conn, "SELECT COUNT(*) FROM daily_security_status WHERE is_st = 1"
+            )
+        corporate_tables = [
+            "corporate_actions", "corporate_action_download_status",
+            "adjustment_factor_events",
+        ]
+        missing_corporate = [name for name in corporate_tables if not object_exists(conn, name)]
+        if missing_corporate:
+            report["errors"].append(
+                f"corporate-action ledger is missing: {missing_corporate}; "
+                "run build_corporate_actions.py"
+            )
+        else:
+            for table in corporate_tables:
+                counts[table] = scalar(conn, f"SELECT COUNT(*) FROM {table}")
+            failed_downloads = scalar(
+                conn,
+                "SELECT COUNT(*) FROM corporate_action_download_status WHERE status = 'failed'",
+            )
+            if failed_downloads:
+                report["errors"].append(
+                    f"{failed_downloads} corporate-action downloads remain failed"
+                )
+            mismatch_events = scalar(
+                conn,
+                "SELECT COUNT(*) FROM adjustment_factor_events "
+                "WHERE validation_status = 'mismatch'",
+            )
+            if mismatch_events:
+                report["errors"].append(
+                    f"{mismatch_events} corporate-action events have blocker mismatches"
+                )
+            factor_only = scalar(
+                conn,
+                "SELECT COUNT(*) FROM adjustment_factor_events "
+                "WHERE validation_status = 'factor_only'",
+            )
+            review_events = scalar(
+                conn,
+                "SELECT COUNT(*) FROM adjustment_factor_events "
+                "WHERE validation_status = 'review'",
+            )
+            counts["corporate_action_factor_only"] = factor_only
+            counts["corporate_action_review"] = review_events
+            if factor_only:
+                report["warnings"].append(
+                    f"{factor_only} events require adjustment-factor fallback"
+                )
+            if review_events:
+                report["warnings"].append(
+                    f"{review_events} explicit actions have small return residuals"
+                )
         issues = conn.execute(
             "SELECT severity, COUNT(*) FROM data_quality_issues GROUP BY severity"
         ).fetchall()
