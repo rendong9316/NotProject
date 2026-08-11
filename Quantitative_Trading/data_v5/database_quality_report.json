@@ -21,6 +21,7 @@
     "membership_scope": "official_regular_adjustments_only",
     "official_adjustments": 247,
     "baostock_membership_snapshots_raw": 6000,
+    "security_transitions": 2,
     "daily_security_status": 761812,
     "daily_security_status_st_rows": 5385,
     "corporate_actions": 7949,

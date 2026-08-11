@@ -834,6 +834,12 @@ def apply_stage(database: Path, stage: Stage, excel: Path) -> dict:
                 "price_rows": str(conn.execute("SELECT COUNT(*) FROM daily_price_raw").fetchone()[0]),
                 "security_count": str(conn.execute("SELECT COUNT(*) FROM security").fetchone()[0]),
                 "daily_security_status_rows": str(conn.execute("SELECT COUNT(*) FROM daily_security_status").fetchone()[0]),
+                "daily_security_status_st_rows": str(conn.execute(
+                    "SELECT COUNT(*) FROM daily_security_status WHERE is_st = 1"
+                ).fetchone()[0]),
+                "daily_security_status_downloaded_at": str(conn.execute(
+                    "SELECT MAX(downloaded_at) FROM daily_security_status"
+                ).fetchone()[0]),
                 "incremental_last_run_id": stage.run_id,
                 "incremental_last_success_at": completed_at,
                 "incremental_data_end_date": str(new_max),

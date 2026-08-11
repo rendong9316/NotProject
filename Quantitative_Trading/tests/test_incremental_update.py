@@ -213,6 +213,10 @@ def test_archive_checksum_and_transactional_apply(tmp_path: Path):
         assert conn.execute(
             "SELECT COUNT(*) FROM daily_security_status WHERE date='2024-01-04'"
         ).fetchone()[0] == 1
+        metadata = dict(conn.execute("SELECT key, value FROM metadata"))
+        assert metadata["daily_security_status_rows"] == "3"
+        assert metadata["daily_security_status_st_rows"] == "0"
+        assert metadata["daily_security_status_downloaded_at"] == "2024-01-04T18:00:00"
         action_status = conn.execute(
             "SELECT status, row_count, downloaded_at FROM corporate_action_download_status "
             "WHERE stock_code='000001'"

@@ -40,13 +40,23 @@ def compute_factor_panel(panel: pd.DataFrame, config: FactorConfig) -> pd.DataFr
     return frame
 
 
-def monthly_signal_dates(calendar: list[str], start_date: str, end_date: str) -> list[tuple[str, str]]:
+def monthly_signal_dates(
+    calendar: list[str],
+    start_date: str,
+    end_date: str,
+    interval_months: int = 1,
+) -> list[tuple[str, str]]:
+    if type(interval_months) is not int or not 1 <= interval_months <= 12:
+        raise ValueError("interval_months must be an integer between 1 and 12")
     dates = pd.Series(pd.to_datetime(calendar), name="date")
     next_dates = dates.shift(-1)
     month_end = dates.dt.to_period("M") != next_dates.dt.to_period("M")
     pairs = []
     for signal, execution, is_month_end in zip(dates, next_dates, month_end):
         if not is_month_end or pd.isna(execution):
+            continue
+        absolute_month = signal.year * 12 + signal.month
+        if absolute_month % interval_months != 0:
             continue
         signal_text = signal.strftime("%Y-%m-%d")
         execution_text = execution.strftime("%Y-%m-%d")
@@ -71,7 +81,14 @@ def generate_monthly_signals(
     config.validate()
     factor_by_date = {date: rows for date, rows in factor_panel.groupby("date", sort=False)}
     output = []
-    for signal_date, execution_date in monthly_signal_dates(calendar, start_date, end_date):
+    previous_selected: list[str] = []
+    signal_dates = monthly_signal_dates(
+        calendar,
+        start_date,
+        end_date,
+        config.rebalance_interval_months,
+    )
+    for signal_date, execution_date in signal_dates:
         rows = factor_by_date.get(signal_date)
         if rows is None:
             continue
@@ -105,6 +122,25 @@ def generate_monthly_signals(
             low_vol_rank = (-eligible["volatility"]).rank(pct=True, method="average")
             eligible["score"] = 0.5 * momentum_rank + 0.5 * low_vol_rank
             selected = eligible.nlargest(config.top_n, ["score", "adv"])
+        if config.strategy != "equal_weight":
+            ranked = eligible.sort_values(
+                ["score", "adv", "stock_code"],
+                ascending=[False, False, True],
+            )
+            target_count = min(config.top_n, len(ranked))
+            buffer_count = min(config.top_n + config.selection_buffer, len(ranked))
+            buffer_codes = set(ranked.head(buffer_count)["stock_code"].astype(str))
+            retained = [code for code in previous_selected if code in buffer_codes]
+            retained_set = set(retained)
+            additions = [
+                code for code in ranked["stock_code"].astype(str)
+                if code not in retained_set
+            ]
+            selected_codes = (retained + additions)[:target_count]
+            selected = ranked.set_index("stock_code").loc[selected_codes].reset_index()
+            previous_selected = selected_codes
+        else:
+            previous_selected = selected["stock_code"].astype(str).tolist()
         if selected.empty:
             continue
         target_weight = config.invest_fraction / len(selected)

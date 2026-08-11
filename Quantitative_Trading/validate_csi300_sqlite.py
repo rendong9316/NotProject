@@ -83,6 +83,34 @@ def validate(path: Path) -> dict:
                     report["errors"].append("raw Baostock membership audit snapshots are empty")
         if metadata.get("temporary_adjustments_included") == "False":
             report["warnings"].append("temporary constituent adjustments are intentionally omitted")
+        if not object_exists(conn, "security_transitions"):
+            report["errors"].append(
+                "cross-security settlement ledger is missing; run build_security_transitions.py"
+            )
+        else:
+            counts["security_transitions"] = scalar(
+                conn, "SELECT COUNT(*) FROM security_transitions"
+            )
+            invalid_transitions = scalar(
+                conn,
+                "SELECT COUNT(*) FROM security_transitions AS t "
+                "LEFT JOIN security AS source ON source.stock_code = t.source_stock_code "
+                "LEFT JOIN security AS target ON target.stock_code = t.target_stock_code "
+                "LEFT JOIN daily_price_raw AS source_bar "
+                "ON source_bar.stock_code = t.source_stock_code "
+                "AND source_bar.date = t.record_date "
+                "LEFT JOIN daily_price_raw AS target_bar "
+                "ON target_bar.stock_code = t.target_stock_code "
+                "AND target_bar.date = t.event_date "
+                "WHERE source.stock_code IS NULL OR target.stock_code IS NULL "
+                "OR source_bar.stock_code IS NULL OR target_bar.stock_code IS NULL "
+                "OR target_bar.trade_status <> 1 OR t.exchange_ratio <= 0 "
+                "OR t.verification_status <> 'official_sse_verified'",
+            )
+            if invalid_transitions:
+                report["errors"].append(
+                    f"{invalid_transitions} cross-security settlement events are invalid"
+                )
         if not object_exists(conn, "daily_security_status"):
             report["errors"].append(
                 "daily historical ST status is missing; run build_security_status.py"

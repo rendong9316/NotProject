@@ -33,6 +33,43 @@ def benchmark_returns(frame: pd.DataFrame) -> pd.Series:
     return series.pct_change(fill_method=None).dropna()
 
 
+def execution_diagnostics(orders: pd.DataFrame, equity: pd.Series) -> dict[str, float | int | None]:
+    if orders.empty or "status" not in orders:
+        return {"completed_orders": 0}
+    completed = orders[orders["status"].eq("Completed")].copy()
+    if completed.empty:
+        return {"completed_orders": 0}
+    traded_notional = float(completed["traded_notional"].sum())
+    explicit_fees = float(completed["commission"].sum())
+    slippage_cost = float(completed["slippage_cost"].sum())
+    average_equity = float(equity.mean()) if not equity.empty else 0.0
+    observations = max(len(equity), 1)
+    participation = completed["participation_rate"].dropna().astype(float)
+    return {
+        "completed_orders": int(len(completed)),
+        "gross_traded_notional": traded_notional,
+        "explicit_fees": explicit_fees,
+        "estimated_slippage_cost": slippage_cost,
+        "total_modelled_execution_cost": explicit_fees + slippage_cost,
+        "gross_turnover_over_average_equity": (
+            traded_notional / average_equity if average_equity > 0 else None
+        ),
+        "annualized_gross_turnover": (
+            traded_notional / average_equity * 252.0 / observations
+            if average_equity > 0 else None
+        ),
+        "median_daily_amount_participation": (
+            float(participation.median()) if not participation.empty else None
+        ),
+        "p95_daily_amount_participation": (
+            float(participation.quantile(0.95)) if not participation.empty else None
+        ),
+        "max_daily_amount_participation": (
+            float(participation.max()) if not participation.empty else None
+        ),
+    }
+
+
 def write_report(
     output_dir: Path,
     strategy_name: str,
@@ -56,6 +93,7 @@ def write_report(
         "Corporate actions use gross cash dividends; investor-specific dividend tax is not modelled.",
         "Factor-only events are treated as synthetic share multipliers and are not literal exchange settlements.",
         "Dividend receivables and bonus shares are recognized on the ex-date for daily-bar research.",
+        "Merger share swaps use officially disclosed ratios and listing dates; registry-level fractional allocation is approximated to the nearest whole share.",
         "Membership includes official semiannual adjustments but omits temporary adjustment dates.",
         "Historical ST status is included, but IPO no-limit periods and exact daily price cages are unavailable.",
     ]
@@ -77,6 +115,8 @@ def write_report(
         "factor_fallback_actions": int(
             result["corporate_actions"]["method"].eq("factor_fallback").sum()
         ) if not result["corporate_actions"].empty else 0,
+        "security_transitions_applied": int(len(result["security_transitions"])),
+        "execution_diagnostics": execution_diagnostics(result["orders"], result["equity"]),
         "final_value": result["final_value"],
         "metadata": metadata,
         "execution_config": result["execution_config"],
@@ -86,6 +126,9 @@ def write_report(
     result["skipped_orders"].to_csv(output_dir / "skipped_orders.csv", index=False, encoding="utf-8-sig")
     result["corporate_actions"].to_csv(
         output_dir / "corporate_actions.csv", index=False, encoding="utf-8-sig"
+    )
+    result["security_transitions"].to_csv(
+        output_dir / "security_transitions.csv", index=False, encoding="utf-8-sig"
     )
     curves.to_csv(output_dir / "equity_curve.csv", encoding="utf-8-sig")
     (output_dir / "summary.json").write_text(

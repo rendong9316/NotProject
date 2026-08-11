@@ -10,6 +10,8 @@ STRATEGIES = {"equal_weight", "momentum", "low_vol", "momentum_low_vol"}
 class FactorConfig:
     strategy: str = "momentum_low_vol"
     top_n: int = 30
+    rebalance_interval_months: int = 1
+    selection_buffer: int = 0
     momentum_lookback: int = 252
     momentum_skip: int = 21
     volatility_lookback: int = 60
@@ -22,8 +24,22 @@ class FactorConfig:
             raise ValueError(f"unknown strategy: {self.strategy}")
         if self.top_n <= 0:
             raise ValueError("top_n must be positive")
+        if type(self.rebalance_interval_months) is not int:
+            raise ValueError("rebalance_interval_months must be an integer")
+        if not 1 <= self.rebalance_interval_months <= 12:
+            raise ValueError("rebalance_interval_months must be between 1 and 12")
+        if type(self.selection_buffer) is not int:
+            raise ValueError("selection_buffer must be an integer")
+        if self.selection_buffer < 0:
+            raise ValueError("selection_buffer cannot be negative")
+        if self.momentum_skip < 0:
+            raise ValueError("momentum_skip cannot be negative")
         if self.momentum_lookback <= self.momentum_skip:
             raise ValueError("momentum_lookback must exceed momentum_skip")
+        if self.volatility_lookback <= 1:
+            raise ValueError("volatility_lookback must exceed one trading day")
+        if self.liquidity_lookback <= 0:
+            raise ValueError("liquidity_lookback must be positive")
         if not 0 <= self.liquidity_exclusion_quantile < 1:
             raise ValueError("liquidity_exclusion_quantile must be in [0, 1)")
         if not 0 < self.invest_fraction <= 1:

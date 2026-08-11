@@ -8,15 +8,20 @@ import backtrader as bt
 import pandas as pd
 
 from .config import ExecutionConfig
-from .data import load_corporate_action_schedule, load_execution_prices
+from .data import (
+    load_corporate_action_schedule,
+    load_execution_prices,
+    load_security_transition_schedule,
+)
 
 
 class AshareData(bt.feeds.PandasData):
-    lines = ("trade_status", "prev_close_raw", "is_st")
+    lines = ("trade_status", "prev_close_raw", "is_st", "amount_cny")
     params = (
         ("trade_status", "trade_status"),
         ("prev_close_raw", "prev_close_raw"),
         ("is_st", "is_st"),
+        ("amount_cny", "amount_cny"),
     )
 
 
@@ -82,12 +87,24 @@ def at_price_limit(
     return change >= limit - tolerance if side == "buy" else change <= -limit + tolerance
 
 
+def transition_share_quantity(source_shares: float, exchange_ratio: float, rule: str) -> int:
+    if source_shares < 0 or not math.isfinite(source_shares):
+        raise ValueError("source transition shares must be finite and non-negative")
+    if exchange_ratio <= 0 or not math.isfinite(exchange_ratio):
+        raise ValueError("exchange ratio must be finite and positive")
+    if rule != "nearest_integer_max_one_share_error":
+        raise ValueError(f"unsupported transition fractional-share rule: {rule}")
+    return math.floor(source_shares * exchange_ratio + 0.5)
+
+
 class MonthlyTargetStrategy(bt.Strategy):
     params = (
         ("targets", None),
         ("lot_size", 100),
         ("order_retry_days", 5),
         ("corporate_actions", None),
+        ("security_transitions", None),
+        ("last_price_dates", None),
         ("execution_config", None),
     )
 
@@ -97,9 +114,15 @@ class MonthlyTargetStrategy(bt.Strategy):
         self.order_records: list[dict] = []
         self.skipped_records: list[dict] = []
         self.corporate_action_records: list[dict] = []
+        self.security_transition_records: list[dict] = []
         self.rebalance_dates: list[str] = []
         self.desired_sizes: dict[str, float] = {}
         self.retry_days_left = 0
+        self.transition_dates_by_source = {
+            event["source_stock_code"]: date
+            for date, events in (self.p.security_transitions or {}).items()
+            for event in events
+        }
 
     def _current(self, data, trade_date: str) -> bool:
         return len(data) > 0 and data.datetime.date(0).isoformat() == trade_date
@@ -128,8 +151,7 @@ class MonthlyTargetStrategy(bt.Strategy):
             "reason": reason,
         })
 
-    def _apply_corporate_actions(self, trade_date: str) -> float:
-        pending_cash = 0.0
+    def _apply_corporate_actions(self, trade_date: str) -> None:
         for action in (self.p.corporate_actions or {}).get(trade_date, []):
             stock_code = action["stock_code"]
             data = self.stock_data.get(stock_code)
@@ -153,7 +175,6 @@ class MonthlyTargetStrategy(bt.Strategy):
                 position.price = max((old_cost - cash_per_share) / share_multiplier, 1e-12)
             if cash_amount:
                 self.broker.add_cash(cash_amount)
-                pending_cash += cash_amount
             self.corporate_action_records.append({
                 "date": trade_date,
                 "stock_code": stock_code,
@@ -165,10 +186,81 @@ class MonthlyTargetStrategy(bt.Strategy):
                 "cash_per_share": cash_per_share,
                 "cash_amount": cash_amount,
             })
-        return pending_cash
 
-    def _portfolio_value_at_open(self, trade_date: str, pending_cash: float) -> float:
-        value = float(self.broker.getcash()) + pending_cash
+    def _apply_security_transitions(self, trade_date: str) -> None:
+        for event in (self.p.security_transitions or {}).get(trade_date, []):
+            source_code = event["source_stock_code"]
+            target_code = event["target_stock_code"]
+            source_data = self.stock_data.get(source_code)
+            target_data = self.stock_data.get(target_code)
+            if source_data is None:
+                continue
+            source_position = self.getposition(source_data)
+            source_size = float(source_position.size)
+            if source_size <= 0:
+                continue
+            if target_data is None or not self._current(target_data, trade_date):
+                raise RuntimeError(
+                    f"transition target has no event-date price: "
+                    f"{source_code}->{target_code} {trade_date}"
+                )
+            ratio = float(event["exchange_ratio"])
+            theoretical_target_size = source_size * ratio
+            converted_target_size = transition_share_quantity(
+                source_size, ratio, event["simulation_fractional_rule"]
+            )
+            target_position = self.getposition(target_data)
+            existing_target_size = float(target_position.size)
+            resulting_target_size = existing_target_size + converted_target_size
+            source_cost = max(
+                float(source_position.price) - float(event["cash_per_source_share"]),
+                0.0,
+            )
+            existing_cost_value = existing_target_size * float(target_position.price)
+            converted_cost_value = source_size * source_cost
+            resulting_cost = (
+                (existing_cost_value + converted_cost_value) / resulting_target_size
+                if resulting_target_size > 0
+                else 0.0
+            )
+            cash_amount = source_size * float(event["cash_per_source_share"])
+            source_position.set(0.0, 0.0)
+            target_position.set(resulting_target_size, resulting_cost)
+            if cash_amount:
+                self.broker.add_cash(cash_amount)
+            self.security_transition_records.append({
+                "date": trade_date,
+                "source_stock_code": source_code,
+                "target_stock_code": target_code,
+                "event_type": event["event_type"],
+                "source_size": source_size,
+                "exchange_ratio": ratio,
+                "theoretical_target_size": theoretical_target_size,
+                "converted_target_size": converted_target_size,
+                "rounding_share_difference": converted_target_size - theoretical_target_size,
+                "existing_target_size": existing_target_size,
+                "resulting_target_size": resulting_target_size,
+                "cash_amount": cash_amount,
+                "verification_status": event["verification_status"],
+            })
+
+    def _validate_terminal_positions(self, trade_date: str) -> None:
+        for stock_code, data in self.stock_data.items():
+            if float(self.getposition(data).size) <= 0:
+                continue
+            last_price_date = (self.p.last_price_dates or {}).get(stock_code)
+            if last_price_date is None or trade_date <= last_price_date:
+                continue
+            transition_date = self.transition_dates_by_source.get(stock_code)
+            if transition_date is not None and trade_date <= transition_date:
+                continue
+            raise RuntimeError(
+                "unresolved terminal holding has no price or settlement event: "
+                f"{stock_code}, last_price_date={last_price_date}, trade_date={trade_date}"
+            )
+
+    def _portfolio_value_at_open(self, trade_date: str) -> float:
+        value = float(self.broker.getcash())
         for data in self.stock_data.values():
             size = float(self.getposition(data).size)
             if not size or len(data) == 0:
@@ -191,13 +283,15 @@ class MonthlyTargetStrategy(bt.Strategy):
     def _process_open(self):
         trade_date = self.calendar.datetime.date(0).isoformat()
         self._set_daily_fee_rates(trade_date)
-        pending_action_cash = self._apply_corporate_actions(trade_date)
+        self._apply_corporate_actions(trade_date)
+        self._apply_security_transitions(trade_date)
+        self._validate_terminal_positions(trade_date)
         target_weights = (self.p.targets or {}).get(trade_date)
         if target_weights is None and self.retry_days_left <= 0:
             return
         if target_weights is not None:
             self.rebalance_dates.append(trade_date)
-            portfolio_value = self._portfolio_value_at_open(trade_date, pending_action_cash)
+            portfolio_value = self._portfolio_value_at_open(trade_date)
             self.desired_sizes = {}
             for stock_code, weight in target_weights.items():
                 data = self.stock_data.get(stock_code)
@@ -256,6 +350,22 @@ class MonthlyTargetStrategy(bt.Strategy):
         execution_date = None
         if order.executed.dt:
             execution_date = bt.num2date(order.executed.dt).date().isoformat()
+        executed_size = abs(float(order.executed.size))
+        executed_price = float(order.executed.price or 0.0)
+        reference_open = float(order.data.open[0])
+        traded_notional = executed_size * executed_price
+        slippage_per_share = (
+            executed_price - reference_open
+            if order.isbuy()
+            else reference_open - executed_price
+        )
+        slippage_cost = max(0.0, executed_size * slippage_per_share)
+        market_amount = float(order.data.amount_cny[0])
+        participation_rate = (
+            traded_notional / market_amount
+            if math.isfinite(market_amount) and market_amount > 0
+            else None
+        )
         self.order_records.append({
             "date": execution_date,
             "stock_code": order.data._name,
@@ -265,6 +375,11 @@ class MonthlyTargetStrategy(bt.Strategy):
             "price": float(order.executed.price or 0.0),
             "value": float(order.executed.value or 0.0),
             "commission": float(order.executed.comm or 0.0),
+            "reference_open": reference_open,
+            "traded_notional": traded_notional,
+            "slippage_cost": slippage_cost,
+            "market_amount_cny": market_amount,
+            "participation_rate": participation_rate,
         })
 
 
@@ -292,7 +407,7 @@ def _stock_frame(rows: pd.DataFrame) -> pd.DataFrame:
     return frame[
         [
             "open", "high", "low", "close", "volume", "openinterest",
-            "trade_status", "prev_close_raw", "is_st",
+            "trade_status", "prev_close_raw", "is_st", "amount_cny",
         ]
     ]
 
@@ -313,9 +428,18 @@ def run_backtest(
         for date, rows in signals.groupby("execution_date")
     }
     stock_codes = sorted(signals["stock_code"].astype(str).unique())
-    prices = load_execution_prices(database, stock_codes, start_date, end_date)
-    corporate_actions = load_corporate_action_schedule(
+    security_transitions = load_security_transition_schedule(
         database, stock_codes, start_date, end_date
+    )
+    transition_targets = (
+        security_transitions["target_stock_code"].astype(str).tolist()
+        if not security_transitions.empty
+        else []
+    )
+    loaded_stock_codes = sorted(set(stock_codes) | set(transition_targets))
+    prices = load_execution_prices(database, loaded_stock_codes, start_date, end_date)
+    corporate_actions = load_corporate_action_schedule(
+        database, loaded_stock_codes, start_date, end_date
     )
     if prices.empty:
         raise ValueError("no execution prices were loaded")
@@ -349,12 +473,19 @@ def run_backtest(
         date: rows.to_dict("records")
         for date, rows in corporate_actions.groupby("date", sort=False)
     }
+    transition_schedule = {
+        date: rows.to_dict("records")
+        for date, rows in security_transitions.groupby("date", sort=False)
+    }
+    last_price_dates = prices.groupby("stock_code")["date"].max().to_dict()
     cerebro.addstrategy(
         MonthlyTargetStrategy,
         targets=targets,
         lot_size=config.lot_size,
         order_retry_days=config.order_retry_days,
         corporate_actions=action_schedule,
+        security_transitions=transition_schedule,
+        last_price_dates=last_price_dates,
         execution_config=config,
     )
     cerebro.addanalyzer(bt.analyzers.TimeReturn, _name="daily_returns", timeframe=bt.TimeFrame.Days)
@@ -365,11 +496,21 @@ def run_backtest(
     daily_returns.index = pd.to_datetime(daily_returns.index)
     daily_returns = daily_returns.sort_index()
     equity = config.initial_cash * (1.0 + daily_returns).cumprod()
-    order_columns = ["date", "stock_code", "side", "status", "size", "price", "value", "commission"]
+    order_columns = [
+        "date", "stock_code", "side", "status", "size", "price", "value",
+        "commission", "reference_open", "traded_notional", "slippage_cost",
+        "market_amount_cny", "participation_rate",
+    ]
     skipped_columns = ["date", "stock_code", "side", "reason"]
     action_columns = [
         "date", "stock_code", "method", "validation_status", "old_size", "new_size",
         "share_multiplier", "cash_per_share", "cash_amount",
+    ]
+    transition_columns = [
+        "date", "source_stock_code", "target_stock_code", "event_type",
+        "source_size", "exchange_ratio", "theoretical_target_size",
+        "converted_target_size", "rounding_share_difference", "existing_target_size",
+        "resulting_target_size", "cash_amount", "verification_status",
     ]
     return {
         "daily_returns": daily_returns,
@@ -378,6 +519,9 @@ def run_backtest(
         "skipped_orders": pd.DataFrame(strategy.skipped_records, columns=skipped_columns),
         "corporate_actions": pd.DataFrame(
             strategy.corporate_action_records, columns=action_columns
+        ),
+        "security_transitions": pd.DataFrame(
+            strategy.security_transition_records, columns=transition_columns
         ),
         "rebalance_dates": strategy.rebalance_dates,
         "final_value": float(cerebro.broker.getvalue()),

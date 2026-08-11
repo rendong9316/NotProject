@@ -85,7 +85,15 @@ def load_execution_prices(
             r.volume_shares,
             r.amount_cny,
             r.trade_status,
-            s.is_st
+            s.is_st,
+            (
+                SELECT previous.close_raw
+                FROM daily_price_raw AS previous
+                WHERE previous.stock_code = r.stock_code
+                  AND previous.date < r.date
+                ORDER BY previous.date DESC
+                LIMIT 1
+            ) AS prev_close_raw
         FROM daily_price_raw AS r
         JOIN daily_security_status AS s
           ON s.date = r.date AND s.stock_code = r.stock_code
@@ -101,8 +109,64 @@ def load_execution_prices(
             params=params,
             dtype={"stock_code": "string"},
         )
-    frame["prev_close_raw"] = frame.groupby("stock_code", sort=False)["close_raw"].shift(1)
     return frame
+
+
+def load_security_transition_schedule(
+    database: Path,
+    stock_codes: list[str],
+    start_date: str,
+    end_date: str,
+) -> pd.DataFrame:
+    columns = [
+        "date", "source_stock_code", "target_stock_code", "record_date",
+        "exchange_ratio", "cash_per_source_share", "event_type",
+        "official_fractional_rule", "simulation_fractional_rule",
+        "verification_status",
+    ]
+    if not stock_codes:
+        return pd.DataFrame(columns=columns)
+    placeholders = ",".join("?" for _ in stock_codes)
+    with sqlite3.connect(database) as conn:
+        available = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
+        if "security_transitions" not in available:
+            return pd.DataFrame(columns=columns)
+        frame = pd.read_sql_query(
+            f"""
+            SELECT
+                event_date AS date,
+                source_stock_code,
+                target_stock_code,
+                record_date,
+                exchange_ratio,
+                cash_per_source_share,
+                event_type,
+                official_fractional_rule,
+                simulation_fractional_rule,
+                verification_status
+            FROM security_transitions
+            WHERE event_date BETWEEN ? AND ?
+              AND source_stock_code IN ({placeholders})
+            ORDER BY event_date, source_stock_code
+            """,
+            conn,
+            params=[start_date, end_date, *stock_codes],
+            dtype={"source_stock_code": "string", "target_stock_code": "string"},
+        )
+    unverified = frame[~frame["verification_status"].eq("official_sse_verified")]
+    if not unverified.empty:
+        raise RuntimeError(
+            "unverified security transitions block formal backtests: "
+            f"{unverified[['date', 'source_stock_code']].to_dict('records')[:10]}"
+        )
+    if frame.duplicated(["date", "source_stock_code"]).any():
+        raise ValueError("duplicate cross-security settlement events")
+    return frame[columns]
 
 
 def load_corporate_action_schedule(
