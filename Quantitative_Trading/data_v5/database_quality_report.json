@@ -10,26 +10,33 @@
   ],
   "counts": {
     "security": 493,
-    "trading_calendar": 1597,
-    "daily_price_raw": 760363,
-    "daily_price_adjusted": 760363,
+    "trading_calendar": 1600,
+    "daily_price_raw": 761812,
+    "daily_price_adjusted": 761812,
     "components_snapshot": 300,
     "membership_snapshots": 4200,
     "membership_weight_intervals": 4200,
     "universe_membership": 533,
-    "daily_universe": 479100,
+    "daily_universe": 480000,
     "membership_scope": "official_regular_adjustments_only",
     "official_adjustments": 247,
-    "baostock_membership_snapshots_raw": 5400,
-    "daily_security_status": 760363,
-    "daily_security_status_st_rows": 5370,
+    "baostock_membership_snapshots_raw": 6000,
+    "daily_security_status": 761812,
+    "daily_security_status_st_rows": 5385,
     "corporate_actions": 7949,
     "corporate_action_download_status": 493,
-    "adjustment_factor_events": 3384,
+    "adjustment_factor_events": 3393,
     "corporate_action_factor_only": 17,
     "corporate_action_review": 54,
     "quality_issues": {
       "warning": 143
+    },
+    "update_runs": 2,
+    "price_revision_audit": 483,
+    "latest_update_run": {
+      "run_id": "20260811_120904_535679",
+      "status": "success",
+      "new_max_date": "2026-08-10"
     }
   }
 }

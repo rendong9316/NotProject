@@ -9,6 +9,7 @@ events that require a factor-based fallback.
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 import hashlib
 import json
 import multiprocessing as mp
@@ -443,7 +444,10 @@ def load_price_factors(conn: sqlite3.Connection) -> pd.DataFrame:
     return frame[changed & frame["previous_fore_adjust_factor"].notna()].copy()
 
 
-def rebuild_factor_events(conn: sqlite3.Connection) -> dict:
+def rebuild_factor_events(
+    conn: sqlite3.Connection,
+    manage_transaction: bool = True,
+) -> dict:
     factors = load_price_factors(conn)
     minimum_date, maximum_date = conn.execute(
         "SELECT MIN(date), MAX(date) FROM daily_price_raw"
@@ -494,7 +498,8 @@ def rebuild_factor_events(conn: sqlite3.Connection) -> dict:
             None if pd.isna(row.return_residual) else float(row.return_residual),
             str(row.validation_status), FACTOR_SOURCE,
         ))
-    with conn:
+    transaction = conn if manage_transaction else nullcontext()
+    with transaction:
         conn.execute("DELETE FROM adjustment_factor_events")
         conn.executemany(
             "INSERT INTO adjustment_factor_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",

@@ -175,6 +175,34 @@ def validate(path: Path) -> dict:
         warning_count = counts["quality_issues"].get("warning", 0)
         if warning_count:
             report["warnings"].append(f"{warning_count} recorded data warnings")
+        if object_exists(conn, "update_runs"):
+            counts["update_runs"] = scalar(conn, "SELECT COUNT(*) FROM update_runs")
+            counts["price_revision_audit"] = scalar(
+                conn, "SELECT COUNT(*) FROM price_revision_audit"
+            )
+            latest_run = conn.execute(
+                "SELECT run_id, status, new_max_date FROM update_runs "
+                "ORDER BY completed_at DESC LIMIT 1"
+            ).fetchone()
+            if latest_run:
+                counts["latest_update_run"] = {
+                    "run_id": latest_run[0],
+                    "status": latest_run[1],
+                    "new_max_date": latest_run[2],
+                }
+                if latest_run[1] == "success_pending_official":
+                    report["warnings"].append(
+                        "latest price increment succeeded but an observed membership change remains unconfirmed"
+                    )
+                elif latest_run[1] != "success":
+                    report["errors"].append(
+                        f"latest incremental update is not complete: {latest_run[1]}"
+                    )
+                calendar_max = scalar(conn, "SELECT MAX(date) FROM trading_calendar")
+                if latest_run[2] != calendar_max:
+                    report["errors"].append(
+                        "latest incremental run date does not match the trading calendar"
+                    )
     return report
 
 
