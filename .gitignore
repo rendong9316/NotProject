@@ -66,3 +66,25 @@ Thumbs.db
 # ==================== 本地上传图片文件夹（你的ALiYunFileAddress，不要提交图片仓库） ====================
 **/ALiYunFileAddress/
 **/upload/
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# SQLite 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+*.db3
+*.sdb
+
+# SQLite 产生的临时回滚、日志文件
+*.db‑journal
+*.db‑wal
+*.db‑shm
+
+# Quantitative research generated reports
+**/research_outputs/
+**/data_v5/increments/
+.pytest_cache/
