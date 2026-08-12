@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 核心：修改主题为无ActionBar + 无启动闪屏 + 黑色背景（匹配计算器） -->
+    <style name="Theme.MyApplication" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- 1. 去掉启动时的窗口背景（消除白屏/图标闪屏） -->
+        <item name="android:windowBackground">@android:color/black</item>
+        <!-- 2. 窗口透明（避免启动过渡） -->
+        <item name="android:windowIsTranslucent">false</item>
+        <!-- 3. 去掉标题栏（和原有配置一致） -->
+        <item name="android:windowNoTitle">true</item>
+        <!-- 4. 全屏显示（可选，和计算器的enableEdgeToEdge匹配） -->
+        <item name="android:windowFullscreen">true</item>
+        <!-- 5. 去掉启动过渡动画 -->
+        <item name="android:windowContentTransitions">false</item>
+    </style>
+</resources>
