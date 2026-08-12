@@ -17,6 +17,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Locationer">
+        <!-- 【高德地图 API Key 配置区】
+             如需更换 Key，请到高德开放平台(https://console.amap.com)申请，
+             并将下方 com.amap.api.v2.apikey 的 value 替换为新 Key
+             （SHA1 签名与其绑定，release.keystore 的 SHA1 与 Key 必须一致） -->
         <meta-data
             android:name="com.amap.api.v2.apikey"
             android:value="afead164540ed20313a6cccf0723c4ef" />
