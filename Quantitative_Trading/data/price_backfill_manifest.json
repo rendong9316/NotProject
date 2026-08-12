@@ -1,0 +1,4810 @@
+{
+  "created_at": "2026-08-12T04:12:11",
+  "start_date": "2010-01-04",
+  "end_date": "2026-08-10",
+  "results": [
+    {
+      "code": "000001",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "平安银行"
+    },
+    {
+      "code": "000002",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "万科A"
+    },
+    {
+      "code": "000008",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "神州高铁"
+    },
+    {
+      "code": "000009",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国宝安"
+    },
+    {
+      "code": "000012",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "南玻A"
+    },
+    {
+      "code": "000021",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "深科技"
+    },
+    {
+      "code": "000024",
+      "rows": 1455,
+      "status": "downloaded",
+      "name": "招商地产"
+    },
+    {
+      "code": "000027",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "深圳能源"
+    },
+    {
+      "code": "000031",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "大悦城"
+    },
+    {
+      "code": "000039",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中集集团"
+    },
+    {
+      "code": "000046",
+      "rows": 3428,
+      "status": "downloaded",
+      "name": "*ST泛海"
+    },
+    {
+      "code": "000059",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华锦股份"
+    },
+    {
+      "code": "000060",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中金岭南"
+    },
+    {
+      "code": "000061",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "农产品"
+    },
+    {
+      "code": "000063",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中兴通讯"
+    },
+    {
+      "code": "000066",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国长城"
+    },
+    {
+      "code": "000069",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华侨城A"
+    },
+    {
+      "code": "000089",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "深圳机场"
+    },
+    {
+      "code": "000100",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "TCL科技"
+    },
+    {
+      "code": "000156",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华数传媒"
+    },
+    {
+      "code": "000157",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中联重科"
+    },
+    {
+      "code": "000166",
+      "rows": 2804,
+      "status": "downloaded",
+      "name": "申万宏源"
+    },
+    {
+      "code": "000301",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "东方盛虹"
+    },
+    {
+      "code": "000333",
+      "rows": 3132,
+      "status": "downloaded",
+      "name": "美的集团"
+    },
+    {
+      "code": "000338",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "潍柴动力"
+    },
+    {
+      "code": "000400",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "许继电气"
+    },
+    {
+      "code": "000401",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "金隅冀东"
+    },
+    {
+      "code": "000402",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "金融街"
+    },
+    {
+      "code": "000408",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "藏格矿业"
+    },
+    {
+      "code": "000413",
+      "rows": 3586,
+      "status": "downloaded",
+      "name": "ST旭电"
+    },
+    {
+      "code": "000415",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "渤海租赁"
+    },
+    {
+      "code": "000422",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "湖北宜化"
+    },
+    {
+      "code": "000423",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "东阿阿胶"
+    },
+    {
+      "code": "000425",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "徐工机械"
+    },
+    {
+      "code": "000488",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "ST晨鸣"
+    },
+    {
+      "code": "000503",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "国新健康"
+    },
+    {
+      "code": "000527",
+      "rows": 900,
+      "status": "downloaded",
+      "name": "美的电器"
+    },
+    {
+      "code": "000528",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "柳工"
+    },
+    {
+      "code": "000536",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华映科技"
+    },
+    {
+      "code": "000538",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "云南白药"
+    },
+    {
+      "code": "000539",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "粤电力A"
+    },
+    {
+      "code": "000540",
+      "rows": 3277,
+      "status": "downloaded",
+      "name": "*ST中天"
+    },
+    {
+      "code": "000553",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "安道麦A"
+    },
+    {
+      "code": "000555",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "神州信息"
+    },
+    {
+      "code": "000559",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "万向钱潮"
+    },
+    {
+      "code": "000562",
+      "rows": 1228,
+      "status": "downloaded",
+      "name": "宏源证券"
+    },
+    {
+      "code": "000568",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "泸州老窖"
+    },
+    {
+      "code": "000581",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "威孚高科"
+    },
+    {
+      "code": "000596",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "古井贡酒"
+    },
+    {
+      "code": "000598",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "兴蓉环境"
+    },
+    {
+      "code": "000612",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "焦作万方"
+    },
+    {
+      "code": "000617",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中油资本"
+    },
+    {
+      "code": "000623",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "吉林敖东"
+    },
+    {
+      "code": "000625",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "长安汽车"
+    },
+    {
+      "code": "000627",
+      "rows": 3825,
+      "status": "downloaded",
+      "name": "*ST天茂"
+    },
+    {
+      "code": "000629",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "钒钛股份"
+    },
+    {
+      "code": "000630",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "铜陵有色"
+    },
+    {
+      "code": "000631",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "顺发恒能"
+    },
+    {
+      "code": "000651",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "格力电器"
+    },
+    {
+      "code": "000652",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "泰达股份"
+    },
+    {
+      "code": "000656",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "金科股份"
+    },
+    {
+      "code": "000657",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中钨高新"
+    },
+    {
+      "code": "000661",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "长春高新"
+    },
+    {
+      "code": "000667",
+      "rows": 3287,
+      "status": "downloaded",
+      "name": "ST美置"
+    },
+    {
+      "code": "000671",
+      "rows": 3310,
+      "status": "downloaded",
+      "name": "ST阳光城"
+    },
+    {
+      "code": "000680",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "山推股份"
+    },
+    {
+      "code": "000685",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中山公用"
+    },
+    {
+      "code": "000686",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "东北证券"
+    },
+    {
+      "code": "000690",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "宝新能源"
+    },
+    {
+      "code": "000703",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "恒逸石化"
+    },
+    {
+      "code": "000708",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中信特钢"
+    },
+    {
+      "code": "000709",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "河钢股份"
+    },
+    {
+      "code": "000712",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "锦龙股份"
+    },
+    {
+      "code": "000717",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中南股份"
+    },
+    {
+      "code": "000718",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "苏宁环球"
+    },
+    {
+      "code": "000723",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "美锦能源"
+    },
+    {
+      "code": "000725",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "京东方A"
+    },
+    {
+      "code": "000728",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "国元证券"
+    },
+    {
+      "code": "000729",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "燕京啤酒"
+    },
+    {
+      "code": "000733",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "振华科技"
+    },
+    {
+      "code": "000738",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "航发控制"
+    },
+    {
+      "code": "000750",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "国海证券"
+    },
+    {
+      "code": "000758",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中色股份"
+    },
+    {
+      "code": "000768",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中航西飞"
+    },
+    {
+      "code": "000776",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "广发证券"
+    },
+    {
+      "code": "000778",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "新兴铸管"
+    },
+    {
+      "code": "000780",
+      "rows": 2932,
+      "status": "downloaded",
+      "name": "ST平能"
+    },
+    {
+      "code": "000783",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "长江证券"
+    },
+    {
+      "code": "000786",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "北新建材"
+    },
+    {
+      "code": "000792",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "盐湖股份"
+    },
+    {
+      "code": "000793",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "ST华闻"
+    },
+    {
+      "code": "000800",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "一汽解放"
+    },
+    {
+      "code": "000807",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "云铝股份"
+    },
+    {
+      "code": "000822",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "山东海化"
+    },
+    {
+      "code": "000825",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "太钢不锈"
+    },
+    {
+      "code": "000826",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "*ST启环"
+    },
+    {
+      "code": "000831",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国稀土"
+    },
+    {
+      "code": "000839",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "国安股份"
+    },
+    {
+      "code": "000858",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "五粮液"
+    },
+    {
+      "code": "000860",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "顺鑫农业"
+    },
+    {
+      "code": "000869",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "张裕A"
+    },
+    {
+      "code": "000876",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "新希望"
+    },
+    {
+      "code": "000877",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "天山股份"
+    },
+    {
+      "code": "000878",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "云南铜业"
+    },
+    {
+      "code": "000883",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "湖北能源"
+    },
+    {
+      "code": "000895",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "双汇发展"
+    },
+    {
+      "code": "000897",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "津滨发展"
+    },
+    {
+      "code": "000898",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "鞍钢股份"
+    },
+    {
+      "code": "000900",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "现代投资"
+    },
+    {
+      "code": "000917",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "电广传媒"
+    },
+    {
+      "code": "000927",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国铁物"
+    },
+    {
+      "code": "000932",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华菱钢铁"
+    },
+    {
+      "code": "000933",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "神火股份"
+    },
+    {
+      "code": "000937",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "冀中能源"
+    },
+    {
+      "code": "000938",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "紫光股份"
+    },
+    {
+      "code": "000951",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国重汽"
+    },
+    {
+      "code": "000959",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "首钢股份"
+    },
+    {
+      "code": "000960",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "锡业股份"
+    },
+    {
+      "code": "000961",
+      "rows": 3527,
+      "status": "downloaded",
+      "name": "ST中南"
+    },
+    {
+      "code": "000963",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华东医药"
+    },
+    {
+      "code": "000968",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "蓝焰控股"
+    },
+    {
+      "code": "000969",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "安泰科技"
+    },
+    {
+      "code": "000970",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中科三环"
+    },
+    {
+      "code": "000975",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "山金国际"
+    },
+    {
+      "code": "000977",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "浪潮信息"
+    },
+    {
+      "code": "000983",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "山西焦煤"
+    },
+    {
+      "code": "000988",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华工科技"
+    },
+    {
+      "code": "000999",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华润三九"
+    },
+    {
+      "code": "001280",
+      "rows": 166,
+      "status": "downloaded",
+      "name": "中国铀业"
+    },
+    {
+      "code": "001289",
+      "rows": 1100,
+      "status": "downloaded",
+      "name": "龙源电力"
+    },
+    {
+      "code": "001391",
+      "rows": 390,
+      "status": "downloaded",
+      "name": "国货航"
+    },
+    {
+      "code": "001965",
+      "rows": 2092,
+      "status": "downloaded",
+      "name": "招商公路"
+    },
+    {
+      "code": "001979",
+      "rows": 2577,
+      "status": "downloaded",
+      "name": "招商蛇口"
+    },
+    {
+      "code": "002001",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "新和成"
+    },
+    {
+      "code": "002007",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华兰生物"
+    },
+    {
+      "code": "002008",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "大族激光"
+    },
+    {
+      "code": "002010",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "传化智联"
+    },
+    {
+      "code": "002024",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "ST易购"
+    },
+    {
+      "code": "002027",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "分众传媒"
+    },
+    {
+      "code": "002028",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "思源电气"
+    },
+    {
+      "code": "002032",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "苏泊尔"
+    },
+    {
+      "code": "002038",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "双鹭药业"
+    },
+    {
+      "code": "002044",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "美年健康"
+    },
+    {
+      "code": "002049",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "紫光国微"
+    },
+    {
+      "code": "002050",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "三花智控"
+    },
+    {
+      "code": "002051",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中工国际"
+    },
+    {
+      "code": "002064",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华峰化学"
+    },
+    {
+      "code": "002065",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "东华软件"
+    },
+    {
+      "code": "002069",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "獐子岛"
+    },
+    {
+      "code": "002073",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "软控股份"
+    },
+    {
+      "code": "002074",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "国轩高科"
+    },
+    {
+      "code": "002081",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "金螳螂"
+    },
+    {
+      "code": "002085",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "万丰奥威"
+    },
+    {
+      "code": "002092",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中泰化学"
+    },
+    {
+      "code": "002106",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "莱宝高科"
+    },
+    {
+      "code": "002120",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "韵达股份"
+    },
+    {
+      "code": "002122",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "ST汇洲"
+    },
+    {
+      "code": "002128",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "电投能源"
+    },
+    {
+      "code": "002129",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "TCL中环"
+    },
+    {
+      "code": "002131",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "利欧股份"
+    },
+    {
+      "code": "002142",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "宁波银行"
+    },
+    {
+      "code": "002146",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "荣盛发展"
+    },
+    {
+      "code": "002152",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "广电运通"
+    },
+    {
+      "code": "002153",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "石基信息"
+    },
+    {
+      "code": "002155",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "湖南黄金"
+    },
+    {
+      "code": "002157",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "正邦科技"
+    },
+    {
+      "code": "002174",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "游族网络"
+    },
+    {
+      "code": "002179",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中航光电"
+    },
+    {
+      "code": "002180",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "奔图科技"
+    },
+    {
+      "code": "002183",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "怡亚通"
+    },
+    {
+      "code": "002195",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "岩山科技"
+    },
+    {
+      "code": "002202",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "金风科技"
+    },
+    {
+      "code": "002230",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "科大讯飞"
+    },
+    {
+      "code": "002236",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "大华股份"
+    },
+    {
+      "code": "002241",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "歌尔股份"
+    },
+    {
+      "code": "002242",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "九阳股份"
+    },
+    {
+      "code": "002244",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "滨江集团"
+    },
+    {
+      "code": "002252",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上海莱士"
+    },
+    {
+      "code": "002269",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "美邦服饰"
+    },
+    {
+      "code": "002271",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "东方雨虹"
+    },
+    {
+      "code": "002275",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "桂林三金"
+    },
+    {
+      "code": "002292",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "奥飞娱乐"
+    },
+    {
+      "code": "002294",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "信立泰"
+    },
+    {
+      "code": "002299",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "圣农发展"
+    },
+    {
+      "code": "002304",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "洋河股份"
+    },
+    {
+      "code": "002310",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "东方新能"
+    },
+    {
+      "code": "002311",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "海大集团"
+    },
+    {
+      "code": "002344",
+      "rows": 4015,
+      "status": "downloaded",
+      "name": "海宁皮城"
+    },
+    {
+      "code": "002352",
+      "rows": 4007,
+      "status": "downloaded",
+      "name": "顺丰控股"
+    },
+    {
+      "code": "002353",
+      "rows": 4007,
+      "status": "downloaded",
+      "name": "杰瑞股份"
+    },
+    {
+      "code": "002371",
+      "rows": 3985,
+      "status": "downloaded",
+      "name": "北方华创"
+    },
+    {
+      "code": "002375",
+      "rows": 3980,
+      "status": "downloaded",
+      "name": "亚厦股份"
+    },
+    {
+      "code": "002378",
+      "rows": 3974,
+      "status": "downloaded",
+      "name": "章源钨业"
+    },
+    {
+      "code": "002384",
+      "rows": 3968,
+      "status": "downloaded",
+      "name": "东山精密"
+    },
+    {
+      "code": "002385",
+      "rows": 3968,
+      "status": "downloaded",
+      "name": "大北农"
+    },
+    {
+      "code": "002399",
+      "rows": 3950,
+      "status": "downloaded",
+      "name": "海普瑞"
+    },
+    {
+      "code": "002400",
+      "rows": 3950,
+      "status": "downloaded",
+      "name": "省广集团"
+    },
+    {
+      "code": "002405",
+      "rows": 3942,
+      "status": "downloaded",
+      "name": "四维图新"
+    },
+    {
+      "code": "002410",
+      "rows": 3937,
+      "status": "downloaded",
+      "name": "广联达"
+    },
+    {
+      "code": "002411",
+      "rows": 3191,
+      "status": "downloaded",
+      "name": "必康退"
+    },
+    {
+      "code": "002414",
+      "rows": 3902,
+      "status": "downloaded",
+      "name": "高德红外"
+    },
+    {
+      "code": "002415",
+      "rows": 3934,
+      "status": "downloaded",
+      "name": "海康威视"
+    },
+    {
+      "code": "002416",
+      "rows": 3934,
+      "status": "downloaded",
+      "name": "爱施德"
+    },
+    {
+      "code": "002422",
+      "rows": 3930,
+      "status": "downloaded",
+      "name": "科伦药业"
+    },
+    {
+      "code": "002424",
+      "rows": 3930,
+      "status": "downloaded",
+      "name": "ST百灵"
+    },
+    {
+      "code": "002426",
+      "rows": 3927,
+      "status": "downloaded",
+      "name": "胜利精密"
+    },
+    {
+      "code": "002429",
+      "rows": 3925,
+      "status": "downloaded",
+      "name": "兆驰股份"
+    },
+    {
+      "code": "002431",
+      "rows": 3925,
+      "status": "downloaded",
+      "name": "ST棕榈"
+    },
+    {
+      "code": "002450",
+      "rows": 2642,
+      "status": "downloaded",
+      "name": "康得退"
+    },
+    {
+      "code": "002456",
+      "rows": 3890,
+      "status": "downloaded",
+      "name": "欧菲光"
+    },
+    {
+      "code": "002459",
+      "rows": 3885,
+      "status": "downloaded",
+      "name": "晶澳科技"
+    },
+    {
+      "code": "002460",
+      "rows": 3885,
+      "status": "downloaded",
+      "name": "赣锋锂业"
+    },
+    {
+      "code": "002463",
+      "rows": 3879,
+      "status": "downloaded",
+      "name": "沪电股份"
+    },
+    {
+      "code": "002465",
+      "rows": 3870,
+      "status": "downloaded",
+      "name": "海格通信"
+    },
+    {
+      "code": "002466",
+      "rows": 3870,
+      "status": "downloaded",
+      "name": "天齐锂业"
+    },
+    {
+      "code": "002468",
+      "rows": 3864,
+      "status": "downloaded",
+      "name": "申通快递"
+    },
+    {
+      "code": "002470",
+      "rows": 3864,
+      "status": "downloaded",
+      "name": "金正大"
+    },
+    {
+      "code": "002475",
+      "rows": 3859,
+      "status": "downloaded",
+      "name": "立讯精密"
+    },
+    {
+      "code": "002493",
+      "rows": 3833,
+      "status": "downloaded",
+      "name": "荣盛石化"
+    },
+    {
+      "code": "002498",
+      "rows": 3828,
+      "status": "downloaded",
+      "name": "汉缆股份"
+    },
+    {
+      "code": "002500",
+      "rows": 3824,
+      "status": "downloaded",
+      "name": "山西证券"
+    },
+    {
+      "code": "002508",
+      "rows": 3818,
+      "status": "downloaded",
+      "name": "老板电器"
+    },
+    {
+      "code": "002532",
+      "rows": 3790,
+      "status": "downloaded",
+      "name": "天山铝业"
+    },
+    {
+      "code": "002555",
+      "rows": 3753,
+      "status": "downloaded",
+      "name": "三七互娱"
+    },
+    {
+      "code": "002558",
+      "rows": 3753,
+      "status": "downloaded",
+      "name": "巨人网络"
+    },
+    {
+      "code": "002568",
+      "rows": 3736,
+      "status": "downloaded",
+      "name": "百润股份"
+    },
+    {
+      "code": "002570",
+      "rows": 3726,
+      "status": "downloaded",
+      "name": "贝因美"
+    },
+    {
+      "code": "002572",
+      "rows": 3726,
+      "status": "downloaded",
+      "name": "索菲亚"
+    },
+    {
+      "code": "002594",
+      "rows": 3671,
+      "status": "downloaded",
+      "name": "比亚迪"
+    },
+    {
+      "code": "002600",
+      "rows": 3660,
+      "status": "downloaded",
+      "name": "领益智造"
+    },
+    {
+      "code": "002601",
+      "rows": 3660,
+      "status": "downloaded",
+      "name": "龙佰集团"
+    },
+    {
+      "code": "002602",
+      "rows": 3651,
+      "status": "downloaded",
+      "name": "世纪华通"
+    },
+    {
+      "code": "002603",
+      "rows": 3651,
+      "status": "downloaded",
+      "name": "以岭药业"
+    },
+    {
+      "code": "002607",
+      "rows": 3642,
+      "status": "downloaded",
+      "name": "中公教育"
+    },
+    {
+      "code": "002608",
+      "rows": 3642,
+      "status": "downloaded",
+      "name": "江苏国信"
+    },
+    {
+      "code": "002624",
+      "rows": 3591,
+      "status": "downloaded",
+      "name": "完美世界"
+    },
+    {
+      "code": "002625",
+      "rows": 3587,
+      "status": "downloaded",
+      "name": "光启技术"
+    },
+    {
+      "code": "002648",
+      "rows": 3548,
+      "status": "downloaded",
+      "name": "卫星化学"
+    },
+    {
+      "code": "002653",
+      "rows": 3536,
+      "status": "downloaded",
+      "name": "海思科"
+    },
+    {
+      "code": "002673",
+      "rows": 3469,
+      "status": "downloaded",
+      "name": "西部证券"
+    },
+    {
+      "code": "002709",
+      "rows": 3049,
+      "status": "downloaded",
+      "name": "天赐材料"
+    },
+    {
+      "code": "002714",
+      "rows": 3046,
+      "status": "downloaded",
+      "name": "牧原股份"
+    },
+    {
+      "code": "002736",
+      "rows": 2822,
+      "status": "downloaded",
+      "name": "国信证券"
+    },
+    {
+      "code": "002739",
+      "rows": 2806,
+      "status": "downloaded",
+      "name": "儒意电影"
+    },
+    {
+      "code": "002756",
+      "rows": 2732,
+      "status": "downloaded",
+      "name": "永兴材料"
+    },
+    {
+      "code": "002773",
+      "rows": 2703,
+      "status": "downloaded",
+      "name": "康弘药业"
+    },
+    {
+      "code": "002791",
+      "rows": 2519,
+      "status": "downloaded",
+      "name": "坚朗五金"
+    },
+    {
+      "code": "002797",
+      "rows": 2490,
+      "status": "downloaded",
+      "name": "第一创业"
+    },
+    {
+      "code": "002812",
+      "rows": 2402,
+      "status": "downloaded",
+      "name": "恩捷股份"
+    },
+    {
+      "code": "002821",
+      "rows": 2362,
+      "status": "downloaded",
+      "name": "凯莱英"
+    },
+    {
+      "code": "002831",
+      "rows": 2342,
+      "status": "downloaded",
+      "name": "裕同科技"
+    },
+    {
+      "code": "002837",
+      "rows": 2333,
+      "status": "downloaded",
+      "name": "英维克"
+    },
+    {
+      "code": "002839",
+      "rows": 2316,
+      "status": "downloaded",
+      "name": "张家港行"
+    },
+    {
+      "code": "002841",
+      "rows": 2319,
+      "status": "downloaded",
+      "name": "视源股份"
+    },
+    {
+      "code": "002916",
+      "rows": 2100,
+      "status": "downloaded",
+      "name": "深南电路"
+    },
+    {
+      "code": "002920",
+      "rows": 2091,
+      "status": "downloaded",
+      "name": "德赛西威"
+    },
+    {
+      "code": "002925",
+      "rows": 2078,
+      "status": "downloaded",
+      "name": "盈趣科技"
+    },
+    {
+      "code": "002938",
+      "rows": 1912,
+      "status": "downloaded",
+      "name": "鹏鼎控股"
+    },
+    {
+      "code": "002939",
+      "rows": 1890,
+      "status": "downloaded",
+      "name": "长城证券"
+    },
+    {
+      "code": "002945",
+      "rows": 1833,
+      "status": "downloaded",
+      "name": "华林证券"
+    },
+    {
+      "code": "002958",
+      "rows": 1790,
+      "status": "downloaded",
+      "name": "青农商行"
+    },
+    {
+      "code": "003816",
+      "rows": 1686,
+      "status": "downloaded",
+      "name": "中国广核"
+    },
+    {
+      "code": "300002",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "神州泰岳"
+    },
+    {
+      "code": "300003",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "乐普医疗"
+    },
+    {
+      "code": "300014",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "亿纬锂能"
+    },
+    {
+      "code": "300015",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "爱尔眼科"
+    },
+    {
+      "code": "300017",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "网宿科技"
+    },
+    {
+      "code": "300024",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "机器人"
+    },
+    {
+      "code": "300027",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "ST华谊"
+    },
+    {
+      "code": "300033",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "同花顺"
+    },
+    {
+      "code": "300058",
+      "rows": 3997,
+      "status": "downloaded",
+      "name": "蓝色光标"
+    },
+    {
+      "code": "300059",
+      "rows": 3982,
+      "status": "downloaded",
+      "name": "东方财富"
+    },
+    {
+      "code": "300070",
+      "rows": 3960,
+      "status": "downloaded",
+      "name": "碧水源"
+    },
+    {
+      "code": "300072",
+      "rows": 3956,
+      "status": "downloaded",
+      "name": "海新能科"
+    },
+    {
+      "code": "300085",
+      "rows": 3936,
+      "status": "downloaded",
+      "name": "银之杰"
+    },
+    {
+      "code": "300104",
+      "rows": 2415,
+      "status": "downloaded",
+      "name": "乐视退"
+    },
+    {
+      "code": "300122",
+      "rows": 3853,
+      "status": "downloaded",
+      "name": "智飞生物"
+    },
+    {
+      "code": "300124",
+      "rows": 3853,
+      "status": "downloaded",
+      "name": "汇川技术"
+    },
+    {
+      "code": "300133",
+      "rows": 3838,
+      "status": "downloaded",
+      "name": "华策影视"
+    },
+    {
+      "code": "300136",
+      "rows": 3830,
+      "status": "downloaded",
+      "name": "信维通信"
+    },
+    {
+      "code": "300142",
+      "rows": 3825,
+      "status": "downloaded",
+      "name": "沃森生物"
+    },
+    {
+      "code": "300144",
+      "rows": 3806,
+      "status": "downloaded",
+      "name": "宋城演艺"
+    },
+    {
+      "code": "300146",
+      "rows": 3802,
+      "status": "downloaded",
+      "name": "汤臣倍健"
+    },
+    {
+      "code": "300168",
+      "rows": 3774,
+      "status": "downloaded",
+      "name": "万达信息"
+    },
+    {
+      "code": "300182",
+      "rows": 3759,
+      "status": "downloaded",
+      "name": "捷成股份"
+    },
+    {
+      "code": "300207",
+      "rows": 3719,
+      "status": "downloaded",
+      "name": "欣旺达"
+    },
+    {
+      "code": "300223",
+      "rows": 3692,
+      "status": "downloaded",
+      "name": "北京君正"
+    },
+    {
+      "code": "300251",
+      "rows": 3647,
+      "status": "downloaded",
+      "name": "光线传媒"
+    },
+    {
+      "code": "300274",
+      "rows": 3588,
+      "status": "downloaded",
+      "name": "阳光电源"
+    },
+    {
+      "code": "300296",
+      "rows": 3499,
+      "status": "downloaded",
+      "name": "利亚德"
+    },
+    {
+      "code": "300308",
+      "rows": 3484,
+      "status": "downloaded",
+      "name": "中际旭创"
+    },
+    {
+      "code": "300315",
+      "rows": 3463,
+      "status": "downloaded",
+      "name": "掌趣科技"
+    },
+    {
+      "code": "300316",
+      "rows": 3463,
+      "status": "downloaded",
+      "name": "晶盛机电"
+    },
+    {
+      "code": "300347",
+      "rows": 3394,
+      "status": "downloaded",
+      "name": "泰格医药"
+    },
+    {
+      "code": "300394",
+      "rows": 2788,
+      "status": "downloaded",
+      "name": "天孚通信"
+    },
+    {
+      "code": "300408",
+      "rows": 2840,
+      "status": "downloaded",
+      "name": "三环集团"
+    },
+    {
+      "code": "300413",
+      "rows": 2807,
+      "status": "downloaded",
+      "name": "芒果超媒"
+    },
+    {
+      "code": "300418",
+      "rows": 2807,
+      "status": "downloaded",
+      "name": "昆仑万维"
+    },
+    {
+      "code": "300433",
+      "rows": 2772,
+      "status": "downloaded",
+      "name": "蓝思科技"
+    },
+    {
+      "code": "300442",
+      "rows": 2746,
+      "status": "downloaded",
+      "name": "润泽科技"
+    },
+    {
+      "code": "300450",
+      "rows": 2731,
+      "status": "downloaded",
+      "name": "先导智能"
+    },
+    {
+      "code": "300454",
+      "rows": 2000,
+      "status": "downloaded",
+      "name": "深信服"
+    },
+    {
+      "code": "300476",
+      "rows": 2713,
+      "status": "downloaded",
+      "name": "胜宏科技"
+    },
+    {
+      "code": "300496",
+      "rows": 2591,
+      "status": "downloaded",
+      "name": "中科创达"
+    },
+    {
+      "code": "300498",
+      "rows": 2619,
+      "status": "downloaded",
+      "name": "温氏股份"
+    },
+    {
+      "code": "300502",
+      "rows": 2537,
+      "status": "downloaded",
+      "name": "新易盛"
+    },
+    {
+      "code": "300529",
+      "rows": 2433,
+      "status": "downloaded",
+      "name": "健帆生物"
+    },
+    {
+      "code": "300558",
+      "rows": 2371,
+      "status": "downloaded",
+      "name": "贝达药业"
+    },
+    {
+      "code": "300595",
+      "rows": 2321,
+      "status": "downloaded",
+      "name": "欧普康视"
+    },
+    {
+      "code": "300601",
+      "rows": 2311,
+      "status": "downloaded",
+      "name": "康泰生物"
+    },
+    {
+      "code": "300628",
+      "rows": 2283,
+      "status": "downloaded",
+      "name": "亿联网络"
+    },
+    {
+      "code": "300661",
+      "rows": 2231,
+      "status": "downloaded",
+      "name": "圣邦股份"
+    },
+    {
+      "code": "300676",
+      "rows": 2203,
+      "status": "downloaded",
+      "name": "华大基因"
+    },
+    {
+      "code": "300677",
+      "rows": 2198,
+      "status": "downloaded",
+      "name": "英科医疗"
+    },
+    {
+      "code": "300750",
+      "rows": 1982,
+      "status": "downloaded",
+      "name": "宁德时代"
+    },
+    {
+      "code": "300751",
+      "rows": 1880,
+      "status": "downloaded",
+      "name": "迈为股份"
+    },
+    {
+      "code": "300759",
+      "rows": 1826,
+      "status": "downloaded",
+      "name": "康龙化成"
+    },
+    {
+      "code": "300760",
+      "rows": 1898,
+      "status": "downloaded",
+      "name": "迈瑞医疗"
+    },
+    {
+      "code": "300763",
+      "rows": 1795,
+      "status": "downloaded",
+      "name": "锦浪科技"
+    },
+    {
+      "code": "300769",
+      "rows": 1777,
+      "status": "downloaded",
+      "name": "德方纳米"
+    },
+    {
+      "code": "300782",
+      "rows": 1735,
+      "status": "downloaded",
+      "name": "卓胜微"
+    },
+    {
+      "code": "300803",
+      "rows": 1632,
+      "status": "downloaded",
+      "name": "指南针"
+    },
+    {
+      "code": "300832",
+      "rows": 1517,
+      "status": "downloaded",
+      "name": "新产业"
+    },
+    {
+      "code": "300866",
+      "rows": 1445,
+      "status": "downloaded",
+      "name": "安克创新"
+    },
+    {
+      "code": "300888",
+      "rows": 1427,
+      "status": "downloaded",
+      "name": "稳健医疗"
+    },
+    {
+      "code": "300896",
+      "rows": 1420,
+      "status": "downloaded",
+      "name": "爱美客"
+    },
+    {
+      "code": "300919",
+      "rows": 1364,
+      "status": "downloaded",
+      "name": "中伟股份"
+    },
+    {
+      "code": "300957",
+      "rows": 1304,
+      "status": "downloaded",
+      "name": "贝泰妮"
+    },
+    {
+      "code": "300979",
+      "rows": 1283,
+      "status": "downloaded",
+      "name": "华利集团"
+    },
+    {
+      "code": "300999",
+      "rows": 1413,
+      "status": "downloaded",
+      "name": "金龙鱼"
+    },
+    {
+      "code": "301165",
+      "rows": 902,
+      "status": "downloaded",
+      "name": "锐捷网络"
+    },
+    {
+      "code": "301236",
+      "rows": 1069,
+      "status": "downloaded",
+      "name": "软通动力"
+    },
+    {
+      "code": "301269",
+      "rows": 977,
+      "status": "downloaded",
+      "name": "华大九天"
+    },
+    {
+      "code": "301308",
+      "rows": 972,
+      "status": "downloaded",
+      "name": "江波龙"
+    },
+    {
+      "code": "302132",
+      "rows": 3871,
+      "status": "downloaded",
+      "name": "中航成飞"
+    },
+    {
+      "code": "600000",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "浦发银行"
+    },
+    {
+      "code": "600004",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "白云机场"
+    },
+    {
+      "code": "600005",
+      "rows": 1726,
+      "status": "downloaded",
+      "name": "武钢股份"
+    },
+    {
+      "code": "600006",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "东风股份"
+    },
+    {
+      "code": "600008",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "首创环保"
+    },
+    {
+      "code": "600009",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上海机场"
+    },
+    {
+      "code": "600010",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "包钢股份"
+    },
+    {
+      "code": "600011",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华能国际"
+    },
+    {
+      "code": "600015",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华夏银行"
+    },
+    {
+      "code": "600016",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "民生银行"
+    },
+    {
+      "code": "600017",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "日照港"
+    },
+    {
+      "code": "600018",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上港集团"
+    },
+    {
+      "code": "600019",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "宝钢股份"
+    },
+    {
+      "code": "600021",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上海电力"
+    },
+    {
+      "code": "600022",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "山东钢铁"
+    },
+    {
+      "code": "600023",
+      "rows": 3073,
+      "status": "downloaded",
+      "name": "浙能电力"
+    },
+    {
+      "code": "600025",
+      "rows": 2098,
+      "status": "downloaded",
+      "name": "华能水电"
+    },
+    {
+      "code": "600026",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中远海能"
+    },
+    {
+      "code": "600027",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华电国际"
+    },
+    {
+      "code": "600028",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国石化"
+    },
+    {
+      "code": "600029",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "南方航空"
+    },
+    {
+      "code": "600030",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中信证券"
+    },
+    {
+      "code": "600031",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "三一重工"
+    },
+    {
+      "code": "600033",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "福建高速"
+    },
+    {
+      "code": "600036",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "招商银行"
+    },
+    {
+      "code": "600037",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "歌华有线"
+    },
+    {
+      "code": "600038",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中直股份"
+    },
+    {
+      "code": "600039",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "四川路桥"
+    },
+    {
+      "code": "600048",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "保利发展"
+    },
+    {
+      "code": "600050",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国联通"
+    },
+    {
+      "code": "600058",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "五矿发展"
+    },
+    {
+      "code": "600060",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "海信视像"
+    },
+    {
+      "code": "600061",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "国投资本"
+    },
+    {
+      "code": "600062",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华润双鹤"
+    },
+    {
+      "code": "600066",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "宇通客车"
+    },
+    {
+      "code": "600068",
+      "rows": 2845,
+      "status": "downloaded",
+      "name": "葛洲坝"
+    },
+    {
+      "code": "600074",
+      "rows": 2530,
+      "status": "downloaded",
+      "name": "退市保千"
+    },
+    {
+      "code": "600079",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "ST人福"
+    },
+    {
+      "code": "600085",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "同仁堂"
+    },
+    {
+      "code": "600087",
+      "rows": 1069,
+      "status": "downloaded",
+      "name": "退市长油"
+    },
+    {
+      "code": "600089",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "特变电工"
+    },
+    {
+      "code": "600096",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "云天化"
+    },
+    {
+      "code": "600098",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "广州发展"
+    },
+    {
+      "code": "600100",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "同方股份"
+    },
+    {
+      "code": "600102",
+      "rows": 521,
+      "status": "downloaded",
+      "name": "莱钢股份"
+    },
+    {
+      "code": "600104",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上汽集团"
+    },
+    {
+      "code": "600108",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "亚盛集团"
+    },
+    {
+      "code": "600109",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "国金证券"
+    },
+    {
+      "code": "600111",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "北方稀土"
+    },
+    {
+      "code": "600115",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国东航"
+    },
+    {
+      "code": "600118",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国卫星"
+    },
+    {
+      "code": "600123",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "兰花科创"
+    },
+    {
+      "code": "600125",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "铁龙物流"
+    },
+    {
+      "code": "600132",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "重庆啤酒"
+    },
+    {
+      "code": "600143",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "金发科技"
+    },
+    {
+      "code": "600150",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国船舶"
+    },
+    {
+      "code": "600151",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "航天机电"
+    },
+    {
+      "code": "600153",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "建发股份"
+    },
+    {
+      "code": "600157",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "永泰能源"
+    },
+    {
+      "code": "600158",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中体产业"
+    },
+    {
+      "code": "600160",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "巨化股份"
+    },
+    {
+      "code": "600161",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "天坛生物"
+    },
+    {
+      "code": "600166",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "福田汽车"
+    },
+    {
+      "code": "600169",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "ST太重"
+    },
+    {
+      "code": "600170",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上海建工"
+    },
+    {
+      "code": "600176",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国巨石"
+    },
+    {
+      "code": "600177",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "雅戈尔"
+    },
+    {
+      "code": "600183",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "生益科技"
+    },
+    {
+      "code": "600188",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "兖矿能源"
+    },
+    {
+      "code": "600196",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "复星医药"
+    },
+    {
+      "code": "600208",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "衢州发展"
+    },
+    {
+      "code": "600210",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "紫江企业"
+    },
+    {
+      "code": "600216",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "浙江医药"
+    },
+    {
+      "code": "600219",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "南山铝业"
+    },
+    {
+      "code": "600220",
+      "rows": 3526,
+      "status": "downloaded",
+      "name": "ST阳光"
+    },
+    {
+      "code": "600221",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "海航控股"
+    },
+    {
+      "code": "600233",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "圆通速递"
+    },
+    {
+      "code": "600236",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "桂冠电力"
+    },
+    {
+      "code": "600239",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "ST云城"
+    },
+    {
+      "code": "600246",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "万通发展"
+    },
+    {
+      "code": "600251",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "冠农股份"
+    },
+    {
+      "code": "600252",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中恒集团"
+    },
+    {
+      "code": "600256",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "广汇能源"
+    },
+    {
+      "code": "600259",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中稀有色"
+    },
+    {
+      "code": "600266",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "城建发展"
+    },
+    {
+      "code": "600267",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "海正药业"
+    },
+    {
+      "code": "600269",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "赣粤高速"
+    },
+    {
+      "code": "600270",
+      "rows": 2187,
+      "status": "downloaded",
+      "name": "外运发展"
+    },
+    {
+      "code": "600271",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "航天信息"
+    },
+    {
+      "code": "600276",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "恒瑞医药"
+    },
+    {
+      "code": "600277",
+      "rows": 3532,
+      "status": "downloaded",
+      "name": "ST亿利"
+    },
+    {
+      "code": "600282",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "南钢股份"
+    },
+    {
+      "code": "600297",
+      "rows": 3561,
+      "status": "downloaded",
+      "name": "广汇汽车"
+    },
+    {
+      "code": "600299",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "安迪苏"
+    },
+    {
+      "code": "600300",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "维维股份"
+    },
+    {
+      "code": "600307",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "酒钢宏兴"
+    },
+    {
+      "code": "600309",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "万华化学"
+    },
+    {
+      "code": "600312",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "平高电气"
+    },
+    {
+      "code": "600315",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上海家化"
+    },
+    {
+      "code": "600316",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "洪都航空"
+    },
+    {
+      "code": "600317",
+      "rows": 2694,
+      "status": "downloaded",
+      "name": "营口港"
+    },
+    {
+      "code": "600320",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "振华重工"
+    },
+    {
+      "code": "600325",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华发股份"
+    },
+    {
+      "code": "600331",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "宏达股份"
+    },
+    {
+      "code": "600332",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "白云山"
+    },
+    {
+      "code": "600339",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中油工程"
+    },
+    {
+      "code": "600340",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "*ST华幸"
+    },
+    {
+      "code": "600346",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "恒力石化"
+    },
+    {
+      "code": "600348",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华阳股份"
+    },
+    {
+      "code": "600350",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "山东高速"
+    },
+    {
+      "code": "600352",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "浙江龙盛"
+    },
+    {
+      "code": "600362",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "江西铜业"
+    },
+    {
+      "code": "600369",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "西南证券"
+    },
+    {
+      "code": "600372",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中航机载"
+    },
+    {
+      "code": "600373",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中文传媒"
+    },
+    {
+      "code": "600376",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "首开股份"
+    },
+    {
+      "code": "600377",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "宁沪高速"
+    },
+    {
+      "code": "600380",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "健康元"
+    },
+    {
+      "code": "600383",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "金地集团"
+    },
+    {
+      "code": "600390",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "五矿资本"
+    },
+    {
+      "code": "600395",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "盘江股份"
+    },
+    {
+      "code": "600398",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "海澜之家"
+    },
+    {
+      "code": "600403",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "大有能源"
+    },
+    {
+      "code": "600406",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "国电南瑞"
+    },
+    {
+      "code": "600415",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "小商品城"
+    },
+    {
+      "code": "600418",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "江淮汽车"
+    },
+    {
+      "code": "600426",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华鲁恒升"
+    },
+    {
+      "code": "600428",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中远海特"
+    },
+    {
+      "code": "600432",
+      "rows": 2073,
+      "status": "downloaded",
+      "name": "退市吉恩"
+    },
+    {
+      "code": "600436",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "片仔癀"
+    },
+    {
+      "code": "600438",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "通威股份"
+    },
+    {
+      "code": "600446",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "金证股份"
+    },
+    {
+      "code": "600456",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "宝钛股份"
+    },
+    {
+      "code": "600460",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "士兰微"
+    },
+    {
+      "code": "600481",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "双良节能"
+    },
+    {
+      "code": "600482",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国动力"
+    },
+    {
+      "code": "600485",
+      "rows": 2772,
+      "status": "downloaded",
+      "name": "*ST信威"
+    },
+    {
+      "code": "600487",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "亨通光电"
+    },
+    {
+      "code": "600489",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中金黄金"
+    },
+    {
+      "code": "600497",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "驰宏锌锗"
+    },
+    {
+      "code": "600498",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "烽火通信"
+    },
+    {
+      "code": "600500",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中化国际"
+    },
+    {
+      "code": "600508",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上海能源"
+    },
+    {
+      "code": "600515",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "海南机场"
+    },
+    {
+      "code": "600516",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "方大炭素"
+    },
+    {
+      "code": "600517",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "国网英大"
+    },
+    {
+      "code": "600518",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "康美药业"
+    },
+    {
+      "code": "600519",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "贵州茅台"
+    },
+    {
+      "code": "600521",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华海药业"
+    },
+    {
+      "code": "600522",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中天科技"
+    },
+    {
+      "code": "600528",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中铁工业"
+    },
+    {
+      "code": "600535",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "天士力"
+    },
+    {
+      "code": "600546",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "山煤国际"
+    },
+    {
+      "code": "600547",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "山东黄金"
+    },
+    {
+      "code": "600549",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "厦门钨业"
+    },
+    {
+      "code": "600550",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "保变电气"
+    },
+    {
+      "code": "600566",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "济川药业"
+    },
+    {
+      "code": "600569",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "安阳钢铁"
+    },
+    {
+      "code": "600570",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "恒生电子"
+    },
+    {
+      "code": "600578",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "京能电力"
+    },
+    {
+      "code": "600582",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "天地科技"
+    },
+    {
+      "code": "600583",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "海油工程"
+    },
+    {
+      "code": "600584",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "长电科技"
+    },
+    {
+      "code": "600585",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "海螺水泥"
+    },
+    {
+      "code": "600588",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "用友网络"
+    },
+    {
+      "code": "600595",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中孚实业"
+    },
+    {
+      "code": "600596",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "新安股份"
+    },
+    {
+      "code": "600597",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "光明乳业"
+    },
+    {
+      "code": "600598",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "北大荒"
+    },
+    {
+      "code": "600600",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "青岛啤酒"
+    },
+    {
+      "code": "600601",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "方正科技"
+    },
+    {
+      "code": "600606",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "绿地控股"
+    },
+    {
+      "code": "600611",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "大众交通"
+    },
+    {
+      "code": "600631",
+      "rows": 399,
+      "status": "downloaded",
+      "name": "百联股份"
+    },
+    {
+      "code": "600633",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "浙数文化"
+    },
+    {
+      "code": "600635",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "大众公用"
+    },
+    {
+      "code": "600637",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "东方明珠"
+    },
+    {
+      "code": "600638",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "新黄浦"
+    },
+    {
+      "code": "600639",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "浦东金桥"
+    },
+    {
+      "code": "600642",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "申能股份"
+    },
+    {
+      "code": "600643",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "爱建集团"
+    },
+    {
+      "code": "600648",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "外高桥"
+    },
+    {
+      "code": "600649",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "城投控股"
+    },
+    {
+      "code": "600654",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中安科"
+    },
+    {
+      "code": "600655",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "豫园股份"
+    },
+    {
+      "code": "600657",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "信达地产"
+    },
+    {
+      "code": "600660",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "福耀玻璃"
+    },
+    {
+      "code": "600663",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "陆家嘴"
+    },
+    {
+      "code": "600664",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "哈药股份"
+    },
+    {
+      "code": "600666",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "奥瑞德"
+    },
+    {
+      "code": "600674",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "川投能源"
+    },
+    {
+      "code": "600675",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中华企业"
+    },
+    {
+      "code": "600682",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "南京新百"
+    },
+    {
+      "code": "600685",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中船防务"
+    },
+    {
+      "code": "600688",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上海石化"
+    },
+    {
+      "code": "600690",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "海尔智家"
+    },
+    {
+      "code": "600694",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "大商股份"
+    },
+    {
+      "code": "600703",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "三安光电"
+    },
+    {
+      "code": "600704",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "物产中大"
+    },
+    {
+      "code": "600705",
+      "rows": 3736,
+      "status": "downloaded",
+      "name": "中航产融"
+    },
+    {
+      "code": "600717",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "天津港"
+    },
+    {
+      "code": "600718",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "东软集团"
+    },
+    {
+      "code": "600732",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "爱旭股份"
+    },
+    {
+      "code": "600733",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "北汽蓝谷"
+    },
+    {
+      "code": "600737",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中粮糖业"
+    },
+    {
+      "code": "600739",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "辽宁成大"
+    },
+    {
+      "code": "600741",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华域汽车"
+    },
+    {
+      "code": "600745",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "*ST闻泰"
+    },
+    {
+      "code": "600748",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上实发展"
+    },
+    {
+      "code": "600754",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "锦江酒店"
+    },
+    {
+      "code": "600760",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中航沈飞"
+    },
+    {
+      "code": "600763",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "通策医疗"
+    },
+    {
+      "code": "600770",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "综艺股份"
+    },
+    {
+      "code": "600779",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "水井坊"
+    },
+    {
+      "code": "600782",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "新钢股份"
+    },
+    {
+      "code": "600783",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "鲁信创投"
+    },
+    {
+      "code": "600795",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "国电电力"
+    },
+    {
+      "code": "600803",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "新奥股份"
+    },
+    {
+      "code": "600804",
+      "rows": 3762,
+      "status": "downloaded",
+      "name": "退市鹏博"
+    },
+    {
+      "code": "600808",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "马钢股份"
+    },
+    {
+      "code": "600809",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "山西汾酒"
+    },
+    {
+      "code": "600811",
+      "rows": 3721,
+      "status": "downloaded",
+      "name": "*ST东方"
+    },
+    {
+      "code": "600812",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华北制药"
+    },
+    {
+      "code": "600816",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "建元信托"
+    },
+    {
+      "code": "600820",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "隧道股份"
+    },
+    {
+      "code": "600823",
+      "rows": 3508,
+      "status": "downloaded",
+      "name": "*ST世茂"
+    },
+    {
+      "code": "600827",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "百联股份"
+    },
+    {
+      "code": "600832",
+      "rows": 1303,
+      "status": "downloaded",
+      "name": "东方明珠"
+    },
+    {
+      "code": "600835",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上海机电"
+    },
+    {
+      "code": "600837",
+      "rows": 3681,
+      "status": "downloaded",
+      "name": "海通证券"
+    },
+    {
+      "code": "600839",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "四川长虹"
+    },
+    {
+      "code": "600845",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "宝信软件"
+    },
+    {
+      "code": "600848",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上海临港"
+    },
+    {
+      "code": "600859",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "王府井"
+    },
+    {
+      "code": "600863",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "华能蒙电"
+    },
+    {
+      "code": "600867",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "通化东宝"
+    },
+    {
+      "code": "600871",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "石化油服"
+    },
+    {
+      "code": "600872",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中炬高新"
+    },
+    {
+      "code": "600873",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "梅花生物"
+    },
+    {
+      "code": "600874",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "创业环保"
+    },
+    {
+      "code": "600875",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "东方电气"
+    },
+    {
+      "code": "600879",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "航天电子"
+    },
+    {
+      "code": "600880",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "博瑞传播"
+    },
+    {
+      "code": "600881",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "亚泰集团"
+    },
+    {
+      "code": "600884",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "杉杉股份"
+    },
+    {
+      "code": "600886",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "国投电力"
+    },
+    {
+      "code": "600887",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "伊利股份"
+    },
+    {
+      "code": "600893",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "航发动力"
+    },
+    {
+      "code": "600895",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "张江高科"
+    },
+    {
+      "code": "600900",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "长江电力"
+    },
+    {
+      "code": "600905",
+      "rows": 1253,
+      "status": "downloaded",
+      "name": "三峡能源"
+    },
+    {
+      "code": "600909",
+      "rows": 2350,
+      "status": "downloaded",
+      "name": "华安证券"
+    },
+    {
+      "code": "600918",
+      "rows": 1501,
+      "status": "downloaded",
+      "name": "中泰证券"
+    },
+    {
+      "code": "600919",
+      "rows": 2433,
+      "status": "downloaded",
+      "name": "江苏银行"
+    },
+    {
+      "code": "600926",
+      "rows": 2378,
+      "status": "downloaded",
+      "name": "杭州银行"
+    },
+    {
+      "code": "600928",
+      "rows": 1807,
+      "status": "downloaded",
+      "name": "西安银行"
+    },
+    {
+      "code": "600930",
+      "rows": 260,
+      "status": "downloaded",
+      "name": "华电新能"
+    },
+    {
+      "code": "600938",
+      "rows": 1044,
+      "status": "downloaded",
+      "name": "中国海油"
+    },
+    {
+      "code": "600941",
+      "rows": 1113,
+      "status": "downloaded",
+      "name": "中国移动"
+    },
+    {
+      "code": "600958",
+      "rows": 2769,
+      "status": "downloaded",
+      "name": "东方证券"
+    },
+    {
+      "code": "600959",
+      "rows": 2744,
+      "status": "downloaded",
+      "name": "江苏有线"
+    },
+    {
+      "code": "600968",
+      "rows": 1729,
+      "status": "downloaded",
+      "name": "海油发展"
+    },
+    {
+      "code": "600970",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中材国际"
+    },
+    {
+      "code": "600971",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "恒源煤电"
+    },
+    {
+      "code": "600977",
+      "rows": 2428,
+      "status": "downloaded",
+      "name": "中国电影"
+    },
+    {
+      "code": "600989",
+      "rows": 1757,
+      "status": "downloaded",
+      "name": "宝丰能源"
+    },
+    {
+      "code": "600997",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "开滦股份"
+    },
+    {
+      "code": "600998",
+      "rows": 3833,
+      "status": "downloaded",
+      "name": "九州通"
+    },
+    {
+      "code": "600999",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "招商证券"
+    },
+    {
+      "code": "601001",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "晋控煤业"
+    },
+    {
+      "code": "601003",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "柳钢股份"
+    },
+    {
+      "code": "601006",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "大秦铁路"
+    },
+    {
+      "code": "601009",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "南京银行"
+    },
+    {
+      "code": "601012",
+      "rows": 3483,
+      "status": "downloaded",
+      "name": "隆基绿能"
+    },
+    {
+      "code": "601016",
+      "rows": 2882,
+      "status": "downloaded",
+      "name": "节能风电"
+    },
+    {
+      "code": "601018",
+      "rows": 3853,
+      "status": "downloaded",
+      "name": "宁波港"
+    },
+    {
+      "code": "601021",
+      "rows": 2807,
+      "status": "downloaded",
+      "name": "春秋航空"
+    },
+    {
+      "code": "601058",
+      "rows": 3671,
+      "status": "downloaded",
+      "name": "赛轮轮胎"
+    },
+    {
+      "code": "601059",
+      "rows": 856,
+      "status": "downloaded",
+      "name": "信达证券"
+    },
+    {
+      "code": "601066",
+      "rows": 1976,
+      "status": "downloaded",
+      "name": "中信建投"
+    },
+    {
+      "code": "601077",
+      "rows": 1646,
+      "status": "downloaded",
+      "name": "渝农商行"
+    },
+    {
+      "code": "601088",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国神华"
+    },
+    {
+      "code": "601098",
+      "rows": 3836,
+      "status": "downloaded",
+      "name": "中南传媒"
+    },
+    {
+      "code": "601099",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "太平洋"
+    },
+    {
+      "code": "601100",
+      "rows": 3591,
+      "status": "downloaded",
+      "name": "恒立液压"
+    },
+    {
+      "code": "601101",
+      "rows": 3974,
+      "status": "downloaded",
+      "name": "昊华能源"
+    },
+    {
+      "code": "601106",
+      "rows": 4005,
+      "status": "downloaded",
+      "name": "中国一重"
+    },
+    {
+      "code": "601107",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "四川成渝"
+    },
+    {
+      "code": "601108",
+      "rows": 2136,
+      "status": "downloaded",
+      "name": "财通证券"
+    },
+    {
+      "code": "601111",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国国航"
+    },
+    {
+      "code": "601117",
+      "rows": 4028,
+      "status": "downloaded",
+      "name": "中国化学"
+    },
+    {
+      "code": "601118",
+      "rows": 3786,
+      "status": "downloaded",
+      "name": "海南橡胶"
+    },
+    {
+      "code": "601127",
+      "rows": 2467,
+      "status": "downloaded",
+      "name": "赛力斯"
+    },
+    {
+      "code": "601136",
+      "rows": 879,
+      "status": "downloaded",
+      "name": "首创证券"
+    },
+    {
+      "code": "601138",
+      "rows": 1983,
+      "status": "downloaded",
+      "name": "工业富联"
+    },
+    {
+      "code": "601139",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "深圳燃气"
+    },
+    {
+      "code": "601155",
+      "rows": 2595,
+      "status": "downloaded",
+      "name": "新城控股"
+    },
+    {
+      "code": "601158",
+      "rows": 3976,
+      "status": "downloaded",
+      "name": "重庆水务"
+    },
+    {
+      "code": "601162",
+      "rows": 1895,
+      "status": "downloaded",
+      "name": "天风证券"
+    },
+    {
+      "code": "601163",
+      "rows": 2405,
+      "status": "downloaded",
+      "name": "三角轮胎"
+    },
+    {
+      "code": "601166",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "兴业银行"
+    },
+    {
+      "code": "601168",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "西部矿业"
+    },
+    {
+      "code": "601169",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "北京银行"
+    },
+    {
+      "code": "601179",
+      "rows": 4013,
+      "status": "downloaded",
+      "name": "中国西电"
+    },
+    {
+      "code": "601186",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国铁建"
+    },
+    {
+      "code": "601198",
+      "rows": 2786,
+      "status": "downloaded",
+      "name": "东兴证券"
+    },
+    {
+      "code": "601211",
+      "rows": 2703,
+      "status": "downloaded",
+      "name": "国泰海通"
+    },
+    {
+      "code": "601212",
+      "rows": 2305,
+      "status": "downloaded",
+      "name": "白银有色"
+    },
+    {
+      "code": "601216",
+      "rows": 3759,
+      "status": "downloaded",
+      "name": "君正集团"
+    },
+    {
+      "code": "601225",
+      "rows": 3046,
+      "status": "downloaded",
+      "name": "陕西煤业"
+    },
+    {
+      "code": "601228",
+      "rows": 2275,
+      "status": "downloaded",
+      "name": "广州港"
+    },
+    {
+      "code": "601229",
+      "rows": 2364,
+      "status": "downloaded",
+      "name": "上海银行"
+    },
+    {
+      "code": "601231",
+      "rows": 3517,
+      "status": "downloaded",
+      "name": "环旭电子"
+    },
+    {
+      "code": "601233",
+      "rows": 3701,
+      "status": "downloaded",
+      "name": "桐昆股份"
+    },
+    {
+      "code": "601236",
+      "rows": 1722,
+      "status": "downloaded",
+      "name": "红塔证券"
+    },
+    {
+      "code": "601238",
+      "rows": 3489,
+      "status": "downloaded",
+      "name": "广汽集团"
+    },
+    {
+      "code": "601258",
+      "rows": 2960,
+      "status": "downloaded",
+      "name": "*ST庞大"
+    },
+    {
+      "code": "601268",
+      "rows": 1283,
+      "status": "downloaded",
+      "name": "*ST二重"
+    },
+    {
+      "code": "601288",
+      "rows": 3903,
+      "status": "downloaded",
+      "name": "农业银行"
+    },
+    {
+      "code": "601298",
+      "rows": 1831,
+      "status": "downloaded",
+      "name": "青岛港"
+    },
+    {
+      "code": "601299",
+      "rows": 1303,
+      "status": "downloaded",
+      "name": "中国北车"
+    },
+    {
+      "code": "601318",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国平安"
+    },
+    {
+      "code": "601319",
+      "rows": 1875,
+      "status": "downloaded",
+      "name": "中国人保"
+    },
+    {
+      "code": "601328",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "交通银行"
+    },
+    {
+      "code": "601333",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "广深铁路"
+    },
+    {
+      "code": "601336",
+      "rows": 3556,
+      "status": "downloaded",
+      "name": "新华保险"
+    },
+    {
+      "code": "601360",
+      "rows": 3537,
+      "status": "downloaded",
+      "name": "三六零"
+    },
+    {
+      "code": "601369",
+      "rows": 3955,
+      "status": "downloaded",
+      "name": "陕鼓动力"
+    },
+    {
+      "code": "601375",
+      "rows": 2331,
+      "status": "downloaded",
+      "name": "中原证券"
+    },
+    {
+      "code": "601377",
+      "rows": 3847,
+      "status": "downloaded",
+      "name": "兴业证券"
+    },
+    {
+      "code": "601390",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国中铁"
+    },
+    {
+      "code": "601398",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "工商银行"
+    },
+    {
+      "code": "601456",
+      "rows": 1461,
+      "status": "downloaded",
+      "name": "国联民生"
+    },
+    {
+      "code": "601519",
+      "rows": 3771,
+      "status": "downloaded",
+      "name": "大智慧"
+    },
+    {
+      "code": "601555",
+      "rows": 3560,
+      "status": "downloaded",
+      "name": "东吴证券"
+    },
+    {
+      "code": "601558",
+      "rows": 2301,
+      "status": "downloaded",
+      "name": "退市锐电"
+    },
+    {
+      "code": "601566",
+      "rows": 3693,
+      "status": "downloaded",
+      "name": "九牧王"
+    },
+    {
+      "code": "601577",
+      "rows": 1907,
+      "status": "downloaded",
+      "name": "长沙银行"
+    },
+    {
+      "code": "601588",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "北辰实业"
+    },
+    {
+      "code": "601600",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国铝业"
+    },
+    {
+      "code": "601601",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国太保"
+    },
+    {
+      "code": "601607",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上海医药"
+    },
+    {
+      "code": "601608",
+      "rows": 3424,
+      "status": "downloaded",
+      "name": "中信重工"
+    },
+    {
+      "code": "601611",
+      "rows": 2472,
+      "status": "downloaded",
+      "name": "中国核建"
+    },
+    {
+      "code": "601615",
+      "rows": 1829,
+      "status": "downloaded",
+      "name": "明阳智能"
+    },
+    {
+      "code": "601618",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国中冶"
+    },
+    {
+      "code": "601628",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国人寿"
+    },
+    {
+      "code": "601633",
+      "rows": 3608,
+      "status": "downloaded",
+      "name": "长城汽车"
+    },
+    {
+      "code": "601658",
+      "rows": 1616,
+      "status": "downloaded",
+      "name": "邮储银行"
+    },
+    {
+      "code": "601666",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "平煤股份"
+    },
+    {
+      "code": "601668",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国建筑"
+    },
+    {
+      "code": "601669",
+      "rows": 3599,
+      "status": "downloaded",
+      "name": "中国电建"
+    },
+    {
+      "code": "601688",
+      "rows": 3997,
+      "status": "downloaded",
+      "name": "华泰证券"
+    },
+    {
+      "code": "601689",
+      "rows": 2771,
+      "status": "downloaded",
+      "name": "拓普集团"
+    },
+    {
+      "code": "601696",
+      "rows": 1567,
+      "status": "downloaded",
+      "name": "中银证券"
+    },
+    {
+      "code": "601698",
+      "rows": 1727,
+      "status": "downloaded",
+      "name": "中国卫通"
+    },
+    {
+      "code": "601699",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "潞安环能"
+    },
+    {
+      "code": "601717",
+      "rows": 3890,
+      "status": "downloaded",
+      "name": "中创智领"
+    },
+    {
+      "code": "601718",
+      "rows": 3881,
+      "status": "downloaded",
+      "name": "ST际华"
+    },
+    {
+      "code": "601727",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "上海电气"
+    },
+    {
+      "code": "601728",
+      "rows": 1203,
+      "status": "downloaded",
+      "name": "中国电信"
+    },
+    {
+      "code": "601766",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国中车"
+    },
+    {
+      "code": "601788",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "光大证券"
+    },
+    {
+      "code": "601799",
+      "rows": 3769,
+      "status": "downloaded",
+      "name": "星宇股份"
+    },
+    {
+      "code": "601800",
+      "rows": 3503,
+      "status": "downloaded",
+      "name": "中国交建"
+    },
+    {
+      "code": "601801",
+      "rows": 4021,
+      "status": "downloaded",
+      "name": "皖新传媒"
+    },
+    {
+      "code": "601808",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中海油服"
+    },
+    {
+      "code": "601816",
+      "rows": 1590,
+      "status": "downloaded",
+      "name": "京沪高铁"
+    },
+    {
+      "code": "601818",
+      "rows": 3879,
+      "status": "downloaded",
+      "name": "光大银行"
+    },
+    {
+      "code": "601825",
+      "rows": 1204,
+      "status": "downloaded",
+      "name": "沪农商行"
+    },
+    {
+      "code": "601828",
+      "rows": 2076,
+      "status": "downloaded",
+      "name": "美凯龙"
+    },
+    {
+      "code": "601838",
+      "rows": 2066,
+      "status": "downloaded",
+      "name": "成都银行"
+    },
+    {
+      "code": "601857",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国石油"
+    },
+    {
+      "code": "601865",
+      "rows": 1817,
+      "status": "downloaded",
+      "name": "福莱特"
+    },
+    {
+      "code": "601866",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中远海发"
+    },
+    {
+      "code": "601868",
+      "rows": 1178,
+      "status": "downloaded",
+      "name": "中国能建"
+    },
+    {
+      "code": "601872",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "招商轮船"
+    },
+    {
+      "code": "601877",
+      "rows": 4018,
+      "status": "downloaded",
+      "name": "正泰电器"
+    },
+    {
+      "code": "601878",
+      "rows": 2217,
+      "status": "downloaded",
+      "name": "浙商证券"
+    },
+    {
+      "code": "601881",
+      "rows": 2317,
+      "status": "downloaded",
+      "name": "中国银河"
+    },
+    {
+      "code": "601888",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国中免"
+    },
+    {
+      "code": "601898",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中煤能源"
+    },
+    {
+      "code": "601899",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "紫金矿业"
+    },
+    {
+      "code": "601901",
+      "rows": 3642,
+      "status": "downloaded",
+      "name": "方正证券"
+    },
+    {
+      "code": "601916",
+      "rows": 1626,
+      "status": "downloaded",
+      "name": "浙商银行"
+    },
+    {
+      "code": "601918",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "新集能源"
+    },
+    {
+      "code": "601919",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中远海控"
+    },
+    {
+      "code": "601928",
+      "rows": 3568,
+      "status": "downloaded",
+      "name": "凤凰传媒"
+    },
+    {
+      "code": "601929",
+      "rows": 3514,
+      "status": "downloaded",
+      "name": "吉视传媒"
+    },
+    {
+      "code": "601933",
+      "rows": 3802,
+      "status": "downloaded",
+      "name": "永辉超市"
+    },
+    {
+      "code": "601939",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "建设银行"
+    },
+    {
+      "code": "601958",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "金钼股份"
+    },
+    {
+      "code": "601966",
+      "rows": 2452,
+      "status": "downloaded",
+      "name": "玲珑轮胎"
+    },
+    {
+      "code": "601969",
+      "rows": 2836,
+      "status": "downloaded",
+      "name": "海南矿业"
+    },
+    {
+      "code": "601985",
+      "rows": 2714,
+      "status": "downloaded",
+      "name": "中国核电"
+    },
+    {
+      "code": "601988",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中国银行"
+    },
+    {
+      "code": "601989",
+      "rows": 3808,
+      "status": "downloaded",
+      "name": "中国重工"
+    },
+    {
+      "code": "601990",
+      "rows": 1980,
+      "status": "downloaded",
+      "name": "南京证券"
+    },
+    {
+      "code": "601991",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "大唐发电"
+    },
+    {
+      "code": "601992",
+      "rows": 3754,
+      "status": "downloaded",
+      "name": "金隅集团"
+    },
+    {
+      "code": "601995",
+      "rows": 1401,
+      "status": "downloaded",
+      "name": "中金公司"
+    },
+    {
+      "code": "601997",
+      "rows": 2423,
+      "status": "downloaded",
+      "name": "贵阳银行"
+    },
+    {
+      "code": "601998",
+      "rows": 4031,
+      "status": "downloaded",
+      "name": "中信银行"
+    },
+    {
+      "code": "603000",
+      "rows": 3471,
+      "status": "downloaded",
+      "name": "人民网"
+    },
+    {
+      "code": "603019",
+      "rows": 2859,
+      "status": "downloaded",
+      "name": "中科曙光"
+    },
+    {
+      "code": "603087",
+      "rows": 1485,
+      "status": "downloaded",
+      "name": "甘李药业"
+    },
+    {
+      "code": "603156",
+      "rows": 2058,
+      "status": "downloaded",
+      "name": "养元饮品"
+    },
+    {
+      "code": "603160",
+      "rows": 2386,
+      "status": "downloaded",
+      "name": "汇顶科技"
+    },
+    {
+      "code": "603185",
+      "rows": 1845,
+      "status": "downloaded",
+      "name": "弘元绿能"
+    },
+    {
+      "code": "603195",
+      "rows": 1581,
+      "status": "downloaded",
+      "name": "公牛集团"
+    },
+    {
+      "code": "603233",
+      "rows": 2192,
+      "status": "downloaded",
+      "name": "大参林"
+    },
+    {
+      "code": "603259",
+      "rows": 2006,
+      "status": "downloaded",
+      "name": "药明康德"
+    },
+    {
+      "code": "603260",
+      "rows": 2132,
+      "status": "downloaded",
+      "name": "合盛硅业"
+    },
+    {
+      "code": "603288",
+      "rows": 3041,
+      "status": "downloaded",
+      "name": "海天味业"
+    },
+    {
+      "code": "603290",
+      "rows": 1583,
+      "status": "downloaded",
+      "name": "斯达半导"
+    },
+    {
+      "code": "603296",
+      "rows": 728,
+      "status": "downloaded",
+      "name": "华勤技术"
+    },
+    {
+      "code": "603338",
+      "rows": 2767,
+      "status": "downloaded",
+      "name": "浙江鼎力"
+    },
+    {
+      "code": "603369",
+      "rows": 2943,
+      "status": "downloaded",
+      "name": "今世缘"
+    },
+    {
+      "code": "603392",
+      "rows": 1523,
+      "status": "downloaded",
+      "name": "万泰生物"
+    },
+    {
+      "code": "603486",
+      "rows": 1992,
+      "status": "downloaded",
+      "name": "科沃斯"
+    },
+    {
+      "code": "603501",
+      "rows": 2252,
+      "status": "downloaded",
+      "name": "豪威集团"
+    },
+    {
+      "code": "603517",
+      "rows": 2283,
+      "status": "downloaded",
+      "name": "ST绝味"
+    },
+    {
+      "code": "603658",
+      "rows": 2411,
+      "status": "downloaded",
+      "name": "安图生物"
+    },
+    {
+      "code": "603659",
+      "rows": 2128,
+      "status": "downloaded",
+      "name": "璞泰来"
+    },
+    {
+      "code": "603699",
+      "rows": 3053,
+      "status": "downloaded",
+      "name": "纽威股份"
+    },
+    {
+      "code": "603799",
+      "rows": 2801,
+      "status": "downloaded",
+      "name": "华友钴业"
+    },
+    {
+      "code": "603806",
+      "rows": 2897,
+      "status": "downloaded",
+      "name": "福斯特"
+    },
+    {
+      "code": "603833",
+      "rows": 2276,
+      "status": "downloaded",
+      "name": "欧派家居"
+    },
+    {
+      "code": "603858",
+      "rows": 2362,
+      "status": "downloaded",
+      "name": "步长制药"
+    },
+    {
+      "code": "603882",
+      "rows": 2163,
+      "status": "downloaded",
+      "name": "金域医学"
+    },
+    {
+      "code": "603885",
+      "rows": 2724,
+      "status": "downloaded",
+      "name": "吉祥航空"
+    },
+    {
+      "code": "603893",
+      "rows": 1580,
+      "status": "downloaded",
+      "name": "瑞芯微"
+    },
+    {
+      "code": "603899",
+      "rows": 2803,
+      "status": "downloaded",
+      "name": "晨光股份"
+    },
+    {
+      "code": "603939",
+      "rows": 2788,
+      "status": "downloaded",
+      "name": "益丰药房"
+    },
+    {
+      "code": "603986",
+      "rows": 2421,
+      "status": "downloaded",
+      "name": "兆易创新"
+    },
+    {
+      "code": "603993",
+      "rows": 3362,
+      "status": "downloaded",
+      "name": "洛阳钼业"
+    },
+    {
+      "code": "605117",
+      "rows": 1287,
+      "status": "downloaded",
+      "name": "德业股份"
+    },
+    {
+      "code": "605499",
+      "rows": 1263,
+      "status": "downloaded",
+      "name": "东鹏饮料"
+    },
+    {
+      "code": "688005",
+      "rows": 1711,
+      "status": "downloaded",
+      "name": "容百科技"
+    },
+    {
+      "code": "688008",
+      "rows": 1711,
+      "status": "downloaded",
+      "name": "澜起科技"
+    },
+    {
+      "code": "688009",
+      "rows": 1711,
+      "status": "downloaded",
+      "name": "中国通号"
+    },
+    {
+      "code": "688012",
+      "rows": 1711,
+      "status": "downloaded",
+      "name": "中微公司"
+    },
+    {
+      "code": "688036",
+      "rows": 1662,
+      "status": "downloaded",
+      "name": "传音控股"
+    },
+    {
+      "code": "688041",
+      "rows": 967,
+      "status": "downloaded",
+      "name": "海光信息"
+    },
+    {
+      "code": "688047",
+      "rows": 1002,
+      "status": "downloaded",
+      "name": "龙芯中科"
+    },
+    {
+      "code": "688065",
+      "rows": 1453,
+      "status": "downloaded",
+      "name": "凯赛生物"
+    },
+    {
+      "code": "688072",
+      "rows": 1045,
+      "status": "downloaded",
+      "name": "拓荆科技"
+    },
+    {
+      "code": "688082",
+      "rows": 1146,
+      "status": "downloaded",
+      "name": "盛美上海"
+    },
+    {
+      "code": "688111",
+      "rows": 1632,
+      "status": "downloaded",
+      "name": "金山办公"
+    },
+    {
+      "code": "688126",
+      "rows": 1530,
+      "status": "downloaded",
+      "name": "沪硅产业"
+    },
+    {
+      "code": "688169",
+      "rows": 1570,
+      "status": "downloaded",
+      "name": "石头科技"
+    },
+    {
+      "code": "688183",
+      "rows": 1324,
+      "status": "downloaded",
+      "name": "生益电子"
+    },
+    {
+      "code": "688187",
+      "rows": 1191,
+      "status": "downloaded",
+      "name": "时代电气"
+    },
+    {
+      "code": "688223",
+      "rows": 1098,
+      "status": "downloaded",
+      "name": "晶科能源"
+    },
+    {
+      "code": "688256",
+      "rows": 1470,
+      "status": "downloaded",
+      "name": "寒武纪"
+    },
+    {
+      "code": "688271",
+      "rows": 961,
+      "status": "downloaded",
+      "name": "联影医疗"
+    },
+    {
+      "code": "688303",
+      "rows": 1224,
+      "status": "downloaded",
+      "name": "大全能源"
+    },
+    {
+      "code": "688363",
+      "rows": 1640,
+      "status": "downloaded",
+      "name": "华熙生物"
+    },
+    {
+      "code": "688396",
+      "rows": 1566,
+      "status": "downloaded",
+      "name": "华润微"
+    },
+    {
+      "code": "688472",
+      "rows": 768,
+      "status": "downloaded",
+      "name": "阿特斯"
+    },
+    {
+      "code": "688506",
+      "rows": 869,
+      "status": "downloaded",
+      "name": "百利天恒"
+    },
+    {
+      "code": "688521",
+      "rows": 1449,
+      "status": "downloaded",
+      "name": "芯原股份"
+    },
+    {
+      "code": "688561",
+      "rows": 1468,
+      "status": "downloaded",
+      "name": "奇安信"
+    },
+    {
+      "code": "688599",
+      "rows": 1496,
+      "status": "downloaded",
+      "name": "天合光能"
+    },
+    {
+      "code": "688981",
+      "rows": 1472,
+      "status": "downloaded",
+      "name": "中芯国际"
+    }
+  ],
+  "ok": 800,
+  "failed": 0,
+  "final_raw_files": 800
+}

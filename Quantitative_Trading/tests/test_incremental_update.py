@@ -7,8 +7,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from build_csi300_sqlite import SCHEMA
-from update_csi300_incremental import (
+from scripts.build.build_csi300_sqlite import SCHEMA
+from scripts.build.update_csi300_incremental import (
     AUDIT_SCHEMA,
     Stage,
     adjustment_scale,

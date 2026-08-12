@@ -1,0 +1,41 @@
+{
+  "run_id": "20260811_120904_535679",
+  "created_at": "2026-08-11T12:09:04",
+  "previous_max_date": "2026-08-10",
+  "requested_end_date": "2026-08-10",
+  "status": "success",
+  "official_excel": "CSI300_remake_report.xlsx",
+  "official_excel_sha256": "d5cd81d46d8c3324038ffc2a93f452bd85bfd60e28dde5152a114e532790a590",
+  "action_errors": {},
+  "error": null,
+  "files": {
+    "prices_raw.csv": {
+      "rows": 0,
+      "sha256": "22f8ea5c72dc45dce8e25dde6b735bfe9355dd5907403cd380c8ffeac4eae703"
+    },
+    "prices_adjusted.csv": {
+      "rows": 0,
+      "sha256": "46d7e590219c4b12f33983b3aed161d6cb9daaa59774f5170580a7c8085d1d97"
+    },
+    "security_status.csv": {
+      "rows": 0,
+      "sha256": "05b8a6b043f396cdcf326ef43e155da7fef8633741b202b0f63240c6bf8cad77"
+    },
+    "membership_observations.csv": {
+      "rows": 300,
+      "sha256": "6a4086cabea7662e658955e498b7e766faae1ee732bf9491e5533bdd6ad83a34"
+    },
+    "benchmark.csv": {
+      "rows": 1,
+      "sha256": "fd8f18c68613e885e584c78a0ed6da38a38ef0bcc56fa326e2458be95f5ee370"
+    },
+    "corporate_actions.csv": {
+      "rows": 0,
+      "sha256": "f36c5d823e8e6ec0c617b5f9b4c38dbed3ddfaf9422eedc334991ccb5a54742f"
+    },
+    "security_targets.csv": {
+      "rows": 0,
+      "sha256": "430a4030617d1eed73c165c7b84f2e752d35e0a35606ec8380eacbf621e81d5d"
+    }
+  }
+}
