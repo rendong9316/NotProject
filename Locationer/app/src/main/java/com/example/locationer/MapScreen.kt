@@ -12,7 +12,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.net.Uri
 import android.os.Bundle
-import kotlin.math.abs
 import android.provider.Settings
 import android.view.MotionEvent
 import android.widget.Toast
@@ -28,10 +27,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
@@ -49,9 +48,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -147,10 +143,8 @@ private fun createReticleBitmap(): Bitmap {
 private fun createFlagBitmap(color: Int, label: String, size: Int = 64): Bitmap {
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
-    // 圆点
     val circlePaint = Paint().apply { this.color = color; style = Paint.Style.FILL }
     c.drawCircle((size / 2).toFloat(), (size / 2 + 4).toFloat(), 14f, circlePaint)
-    // 标签文字
     val textPaint = Paint().apply {
         this.color = Color.WHITE
         this.textSize = 18f
@@ -189,9 +183,7 @@ fun MapScreen(
     var reticleMarker    by remember(mapView) { mutableStateOf<Marker?>(null) }
     var mapReady         by remember { mutableStateOf(false) }
     var initialCameraSet by remember(mapView) { mutableStateOf(false) }
-    /** 是否已执行过首次镜头平移到当前位置（后续持续定位不再跟相机） */
     var firstLocateDone  by remember(mapView) { mutableStateOf(false) }
-    // 所有旗标 marker 列表（key = flag.id）
     var flagMarkers      by remember(mapView) { mutableStateOf<Map<Long, Marker>>(emptyMap()) }
 
     // ================ MapView 生命周期托管 ================
@@ -227,7 +219,7 @@ fun MapScreen(
     val bearing         by viewModel.bearing.collectAsState()
     val isTracking      by viewModel.isTracking.collectAsState()
 
-    // ================ 面板折叠状态 ================
+    // ================ 面板折叠状态（统一） ================
     var panelExpanded by remember { mutableStateOf(true) }
 
     // ================ 初始镜头 ================
@@ -238,21 +230,16 @@ fun MapScreen(
         }
     }
 
-    // 拾取模式偏移跟踪（跨 recompose 保持，LaunchedEffect 外可见）
+    // 拾取模式偏移跟踪
     var reticleOffset by remember { mutableStateOf<Pair<Float, Float>?>(null) }
 
     // ================ 地图手势锁定（拾取模式） ================
     LaunchedEffect(placeMode) {
         aMap?.setMapCustomEnable(placeMode)
-        // 显式禁用/恢复滚动手势，确保拾取模式下地图完全不可拖动
         aMap?.uiSettings?.setScrollGesturesEnabled(!placeMode)
     }
 
     // ================ 拾取模式触摸监听 ================
-    // 新交互逻辑：
-    //   DOWN ：记录手指与屏幕中心的偏移量（初始状态下准星就在中心）
-    //   MOVE ：以该固定偏移驱动准星跟随手指同向位移
-    //   UP   ：在准星当前位置放置标记，准星复位至屏幕中心，清空偏移
     LaunchedEffect(placeMode, aMap) {
         if (aMap == null) return@LaunchedEffect
         if (placeMode) {
@@ -260,7 +247,6 @@ fun MapScreen(
                 val projection = aMap!!.projection ?: run { false; return@setOnMapTouchListener }
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
-                        // 计算手指相对屏幕中心的初始偏移（像素），用于后续跟随
                         val cx = mapView.width / 2f
                         val cy = mapView.height / 2f
                         reticleOffset = Pair(event.x - cx, event.y - cy)
@@ -269,7 +255,6 @@ fun MapScreen(
                     MotionEvent.ACTION_MOVE -> {
                         val offset = reticleOffset
                         if (offset != null) {
-                            // 准星屏幕坐标 = 手指当前位置 - 初始偏移（保持固定距离）
                             val rx = event.x - offset.first
                             val ry = event.y - offset.second
                             val latlng = projection.fromScreenLocation(
@@ -280,17 +265,12 @@ fun MapScreen(
                         true
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        // 松手：在准星当前位置确认放置
                         val reticle = viewModel.reticleCoord.value
-                        if (reticle != null) {
-                            viewModel.confirmPlacement(reticle)
-                        }
-                        // 准星复位至屏幕中心
+                        if (reticle != null) viewModel.confirmPlacement(reticle)
                         val centerLatlng = projection.fromScreenLocation(
                             android.graphics.Point(mapView.width / 2, mapView.height / 2)
                         )
                         centerLatlng?.let { viewModel.setReticleCoord(CT.Coord(it.longitude, it.latitude)) }
-                        // 清空偏移，等待下次 DOWN
                         reticleOffset = null
                         true
                     }
@@ -307,7 +287,6 @@ fun MapScreen(
     LaunchedEffect(aMap) {
         aMap?.setOnMapLongClickListener { latlng ->
             if (!placeMode) {
-                // 非模式：直接放置一个旗标
                 val gcj = CT.Coord(latlng.longitude, latlng.latitude)
                 viewModel.confirmPlacement(gcj)
             }
@@ -318,9 +297,7 @@ fun MapScreen(
     // ================ 地图点击监听（兼容旧接口） ================
     LaunchedEffect(aMap) {
         aMap?.setOnMapClickListener { latlng ->
-            if (!placeMode) {
-                viewModel.onMapClick(latlng.longitude, latlng.latitude)
-            }
+            if (!placeMode) viewModel.onMapClick(latlng.longitude, latlng.latitude)
         }
     }
 
@@ -343,7 +320,6 @@ fun MapScreen(
         if (isTracking && bearing != null) {
             currentMarker?.rotateAngle = ((180f - bearing!!) % 360f + 360f) % 360f
         }
-        // 首次定位成功后才平移镜头，后续持续跟踪不再跟随相机
         if (!firstLocateDone) {
             firstLocateDone = true
             amap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 17f))
@@ -397,14 +373,12 @@ fun MapScreen(
     LaunchedEffect(flags, mapReady) {
         if (!mapReady) return@LaunchedEffect
         val amap = aMap ?: return@LaunchedEffect
-        // 移除旧的旗标 marker
         flagMarkers.values.forEach { it.remove() }
-        // 创建新的
         val newMap = flags.associate { flag ->
             val pos = LatLng(flag.gcjLat, flag.gcjLon)
             val color = when (flag.type) {
                 FlagType.CURRENT  -> Color.BLUE
-                FlagType.PICKED   -> Color.rgb(255, 193, 7)   // amber/yellow
+                FlagType.PICKED   -> Color.rgb(255, 193, 7)
                 FlagType.JUMPED   -> Color.RED
             }
             val marker = amap.addMarker(
@@ -447,7 +421,7 @@ fun MapScreen(
     }
 
     val onClickLocate = {
-        firstLocateDone = false  // 每次点击重新开始定位，镜头重新跟随
+        firstLocateDone = false
         val hasPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
                 ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         if (hasPerm) viewModel.locate()
@@ -489,69 +463,72 @@ fun MapScreen(
                         modifier = Modifier.fillMaxSize(),
                         update    = { mapReady = true },
                     )
-                    // FAB
                     PickModeFab(
                         placeMode = placeMode,
                         onToggle  = { viewModel.togglePlaceMode() },
                     )
                 }
 
-                // -------- 可折叠信息面板 --------
-                CollapsibleInfoPanel(
+                // -------- 统一面板（当前位置 + 坐标输入） --------
+                UnifiedPanel(
                     expanded       = panelExpanded,
+                    onToggle       = { panelExpanded = !panelExpanded },
                     gcj            = gcj,
                     wgs            = wgs,
                     accuracyMeters = accuracyMeters,
                     locating       = locating,
-                    onToggle       = { panelExpanded = !panelExpanded },
                     onLocate       = { onClickLocate() },
+                    lonText        = lonText,
+                    latText        = latText,
+                    coordType      = coordType,
+                    onLonChange    = { viewModel.updateLonText(it) },
+                    onLatChange    = { viewModel.updateLatText(it) },
+                    onCoordType    = { viewModel.setCoordType(it) },
+                    onJumpTo       = { viewModel.jumpTo() },
                 )
-
-                // -------- 底部坐标输入栏 --------
-                BottomInputBar(
-                    lonText     = lonText,
-                    latText     = latText,
-                    coordType   = coordType,
-                    onLonChange = { viewModel.updateLonText(it) },
-                    onLatChange = { viewModel.updateLatText(it) },
-                    onCoordType = { viewModel.setCoordType(it) },
-                    onJumpTo    = { viewModel.jumpTo() },
-                )
-
-                // -------- 已拾取坐标展示条（已移除，坐标复制功能移至旗标管理） --------
             }
         }
     }
 }
 
 // ============================================================================
-// 可折叠信息面板
+// 统一面板：当前位置信息 + 经纬度输入，共用折叠/展开
 // ============================================================================
 
 @Composable
-private fun CollapsibleInfoPanel(
+private fun UnifiedPanel(
     expanded       : Boolean,
+    onToggle       : () -> Unit,
     gcj            : CT.Coord?,
     wgs            : CT.Coord?,
     accuracyMeters : Float?,
     locating       : Boolean,
-    onToggle       : () -> Unit,
     onLocate       : () -> Unit,
+    lonText        : String,
+    latText        : String,
+    coordType      : CoordType,
+    onLonChange    : (String) -> Unit,
+    onLatChange    : (String) -> Unit,
+    onCoordType    : (CoordType) -> Unit,
+    onJumpTo       : () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(if (expanded) 360.dp else 56.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {
-        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        Column(modifier = Modifier.verticalScroll(rememberScrollState()).imePadding()) {
+            // -------- 折叠栏（始终显示） --------
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle)
                     .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
                     Icons.Filled.Search,
@@ -572,16 +549,86 @@ private fun CollapsibleInfoPanel(
                 )
             }
 
+            // -------- 展开内容 --------
             if (expanded) {
                 Column(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    // 当前位置坐标
                     CoordsRow(label = "GCJ02", coord = gcj,
                         color = MaterialTheme.colorScheme.primary)
                     CoordsRow(label = "WGS84", coord = wgs,
                         color = MaterialTheme.colorScheme.tertiary)
                     AccuracyRow(meters = accuracyMeters)
+
+                    // 分隔线
+                    Spacer(Modifier.height(4.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    ) {}
+                    Spacer(Modifier.height(4.dp))
+
+                    // 经纬度输入
+                    FText("跳转定位", 12, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        OutlinedTextField(
+                            value        = lonText,
+                            onValueChange = onLonChange,
+                            modifier     = Modifier.weight(1f),
+                            label        = { FText("经度", 12) },
+                            placeholder  = { FText("116.397428", 13) },
+                            singleLine   = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            colors = TextFieldDefaults.colors(
+                                focusedIndicatorColor      = MaterialTheme.colorScheme.primary,
+                                unfocusedIndicatorColor    = MaterialTheme.colorScheme.outline,
+                                disabledIndicatorColor     = MaterialTheme.colorScheme.outline,
+                                focusedContainerColor      = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor    = MaterialTheme.colorScheme.surface,
+                            ),
+                        )
+                        OutlinedTextField(
+                            value        = latText,
+                            onValueChange = onLatChange,
+                            modifier     = Modifier.weight(1f),
+                            label        = { FText("纬度", 12) },
+                            placeholder  = { FText("39.90923", 13) },
+                            singleLine   = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            colors = TextFieldDefaults.colors(
+                                focusedIndicatorColor      = MaterialTheme.colorScheme.primary,
+                                unfocusedIndicatorColor    = MaterialTheme.colorScheme.outline,
+                                disabledIndicatorColor     = MaterialTheme.colorScheme.outline,
+                                focusedContainerColor      = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor    = MaterialTheme.colorScheme.surface,
+                            ),
+                        )
+                    }
+
+                    // 坐标类型 + 跳转按钮
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        FText("坐标类型", 12, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.width(6.dp))
+                        CoordRadio("GCJ02", coordType == CoordType.GCJ02) { onCoordType(CoordType.GCJ02) }
+                        CoordRadio("WGS84", coordType == CoordType.WGS84) { onCoordType(CoordType.WGS84) }
+                        Spacer(Modifier.weight(1f))
+                        Button(
+                            onClick = onJumpTo,
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.KeyboardReturn,
+                                contentDescription = "跳转定位", modifier = Modifier.size(16.dp))
+                        }
+                    }
                 }
             }
         }
@@ -667,13 +714,24 @@ private fun LocateButton(onClick: () -> Unit, locating: Boolean) {
     }
 }
 
+@Composable
+private fun CoordRadio(label    : String, selected : Boolean, onClick  : () -> Unit) {
+    Row(
+        modifier = Modifier.selectable(selected = selected, onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        FText(label, 12)
+        Spacer(Modifier.width(6.dp))
+    }
+}
+
 // ============================================================================
 // 拾取模式浮动按钮
 // ============================================================================
 
 @Composable
 private fun PickModeFab(placeMode: Boolean, onToggle: () -> Unit) {
-    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(modifier = Modifier.fillMaxSize()) {
         FloatingActionButton(
             onClick = onToggle,
@@ -689,98 +747,5 @@ private fun PickModeFab(placeMode: Boolean, onToggle: () -> Unit) {
             else
                 Icon(Icons.Filled.Search, contentDescription = "拾取坐标")
         }
-    }
-}
-
-// ============================================================================
-// 底部坐标输入栏
-// ============================================================================
-
-@Composable
-private fun BottomInputBar(
-    lonText     : String,
-    latText     : String,
-    coordType   : CoordType,
-    onLonChange : (String) -> Unit,
-    onLatChange : (String) -> Unit,
-    onCoordType : (CoordType) -> Unit,
-    onJumpTo    : () -> Unit,
-) {
-    Surface(color = MaterialTheme.colorScheme.surfaceVariant, tonalElevation = 2.dp) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .imePadding()
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                OutlinedTextField(
-                    value        = lonText,
-                    onValueChange = onLonChange,
-                    modifier     = Modifier.weight(1f),
-                    label        = { FText("经度", 12) },
-                    placeholder  = { FText("116.397428", 13) },
-                    singleLine   = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor      = MaterialTheme.colorScheme.primary,
-                        unfocusedIndicatorColor    = MaterialTheme.colorScheme.outline,
-                        disabledIndicatorColor     = MaterialTheme.colorScheme.outline,
-                        focusedContainerColor      = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor    = MaterialTheme.colorScheme.surface,
-                    ),
-                )
-                OutlinedTextField(
-                    value        = latText,
-                    onValueChange = onLatChange,
-                    modifier     = Modifier.weight(1f),
-                    label        = { FText("纬度", 12) },
-                    placeholder  = { FText("39.90923", 13) },
-                    singleLine   = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor      = MaterialTheme.colorScheme.primary,
-                        unfocusedIndicatorColor    = MaterialTheme.colorScheme.outline,
-                        disabledIndicatorColor     = MaterialTheme.colorScheme.outline,
-                        focusedContainerColor      = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor    = MaterialTheme.colorScheme.surface,
-                    ),
-                )
-            }
-
-            Spacer(Modifier.height(6.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                FText("坐标类型", 12, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.width(6.dp))
-                CoordRadio("GCJ02", coordType == CoordType.GCJ02) { onCoordType(CoordType.GCJ02) }
-                CoordRadio("WGS84", coordType == CoordType.WGS84) { onCoordType(CoordType.WGS84) }
-                Spacer(Modifier.weight(1f))
-                Button(
-                    onClick = onJumpTo,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardReturn,
-                        contentDescription = "跳转定位", modifier = Modifier.size(16.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CoordRadio(label    : String, selected : Boolean, onClick  : () -> Unit) {
-    Row(
-        modifier = Modifier.selectable(selected = selected, onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = null)
-        FText(label, 12)
-        Spacer(Modifier.width(6.dp))
     }
 }
