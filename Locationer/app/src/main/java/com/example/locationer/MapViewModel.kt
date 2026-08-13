@@ -343,19 +343,51 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _measurementTotalArea = MutableStateFlow(0.0)
     val measurementTotalArea: StateFlow<Double> = _measurementTotalArea.asStateFlow()
 
+    // ---------- 导航信号 ----------
+    private val _requestSwitchToMap = MutableStateFlow(false)
+    val requestSwitchToMap: StateFlow<Boolean> = _requestSwitchToMap.asStateFlow()
+
+    private val _requestSwitchToTools = MutableStateFlow(false)
+    val requestSwitchToTools: StateFlow<Boolean> = _requestSwitchToTools.asStateFlow()
+
+    private val _collapsePanelOnMap = MutableStateFlow(false)
+    val collapsePanelOnMap: StateFlow<Boolean> = _collapsePanelOnMap.asStateFlow()
+
+    private val _showMeasurementFab = MutableStateFlow(false)
+    val showMeasurementFab: StateFlow<Boolean> = _showMeasurementFab.asStateFlow()
+
+    /** 测量完成信号（waypoints 保留，供工具箱展示结果） */
+    private val _isMeasurementComplete = MutableStateFlow(false)
+    val isMeasurementComplete: StateFlow<Boolean> = _isMeasurementComplete.asStateFlow()
+
+    fun requestSwitchToMap() { _requestSwitchToMap.value = true }
+    fun requestSwitchToTools() { _requestSwitchToTools.value = true }
+    fun triggerCollapsePanel() { _collapsePanelOnMap.value = true }
+
     fun startMeasurement(mode: MeasurementMode) {
         _measurementMode.value = mode
         _measurementWaypoints.value = emptyList()
         _measurementSegments.value = emptyList()
         _measurementTotalDist.value = 0.0
         _measurementTotalArea.value = 0.0
+        _showMeasurementFab.value = false
+        _isMeasurementComplete.value = false
+        _collapsePanelOnMap.value = false
     }
 
     fun stopMeasurement() {
+        _showMeasurementFab.value = false
         _measurementWaypoints.value = emptyList()
         _measurementSegments.value = emptyList()
         _measurementTotalDist.value = 0.0
         _measurementTotalArea.value = 0.0
+    }
+
+    /** 完成测量：保留 waypoints/结果，通知 UI 跳回工具箱 */
+    fun completeMeasurement() {
+        _showMeasurementFab.value = false
+        _isMeasurementComplete.value = true
+        requestSwitchToTools()
     }
 
     fun removeLastWaypoint() {
@@ -380,6 +412,8 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         val list = _measurementWaypoints.value + coord
         _measurementWaypoints.value = list
         recalcSegments()
+        // 放置第一个点后显示完成 FAB
+        if (list.size >= 1) _showMeasurementFab.value = true
     }
 
     private fun recalcSegments() {
@@ -397,21 +431,30 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         _measurementTotalArea.value = if (list.size >= 3) shooLaceArea(list) else 0.0
     }
 
-    /** 鞋带公式计算多边形面积（平方米，GCJ02 坐标） */
+    /**
+     * 球面多边形面积（平方米），基于 GRS80 椭球参数。
+     * 使用勒让德（Legendre）球面过剩公式，逐边计算球面角亏，精度优于平面近似。
+     */
     private fun shooLaceArea(points: List<CT.Coord>): Double {
         val n = points.size
         if (n < 3) return 0.0
-        var area = 0.0
+        val R = 6371000.0 // GRS80 平均地球半径（米）
+        var excess = 0.0  // 球面过剩 E = Σ(θ_i) - (n-2)·π，面积 = E · R²
         for (i in points.indices) {
-            val j = (i + 1) % n
-            area += points[i].lon * points[j].lat
-            area -= points[j].lon * points[i].lat
+            val prev = points[(i - 1 + n) % n]
+            val curr = points[i]
+            val next = points[(i + 1) % n]
+            // 用方位角方法计算每个顶点的内角（球面角）
+            val azPrev = curr.bearingTo(prev) / 180.0 * CT.PI  // 反方位角方向
+            val azNext = curr.bearingTo(next) / 180.0 * CT.PI
+            // 内角 = 两条边方位角的差值（取小于 π 的那一侧）
+            var angle = azNext - azPrev
+            if (angle < 0.0) angle += 2.0 * CT.PI
+            if (angle > CT.PI) angle -= 2.0 * CT.PI
+            excess += angle
         }
-        // 粗略估算：1度经度 ≈ 111km * cos(lat)，1度纬度 ≈ 111km
-        val midLat = points.map { it.lat }.average()
-        val mPerLonDeg = 111320.0 * kotlin.math.cos(midLat / 180.0 * Math.PI)
-        val mPerLatDeg = 110540.0
-        return kotlin.math.abs(area * 0.5 * mPerLonDeg * mPerLatDeg)
+        excess -= (n - 2) * CT.PI
+        return kotlin.math.abs(excess * R * R)
     }
 
     // ---------- 连续定位 / 传感器 ----------

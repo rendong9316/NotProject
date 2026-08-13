@@ -25,7 +25,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,6 +37,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.locationer.ui.theme.LocationerTheme
 
 class MainActivity : ComponentActivity() {
@@ -70,6 +73,17 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun LocationerApp() {
     var selectedTab by remember { mutableStateOf(0) }
+    val viewModel: MapViewModel = viewModel()
+    val requestSwitchToMap by viewModel.requestSwitchToMap.collectAsState()
+    val requestSwitchToTools by viewModel.requestSwitchToTools.collectAsState()
+
+    LaunchedEffect(requestSwitchToMap) {
+        if (requestSwitchToMap) { selectedTab = 0; viewModel.requestSwitchToMap() }
+    }
+    LaunchedEffect(requestSwitchToTools) {
+        if (requestSwitchToTools) { selectedTab = 1; viewModel.requestSwitchToTools() }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         // 两个页面始终在 composition 中（永不销毁），仅通过 alpha + zIndex 控制显隐。
         // 激活页 alpha=1 zIndex=1 在上层接收触摸；非激活页 alpha=0 zIndex=0 完全隐藏。
@@ -80,13 +94,13 @@ fun LocationerApp() {
                     .fillMaxSize()
                     .alpha(if (selectedTab == 0) 1f else 0f)
                     .zIndex(if (selectedTab == 0) 1f else 0f),
-            ) { MapScreen() }
+            ) { MapScreen(viewModel = viewModel) }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .alpha(if (selectedTab == 1) 1f else 0f)
                     .zIndex(if (selectedTab == 1) 1f else 0f),
-            ) { ToolsScreen() }
+            ) { ToolsScreen(mapViewModel = viewModel) }
         }
         Surface(color = MaterialTheme.colorScheme.surfaceVariant, tonalElevation = 2.dp) {
             Row(modifier = Modifier.fillMaxWidth()) {

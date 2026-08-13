@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Draw
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.TouchApp
@@ -56,6 +57,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -309,7 +311,6 @@ private fun FlagManagementCard(
                     },
                     onFinishEdit = {
                         editingId = null
-                        if (editLabel.isNotBlank()) mapViewModel.renameFlag(flag.id, editLabel)
                     },
                     onCancelEdit = { editingId = null },
                     onDelete = {
@@ -369,7 +370,6 @@ private fun FlagManagementCard(
                     },
                     onFinishEdit = {
                         editingId = null
-                        if (editLabel.isNotBlank()) mapViewModel.renameFlag(flag.id, editLabel)
                     },
                     onCancelEdit = { editingId = null },
                     onDelete = {
@@ -552,7 +552,7 @@ private fun FlagRow(
                     ),
                     trailingIcon = {
                         Row {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = "确认",
+                            Icon(Icons.Filled.Check, contentDescription = "确认",
                                 modifier = Modifier.size(14.dp).clickable {
                                     if (editLabelLocal.isNotBlank()) renameFlag(flag.id, editLabelLocal)
                                     onFinishEdit()
@@ -752,12 +752,15 @@ private fun CoordsInputGroup(
 @Composable
 private fun MeasurementCard(mapViewModel: MapViewModel) {
     var isExpanded by remember { mutableStateOf(true) }
-    var mode by remember { mutableStateOf(MapViewModel.MeasurementMode.DISTANCE) }
+    val vmMode by mapViewModel.measurementMode.collectAsState()
+    var uiMode by remember { mutableStateOf(vmMode) }
+    LaunchedEffect(vmMode) { uiMode = vmMode }
+
     val waypoints by mapViewModel.measurementWaypoints.collectAsState()
     val segments by mapViewModel.measurementSegments.collectAsState()
     val totalDist by mapViewModel.measurementTotalDist.collectAsState()
     val totalArea by mapViewModel.measurementTotalArea.collectAsState()
-    val isMeasuring by remember(waypoints) { mutableStateOf(waypoints.isNotEmpty()) }
+    val isMeasuring by remember { derivedStateOf { mapViewModel.measurementWaypoints.value.isNotEmpty() } }
 
     CollapsibleToolCard(
         title = "测距 / 测面积",
@@ -766,33 +769,51 @@ private fun MeasurementCard(mapViewModel: MapViewModel) {
         isExpanded = isExpanded,
         onToggle = { isExpanded = !isExpanded },
     ) {
+        // 模式选择
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.weight(1f))
-            ModeChip("测距", mode == MapViewModel.MeasurementMode.DISTANCE) { mode = MapViewModel.MeasurementMode.DISTANCE }
-            ModeChip("测面积", mode == MapViewModel.MeasurementMode.AREA) { mode = MapViewModel.MeasurementMode.AREA }
+            ModeChip("测距", uiMode == MapViewModel.MeasurementMode.DISTANCE) {
+                uiMode = MapViewModel.MeasurementMode.DISTANCE
+                mapViewModel.startMeasurement(MapViewModel.MeasurementMode.DISTANCE)
+            }
+            ModeChip("测面积", uiMode == MapViewModel.MeasurementMode.AREA) {
+                uiMode = MapViewModel.MeasurementMode.AREA
+                mapViewModel.startMeasurement(MapViewModel.MeasurementMode.AREA)
+            }
         }
 
         Spacer(Modifier.height(6.dp))
 
+        // 操作按钮
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            MeasureBtn(icon = Icons.Filled.PlayArrow, label = if (isMeasuring) "继续" else "开始",
-                enabled = true, onClick = {
-                    if (isMeasuring) mapViewModel.stopMeasurement()
-                    else mapViewModel.startMeasurement(mode)
+            MeasureBtn(icon = Icons.Filled.PlayArrow, label = "开始",
+                enabled = !isMeasuring,
+                onClick = {
+                    mapViewModel.startMeasurement(uiMode)
+                    mapViewModel.triggerCollapsePanel()
+                    mapViewModel.requestSwitchToMap()
                 })
             Spacer(Modifier.width(6.dp))
             MeasureBtn(icon = Icons.Filled.Remove, label = "撤销",
-                enabled = waypoints.size > 1,
+                enabled = waypoints.size > 1 && isMeasuring,
                 onClick = { mapViewModel.removeLastWaypoint() })
             Spacer(Modifier.width(6.dp))
             MeasureBtn(icon = Icons.Filled.Clear, label = "清除",
-                enabled = waypoints.isNotEmpty(),
+                enabled = waypoints.isNotEmpty() && isMeasuring,
                 onClick = { mapViewModel.clearWaypoints() })
         }
 
-        if (waypoints.isNotEmpty()) {
+        // 测量中提示
+        if (isMeasuring) {
+            Spacer(Modifier.height(4.dp))
+            Text("已在地图上点击放置测点，完成后点击下方「✓」返回查看结果",
+                fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
+        }
+
+        // 结果展示（测量完成后或暂停状态）
+        if (waypoints.isNotEmpty() && !isMeasuring) {
             Spacer(Modifier.height(6.dp))
-            ResultBox(totalDist, if (mode == MapViewModel.MeasurementMode.AREA) totalArea else null,
+            ResultBox(totalDist, if (uiMode == MapViewModel.MeasurementMode.AREA) totalArea else null,
                 segmentCount = segments.size)
 
             if (segments.isNotEmpty()) {
@@ -806,12 +827,19 @@ private fun MeasurementCard(mapViewModel: MapViewModel) {
                     }
                 }
             }
-        }
 
-        if (waypoints.isEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            Text("点击「开始」后到地图标签页依次点击加点，再点击「继续」结束测量",
-                fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // 各点位坐标
+            if (waypoints.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                waypoints.forEachIndexed { i, wp ->
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("点 ${i + 1}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.weight(1f))
+                        Text("GCJ02: %.6f, %.6f".format(wp.lon, wp.lat),
+                            fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                    }
+                }
+            }
         }
     }
 }
