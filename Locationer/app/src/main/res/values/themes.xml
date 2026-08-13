@@ -3,8 +3,11 @@
 
     <style name="Theme.Locationer" parent="android:Theme.Material.Light.NoActionBar" />
 
-    <style name="Theme.Locationer.Splash" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#FF0D1117</item>
+    <style name="Theme.Locationer.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#FF0D1117</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_reticle</item>
+        <item name="windowSplashScreenAnimationDuration">200</item>
+        <item name="postSplashScreenTheme">@style/Theme.Locationer</item>
     </style>
 
 </resources>

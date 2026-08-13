@@ -29,6 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.locationer.ui.theme.LocationerTheme
@@ -51,11 +54,21 @@ class MainActivity : ComponentActivity() {
 fun LocationerApp() {
     var selectedTab by remember { mutableStateOf(0) }
     Column(modifier = Modifier.fillMaxSize()) {
+        // 两个页面实例始终存在于 composition 中（不销毁），仅通过 alpha + zIndex 控制显隐。
+        // 激活页 zIndex=1 覆盖非激活页（0f），确保触摸事件不被隐藏层拦截。
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            when (selectedTab) {
-                0 -> MapScreen()
-                1 -> ToolsScreen()
-            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(if (selectedTab == 0) 1f else 0f)
+                    .zIndex(if (selectedTab == 0) 1f else 0f),
+            ) { MapScreen() }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(if (selectedTab == 1) 1f else 0f)
+                    .zIndex(if (selectedTab == 1) 1f else 0f),
+            ) { ToolsScreen() }
         }
         Surface(color = MaterialTheme.colorScheme.surfaceVariant, tonalElevation = 2.dp) {
             Row(modifier = Modifier.fillMaxWidth()) {
