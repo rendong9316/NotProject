@@ -291,12 +291,14 @@ private fun FlagManagementCard(
                 }) { Text("清除全部", fontSize = 10.sp) }
             }
             pickedFlags.forEach { flag ->
+                val initLabel = flag.customName.ifEmpty { flag.label }
                 FlagRow(
                     flag = flag,
                     color = Color(0xFFC01428),
                     isSelected = selectedIds.contains(flag.id),
                     isEditing = editingId == flag.id,
                     editLabel = editLabel,
+                    initialEditLabel = initLabel,
                     onToggleSelect = { id ->
                         selectedIds = if (selectedIds.contains(id))
                             selectedIds - id else selectedIds + id
@@ -349,12 +351,14 @@ private fun FlagManagementCard(
                 }) { Text("清除全部", fontSize = 10.sp) }
             }
             jumpedFlags.forEach { flag ->
+                val initLabel = flag.customName.ifEmpty { flag.label }
                 FlagRow(
                     flag = flag,
                     color = Color(0xFFE53935),
                     isSelected = selectedIds.contains(flag.id),
                     isEditing = editingId == flag.id,
                     editLabel = editLabel,
+                    initialEditLabel = initLabel,
                     onToggleSelect = { id ->
                         selectedIds = if (selectedIds.contains(id))
                             selectedIds - id else selectedIds + id
@@ -504,6 +508,7 @@ private fun FlagRow(
     isSelected    : Boolean,
     isEditing     : Boolean,
     editLabel     : String,
+    initialEditLabel : String,  // editing开始时传入的初始值，绕过remember缓存问题
     onToggleSelect: (Long) -> Unit,
     onStartEdit   : (Flag) -> Unit,
     onFinishEdit  : () -> Unit,
@@ -534,8 +539,7 @@ private fun FlagRow(
         // 色点 + 名称 + 坐标
         Column(modifier = Modifier.weight(1f)) {
             if (isEditing) {
-                var editLabelLocal by remember(flag.id) { mutableStateOf(editLabel) }
-                LaunchedEffect(editLabel, flag.id) { editLabelLocal = editLabel }
+                var editLabelLocal by remember { mutableStateOf(initialEditLabel) }
                 OutlinedTextField(
                     value = editLabelLocal, onValueChange = { editLabelLocal = it },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
