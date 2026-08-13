@@ -255,16 +255,17 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     fun setReticleCoord(gcj: CT.Coord) { _reticleCoord.value = gcj }
 
     /** 确认放置旗标，返回新建的 Flag */
-    fun confirmPlacement(reticle: CT.Coord): Flag? {
+    fun confirmPlacement(reticle: CT.Coord, customName: String = ""): Flag? {
         val gcj = reticle
         val wgs = CT.gcj02ToWgs84(gcj, precision = CT.HIGH_PRECISION)
         _pickCounter++
-        val label = _pickCounter.toString()
+        val label = if (customName.isNotBlank()) customName else _pickCounter.toString()
         val flag = Flag(
             id = System.currentTimeMillis(), label = label,
             gcjLon = gcj.lon, gcjLat = gcj.lat,
             wgsLon = wgs.lon, wgsLat = wgs.lat,
-            type = FlagType.PICKED, createdAt = System.currentTimeMillis()
+            type = FlagType.PICKED, createdAt = System.currentTimeMillis(),
+            customName = if (customName.isNotBlank()) customName else "",
         )
         flagStore.insert(flag)
         _lastPickedCoord.value = gcj
@@ -276,6 +277,21 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     /** 重命名旗标 */
     fun renameFlag(id: Long, customName: String) { flagStore.updateCustomName(id, customName) }
+
+    /** 手动添加旗标（支持指定类型和自定义名称） */
+    fun addFlag(gcj: CT.Coord, wgs: CT.Coord, type: FlagType, customName: String = "") {
+        _pickCounter++
+        val label = if (customName.isNotBlank()) customName else _pickCounter.toString()
+        val flag = Flag(
+            id = System.currentTimeMillis(), label = label,
+            gcjLon = gcj.lon, gcjLat = gcj.lat,
+            wgsLon = wgs.lon, wgsLat = wgs.lat,
+            type = type, createdAt = System.currentTimeMillis(),
+            customName = if (customName.isNotBlank()) customName else "",
+        )
+        flagStore.insert(flag)
+        _lastPickedCoord.value = gcj
+    }
 
     /** 清除所有旗标 */
     fun clearAllFlags() { flagStore.deleteAll() }

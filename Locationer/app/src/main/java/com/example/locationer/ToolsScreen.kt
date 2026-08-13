@@ -176,6 +176,7 @@ private fun FlagManagementCard(
     var addLon      by remember { mutableStateOf("") }
     var addLat      by remember { mutableStateOf("") }
     var addType     by remember { mutableStateOf(CoordType.GCJ02) }
+    var addFlagType by remember { mutableStateOf(FlagType.PICKED) }
 
     // 批量操作
     var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
@@ -249,6 +250,11 @@ private fun FlagManagementCard(
                     Spacer(Modifier.width(6.dp))
                     RadioChip("GCJ02", addType == CoordType.GCJ02) { addType = CoordType.GCJ02 }
                     RadioChip("WGS84", addType == CoordType.WGS84) { addType = CoordType.WGS84 }
+                    Spacer(Modifier.width(12.dp))
+                    Text("旗标类型", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(6.dp))
+                    RadioChip("拾取", addFlagType == FlagType.PICKED) { addFlagType = FlagType.PICKED }
+                    RadioChip("跳转", addFlagType == FlagType.JUMPED) { addFlagType = FlagType.JUMPED }
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = {
                         val lonN = addLon.trim().toDoubleOrNull() ?: return@TextButton
@@ -259,8 +265,7 @@ private fun FlagManagementCard(
                             CoordType.WGS84 -> CT.wgs84ToGcj02(typed)
                         }
                         val wgs = CT.gcj02ToWgs84(gcj, precision = CT.HIGH_PRECISION)
-                        val name = addLabel.trim()
-                        mapViewModel.confirmPlacement(gcj)
+                        mapViewModel.addFlag(gcj, wgs, addFlagType, addLabel.trim())
                         addLabel = ""; addLon = ""; addLat = ""
                         showAddForm = false
                     }) { Text("放置", fontSize = 12.sp) }
@@ -277,8 +282,14 @@ private fun FlagManagementCard(
         // ---- 拾取旗标 ----
         if (pickedFlags.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
-            Text("拾取旗标 (${pickedFlags.size})", fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("拾取旗标 (${pickedFlags.size})", fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = {
+                    showClearAllDialog = true
+                }) { Text("清除全部", fontSize = 10.sp) }
+            }
             pickedFlags.forEach { flag ->
                 FlagRow(
                     flag = flag,
@@ -301,7 +312,7 @@ private fun FlagManagementCard(
                     onCancelEdit = { editingId = null },
                     onDelete = {
                         deleteFlagId = flag.id
-                        deleteTargetLabel = flag.label
+                        deleteTargetLabel = flag.customName.ifEmpty { flag.label }
                         showDeleteDialog = true
                     },
                     renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
@@ -329,8 +340,14 @@ private fun FlagManagementCard(
         // ---- 跳转目标 ----
         if (jumpedFlags.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
-            Text("跳转目标 (${jumpedFlags.size})", fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("跳转目标 (${jumpedFlags.size})", fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = {
+                    showClearAllDialog = true
+                }) { Text("清除全部", fontSize = 10.sp) }
+            }
             jumpedFlags.forEach { flag ->
                 FlagRow(
                     flag = flag,
@@ -353,7 +370,7 @@ private fun FlagManagementCard(
                     onCancelEdit = { editingId = null },
                     onDelete = {
                         deleteFlagId = flag.id
-                        deleteTargetLabel = flag.label
+                        deleteTargetLabel = flag.customName.ifEmpty { flag.label }
                         showDeleteDialog = true
                     },
                     renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
@@ -411,6 +428,20 @@ private fun FlagManagementCard(
                     Text("$distText  ·  ${"%.1f°".format(bearing)}",
                         fontSize = 11.sp, fontFamily = FontFamily.Monospace,
                         color = MaterialTheme.colorScheme.primary)
+                }
+                Button(
+                    onClick = {
+                        val idsToDelete = selectedIds
+                        selectedIds = emptySet()
+                        geoResult = null
+                        idsToDelete.forEach { mapViewModel.deleteFlag(it) }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                ) {
+                    Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("删除 (${selectedIds.size})", fontSize = 12.sp)
                 }
                 TextButton(onClick = { selectedIds = emptySet(); geoResult = null }) {
                     Text("取消选择", fontSize = 11.sp)
