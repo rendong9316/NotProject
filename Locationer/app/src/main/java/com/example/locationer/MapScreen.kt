@@ -86,7 +86,7 @@ import com.amap.api.maps.model.Marker
 import com.amap.api.maps.model.MarkerOptions
 
 /** 固定字体缩放比例，始终为 1f，不跟随系统无障碍字体大小设置 */
-private val FixedTextScaleFactor = compositionLocalOf { 1f }
+val FixedTextScaleFactor = compositionLocalOf { 1f }
 
 // ---------- 字体缩放感知的 Text ----------
 @Composable
@@ -158,6 +158,13 @@ fun MapScreen(
         }
     }
 
+    // ================ 地图点击监听（拾取模式） ================
+    LaunchedEffect(aMap) {
+        aMap?.setOnMapClickListener { latlng ->
+            viewModel.onMapClick(latlng.longitude, latlng.latitude)
+        }
+    }
+
     // ================ 状态收集 ================
     val gcj             by viewModel.currentGcj.collectAsState()
     val wgs             by viewModel.currentWgs.collectAsState()
@@ -168,6 +175,8 @@ fun MapScreen(
     val latText         by viewModel.latText.collectAsState()
     val coordType       by viewModel.coordType.collectAsState()
     val accuracyMeters  by viewModel.accuracyMeters.collectAsState()
+    val pickMode        by viewModel.pickMode.collectAsState()
+    val pickedCoord     by viewModel.lastPickedCoord.collectAsState()
 
     // ================ 面板折叠状态 ================
     var panelExpanded by remember { mutableStateOf(true) }
@@ -297,15 +306,34 @@ fun MapScreen(
                     onLocate       = { onClickLocate() },
                 )
 
-                // -------- 始终可见的底部操作栏 --------
-                BottomInputBar(
-                    lonText     = lonText,
-                    latText     = latText,
-                    coordType   = coordType,
-                    onLonChange = { viewModel.updateLonText(it) },
-                    onLatChange = { viewModel.updateLatText(it) },
-                    onCoordType = { viewModel.setCoordType(it) },
-                    onJumpTo    = { viewModel.jumpTo() },
+                // -------- 已拾取坐标展示条 --------
+                if (pickMode || pickedCoord != null) {
+                    PickedCoordBanner(
+                        coord = pickedCoord,
+                        isPickMode = pickMode,
+                        onCopy = {
+                            pickedCoord?.let {
+                                val text = "(%.6f, %.6f)".format(it.lon, it.lat)
+                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", text))
+                                Toast.makeText(context, "已复制：$text", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onSave = {
+                            pickedCoord?.let {
+                                Toast.makeText(context, "已添加到收藏（TODO）", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onDismiss = { viewModel.clearPickedCoord(); viewModel.togglePickMode() }
+                    )
+                }
+
+                // -------- 拾取模式按钮（替代原定位 FAB） --------
+                PickModeFab(
+                    pickMode = pickMode,
+                    locating = locating,
+                    onToggle = { viewModel.togglePickMode() },
+                    onLocate = { onClickLocate() }
                 )
             }
         }
@@ -495,7 +523,92 @@ private fun LocateButton(onClick: () -> Unit, locating: Boolean) {
 }
 
 // ============================================================================
-// 底部操作栏（固定高度，始终可见）
+// 已拾取坐标展示条
+// ============================================================================
+
+@Composable
+private fun PickedCoordBanner(
+    coord      : CT.Coord?,
+    isPickMode : Boolean,
+    onCopy     : () -> Unit,
+    onSave     : () -> Unit,
+    onDismiss  : () -> Unit,
+) {
+    Surface(
+        color = if (isPickMode) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                else MaterialTheme.colorScheme.surfaceContainerHighest,
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // 坐标文字（可长按复制）
+            SelectionContainer {
+                FText(
+                    text = coord?.let { "(%.6f, %.6f)".format(it.lon, it.lat) } ?: "--",
+                    fontSize = 13,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isPickMode) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            // 操作按钮
+            if (!isPickMode) {
+                TextButton(onClick = onCopy,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
+                    FText("复制", 11)
+                }
+                TextButton(onClick = onSave,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
+                    FText("收藏", 11)
+                }
+            }
+            TextButton(onClick = onDismiss,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
+                FText("关闭", 11)
+            }
+        }
+    }
+}
+
+// ============================================================================
+// 拾取模式浮动按钮
+// ============================================================================
+
+@Composable
+private fun PickModeFab(
+    pickMode : Boolean,
+    locating : Boolean,
+    onToggle : () -> Unit,
+    onLocate : () -> Unit,
+) {
+    FloatingActionButton(
+        onClick = if (pickMode) onToggle else onLocate,
+        modifier = Modifier.padding(16.dp),
+        containerColor = if (pickMode) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+        contentColor   = MaterialTheme.colorScheme.onPrimary,
+    ) {
+        if (locating)
+            CircularProgressIndicator(
+                modifier   = Modifier.size(22.dp),
+                strokeWidth = 2.dp,
+            )
+        else
+            Icon(
+                imageVector = Icons.Filled.NearMe,
+                contentDescription = if (pickMode) "退出拾取" else "拾取坐标",
+            )
+    }
+}
+
+// ============================================================================
+// 底部操作栏（固定高度，始终可见）— 供工具箱标签页复用
 // ============================================================================
 
 @Composable

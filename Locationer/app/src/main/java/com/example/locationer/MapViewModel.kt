@@ -38,6 +38,14 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _jumpTarget   = MutableStateFlow<JumpTarget?>(null)
     val jumpTarget: StateFlow<JumpTarget?> = _jumpTarget.asStateFlow()
 
+    /** 拾取模式开关 */
+    private val _pickMode = MutableStateFlow(false)
+    val pickMode: StateFlow<Boolean> = _pickMode.asStateFlow()
+
+    /** 最近一次地图点击拾取的坐标（GCJ02） */
+    private val _lastPickedCoord = MutableStateFlow<CT.Coord?>(null)
+    val lastPickedCoord: StateFlow<CT.Coord?> = _lastPickedCoord.asStateFlow()
+
     private val _accuracyMeters = MutableStateFlow<Float?>(null)
     val accuracyMeters: StateFlow<Float?> = _accuracyMeters.asStateFlow()
 
@@ -70,13 +78,14 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         try {
             locationClient = AMapLocationClient(application).apply {
                 val option = AMapLocationClientOption().apply {
-                    setGpsFirst(true)      // 优先 GPS 卫星定位
+                    setGpsFirst(true)      // 优先 GPS 卫星定位（精度最高）
                     isOnceLocation = true
                     isOnceLocationLatest = true
                     setNeedAddress(false)
-                    setInterval(3000)      // 最小采样间隔 3000ms
+                    setInterval(0)         // 单次定位：结果就绪即刻回调，不设额外等待
                     setSensorEnable(true)  // 启用传感器数据辅助过滤
                     isMockEnable = true
+                    setGpsFirstTimeout(20000L) // GPS 等待超时 20s，超时后回退网络定位
                 }
                 setLocationOption(option)
                 setLocationListener(::onLocationResult)
@@ -172,6 +181,110 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         _jumpTarget.value = JumpTarget(++jumpId, gcj, typed, _coordType.value)
     }
 
+    // ---------- 拾取模式 ----------
+    fun togglePickMode() { _pickMode.value = !_pickMode.value }
+    fun onMapClick(lon: Double, lat: Double) {
+        if (_pickMode.value) {
+            _lastPickedCoord.value = CT.Coord(lon, lat)
+            _pickMode.value = false
+        }
+    }
+    fun clearPickedCoord() { _lastPickedCoord.value = null }
+
+    // ---------- 折线测量 ----------
+    /** 测量模式：DISTANCE（测距）/ AREA（测面积） */
+    enum class MeasurementMode { DISTANCE, AREA }
+
+    private val _measurementMode = MutableStateFlow(MeasurementMode.DISTANCE)
+    val measurementMode: StateFlow<MeasurementMode> = _measurementMode.asStateFlow()
+
+    private val _measurementWaypoints = MutableStateFlow<List<CT.Coord>>(emptyList())
+    val measurementWaypoints: StateFlow<List<CT.Coord>> = _measurementWaypoints.asStateFlow()
+
+    data class Segment(val index: Int, val dist: Double) {
+        val distText: String get() = if (dist >= 1000) "%.2f km".format(dist / 1000) else "%.0f m".format(dist)
+    }
+    private val _measurementSegments = MutableStateFlow<List<Segment>>(emptyList())
+    val measurementSegments: StateFlow<List<Segment>> = _measurementSegments.asStateFlow()
+
+    private val _measurementTotalDist = MutableStateFlow(0.0)
+    val measurementTotalDist: StateFlow<Double> = _measurementTotalDist.asStateFlow()
+
+    private val _measurementTotalArea = MutableStateFlow(0.0)
+    val measurementTotalArea: StateFlow<Double> = _measurementTotalArea.asStateFlow()
+
+    fun startMeasurement(mode: MeasurementMode) {
+        _measurementMode.value = mode
+        _measurementWaypoints.value = emptyList()
+        _measurementSegments.value = emptyList()
+        _measurementTotalDist.value = 0.0
+        _measurementTotalArea.value = 0.0
+    }
+
+    fun stopMeasurement() {
+        _measurementWaypoints.value = emptyList()
+        _measurementSegments.value = emptyList()
+        _measurementTotalDist.value = 0.0
+        _measurementTotalArea.value = 0.0
+    }
+
+    fun removeLastWaypoint() {
+        val list = _measurementWaypoints.value
+        if (list.size > 1) {
+            _measurementWaypoints.value = list.dropLast(1)
+            _measurementTotalDist.value = 0.0
+            _measurementTotalArea.value = 0.0
+            recalcSegments()
+        }
+    }
+
+    fun clearWaypoints() {
+        _measurementWaypoints.value = emptyList()
+        _measurementSegments.value = emptyList()
+        _measurementTotalDist.value = 0.0
+        _measurementTotalArea.value = 0.0
+    }
+
+    fun addWaypoint(lon: Double, lat: Double) {
+        val coord = CT.Coord(lon, lat)
+        val list = _measurementWaypoints.value + coord
+        _measurementWaypoints.value = list
+        recalcSegments()
+    }
+
+    private fun recalcSegments() {
+        val list = _measurementWaypoints.value
+        val segs = mutableListOf<Segment>()
+        var totalDist = 0.0
+        val n = list.size; for (i in 0 until n - 1) {
+            val d = list[i].distanceTo(list[i + 1])
+            totalDist += d
+            segs.add(Segment(i, d))
+        }
+        _measurementSegments.value = segs
+        _measurementTotalDist.value = totalDist
+        // 面积：用鞋带公式（仅多边形闭合时有效）
+        _measurementTotalArea.value = if (list.size >= 3) shooLaceArea(list) else 0.0
+    }
+
+    /** 鞋带公式计算多边形面积（平方米，GCJ02 坐标） */
+    private fun shooLaceArea(points: List<CT.Coord>): Double {
+        val n = points.size
+        if (n < 3) return 0.0
+        var area = 0.0
+        for (i in points.indices) {
+            val j = (i + 1) % n
+            area += points[i].lon * points[j].lat
+            area -= points[j].lon * points[i].lat
+        }
+        // 粗略估算：1度经度 ≈ 111km * cos(lat)，1度纬度 ≈ 111km
+        val midLat = points.map { it.lat }.average()
+        val mPerLonDeg = 111320.0 * kotlin.math.cos(midLat / 180.0 * Math.PI)
+        val mPerLatDeg = 110540.0
+        return kotlin.math.abs(area * 0.5 * mPerLonDeg * mPerLatDeg)
+    }
+
+    // ---------- 输入框状态 ----------
     fun updateLonText(v: String)  { _lonText.value = v.filter { it.isDigit() || it == '.' || it == '-' || it == '+' } }
     fun updateLatText(v: String)  { _latText.value = v.filter { it.isDigit() || it == '.' || it == '-' || it == '+' } }
     fun setCoordType(t: CoordType){ _coordType.value = t }

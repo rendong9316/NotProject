@@ -1,10 +1,12 @@
 package com.example.locationer
 
 import kotlin.math.abs
+import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.math.atan2
 
 // China Transformed
 object CT {
@@ -80,4 +82,48 @@ object CT {
         }
         return wgs
     }
+}
+
+// ========== 几何计算（顶层扩展函数） ==========
+
+/** Haversine 球面距离（米） */
+fun CT.Coord.distanceTo(other: CT.Coord): Double {
+    val R = 6371000.0
+    val dLat = (other.lat - lat) / 180.0 * CT.PI
+    val dLon = (other.lon - lon) / 180.0 * CT.PI
+    val a = sin(dLat / 2).pow(2) +
+            cos(lat / 180.0 * CT.PI) * cos(other.lat / 180.0 * CT.PI) * sin(dLon / 2).pow(2)
+    return 2 * R * atan2(sqrt(a), sqrt(1.0 - a))
+}
+
+/** 方位角（度，0=正北，顺时针 0~360） */
+fun CT.Coord.bearingTo(other: CT.Coord): Double {
+    val lat1 = lat / 180.0 * CT.PI
+    val lat2 = other.lat / 180.0 * CT.PI
+    val dLon = (other.lon - lon) / 180.0 * CT.PI
+    val y = sin(dLon) * cos(lat2)
+    val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
+    return (atan2(y, x) / CT.PI * 180.0 + 360.0) % 360.0
+}
+
+/** 反方位角 B→A */
+fun CT.Coord.reverseBearingTo(other: CT.Coord): Double = other.bearingTo(this)
+
+/** 正算：已知起点 + 方位角(度) + 距离(米) → 终点坐标 */
+fun CT.Coord.forward(bearingDeg: Double, distanceM: Double): CT.Coord {
+    val R = 6371000.0
+    val brng = bearingDeg / 180.0 * CT.PI
+    val lat1 = lat / 180.0 * CT.PI
+    val lon1 = lon / 180.0 * CT.PI
+    val lat2 = asin(sin(lat1) * cos(distanceM / R) + cos(lat1) * sin(distanceM / R) * cos(brng))
+    val lon2 = lon1 + atan2(sin(brng) * sin(distanceM / R) * cos(lat1),
+                             cos(distanceM / R) - sin(lat1) * sin(lat2))
+    return CT.Coord(lon2 / CT.PI * 180.0, lat2 / CT.PI * 180.0)
+}
+
+/** 罗盘方向字符串（16方位） */
+fun bearingCardinal(deg: Double): String {
+    val dirs = arrayOf("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+                       "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
+    return dirs[((deg + 11.25).toInt() % 360) / 22]
 }
