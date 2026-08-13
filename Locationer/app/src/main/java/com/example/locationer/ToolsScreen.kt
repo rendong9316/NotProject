@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,6 +23,9 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -39,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,16 +57,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.filterNotNull
 
 /**
- * 工具箱标签页：坐标收藏 / 距离方位角计算 / 折线测距与面积测量
+ * 工具箱标签页：旗标管理 / 距离方位角计算 / 折线测距与面积测量
  */
 @Composable
 fun ToolsScreen(
     mapViewModel: MapViewModel = viewModel(),
-    favViewModel: FavoritesViewModel = viewModel(),
 ) {
-    val favorites by favViewModel.favorites.collectAsState()
+    val flags by mapViewModel.flags.collectAsState()
+    val gcj     by mapViewModel.currentGcj.collectAsState()
+    val wgs     by mapViewModel.currentWgs.collectAsState()
 
     Column(
         modifier = Modifier
@@ -72,27 +77,42 @@ fun ToolsScreen(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        FavoriteCard(favorites, favViewModel, mapViewModel)
+        FlagManagementCard(flags, mapViewModel, gcj, wgs)
         DistanceBearingCard(mapViewModel)
         MeasurementCard(mapViewModel)
     }
 }
 
 // ============================================================================
-// 卡片 1：坐标收藏
+// 卡片 1：旗标管理
 // ============================================================================
 
 @Composable
-private fun FavoriteCard(
-    favorites  : List<FavoritesViewModel.FavoritePoint>,
-    favViewModel: FavoritesViewModel,
+private fun FlagManagementCard(
+    flags       : List<Flag>,
     mapViewModel: MapViewModel,
+    currentGcj  : CT.Coord?,
+    currentWgs  : CT.Coord?,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    var label by remember { mutableStateOf("") }
-    var lon by remember { mutableStateOf("") }
-    var lat by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf(CoordType.GCJ02) }
+    // 手动添加表单状态
+    var showAddForm by remember { mutableStateOf(false) }
+    var addLabel    by remember { mutableStateOf("") }
+    var addLon      by remember { mutableStateOf("") }
+    var addLat      by remember { mutableStateOf("") }
+    var addType     by remember { mutableStateOf(CoordType.GCJ02) }
+
+    // 批量操作
+    var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var geoResult   by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+
+    // 正在编辑的旗标
+    var editingId   by remember { mutableStateOf<Long?>(null) }
+    var editLabel   by remember { mutableStateOf("") }
+
+    // 过滤分组
+    val currentFlags  = flags.filter { it.type == FlagType.CURRENT }
+    val pickedFlags   = flags.filter { it.type == FlagType.PICKED }
+    val jumpedFlags   = flags.filter { it.type == FlagType.JUMPED }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -101,28 +121,29 @@ private fun FavoriteCard(
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("坐标收藏", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("旗标管理", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = { expanded = !expanded }) {
-                    Text(if (expanded) "收起" else "添加", fontSize = 12.sp)
-                }
+                TextButton(onClick = {
+                    mapViewModel.clearAllFlags()
+                    selectedIds = emptySet()
+                }) { Text("清除全部", fontSize = 11.sp) }
             }
 
-            if (expanded) {
+            // ---- 手动添加 ----
+            if (showAddForm) {
                 Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedTextField(value = label, onValueChange = { label = it },
+                    OutlinedTextField(value = addLabel, onValueChange = { addLabel = it },
                         modifier = Modifier.fillMaxWidth(), singleLine = true,
                         label = { Text("名称", fontSize = 11.sp) },
-                        placeholder = { Text("家 / 公司", fontSize = 12.sp) },
+                        placeholder = { Text("可选，留空则自动生成", fontSize = 12.sp) },
                         colors = TextFieldDefaults.colors(
                             focusedIndicatorColor = MaterialTheme.colorScheme.primary,
                             unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
                             focusedContainerColor = MaterialTheme.colorScheme.surface,
                             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        ),
-                    )
+                        ))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedTextField(value = lon, onValueChange = { lon = it },
+                        OutlinedTextField(value = addLon, onValueChange = { addLon = it },
                             modifier = Modifier.weight(1f), singleLine = true,
                             label = { Text("经度", fontSize = 11.sp) },
                             placeholder = { Text("116.397428", fontSize = 12.sp) },
@@ -132,9 +153,8 @@ private fun FavoriteCard(
                                 unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
                                 focusedContainerColor = MaterialTheme.colorScheme.surface,
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            ),
-                        )
-                        OutlinedTextField(value = lat, onValueChange = { lat = it },
+                            ))
+                        OutlinedTextField(value = addLat, onValueChange = { addLat = it },
                             modifier = Modifier.weight(1f), singleLine = true,
                             label = { Text("纬度", fontSize = 11.sp) },
                             placeholder = { Text("39.90923", fontSize = 12.sp) },
@@ -144,65 +164,293 @@ private fun FavoriteCard(
                                 unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
                                 focusedContainerColor = MaterialTheme.colorScheme.surface,
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            ),
-                        )
+                            ))
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("坐标类型", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(6.dp))
-                        RadioChip("GCJ02", type == CoordType.GCJ02) { type = CoordType.GCJ02 }
-                        RadioChip("WGS84", type == CoordType.WGS84) { type = CoordType.WGS84 }
+                        RadioChip("GCJ02", addType == CoordType.GCJ02) { addType = CoordType.GCJ02 }
+                        RadioChip("WGS84", addType == CoordType.WGS84) { addType = CoordType.WGS84 }
                         Spacer(Modifier.weight(1f))
                         TextButton(onClick = {
-                            val lonN = lon.trim().toDoubleOrNull() ?: return@TextButton
-                            val latN = lat.trim().toDoubleOrNull() ?: return@TextButton
+                            val lonN = addLon.trim().toDoubleOrNull() ?: return@TextButton
+                            val latN = addLat.trim().toDoubleOrNull() ?: return@TextButton
                             val typed = CT.Coord(lonN, latN)
-                            val gcj = when (type) {
+                            val gcj = when (addType) {
                                 CoordType.GCJ02 -> typed
                                 CoordType.WGS84 -> CT.wgs84ToGcj02(typed)
                             }
                             val wgs = CT.gcj02ToWgs84(gcj, precision = CT.HIGH_PRECISION)
-                            favViewModel.add(label.trim() ?: "未命名", gcj, wgs, type)
-                            label = ""; lon = ""; lat = ""
-                        }) { Text("保存", fontSize = 12.sp) }
+                            val name = addLabel.trim()
+                            mapViewModel.confirmPlacement(gcj) // 复用现有方法，但手动设置名称
+                            addLabel = ""; addLon = ""; addLat = ""
+                            showAddForm = false
+                        }) { Text("放置", fontSize = 12.sp) }
+                        TextButton(onClick = { showAddForm = false }) { Text("取消", fontSize = 11.sp) }
+                    }
+                }
+            } else {
+                TextButton(onClick = { showAddForm = true },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 0.dp)) {
+                    Text("+ 手动添加", fontSize = 11.sp)
+                }
+            }
+
+            // ---- 当前定位 ----
+            if (currentFlags.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Text("当前位置", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium)
+                currentFlags.forEach { flag ->
+                    FlagRow(
+                        flag = flag,
+                        color = Color(0xFF1E88E5),
+                        isSelected = selectedIds.contains(flag.id),
+                        isEditing = editingId == flag.id,
+                        editLabel = editLabel,
+                        onToggleSelect = { id ->
+                            selectedIds = if (selectedIds.contains(id))
+                                selectedIds - id else selectedIds + id
+                        },
+                        onStartEdit = { f ->
+                            editingId = f.id
+                            editLabel = f.customName.ifEmpty { f.label }
+                        },
+                        onFinishEdit = {
+                            editingId = null
+                            if (editLabel.isNotBlank()) mapViewModel.renameFlag(flag.id, editLabel)
+                        },
+                        onCancelEdit = { editingId = null },
+                        onDelete = {
+                            mapViewModel.deleteFlag(flag.id)
+                            selectedIds = selectedIds - flag.id
+                        },
+                        renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
+                        onJump = {
+                            mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
+                            mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
+                            mapViewModel.setCoordType(CoordType.GCJ02)
+                        }
+                    )
+                }
+            }
+
+            // ---- 拾取旗标 ----
+            if (pickedFlags.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                Text("拾取旗标 (${pickedFlags.size})", fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                pickedFlags.forEach { flag ->
+                    FlagRow(
+                        flag = flag,
+                        color = Color(0xFFFFC107),
+                        isSelected = selectedIds.contains(flag.id),
+                        isEditing = editingId == flag.id,
+                        editLabel = editLabel,
+                        onToggleSelect = { id ->
+                            selectedIds = if (selectedIds.contains(id))
+                                selectedIds - id else selectedIds + id
+                        },
+                        onStartEdit = { f ->
+                            editingId = f.id
+                            editLabel = f.customName.ifEmpty { f.label }
+                        },
+                        onFinishEdit = {
+                            editingId = null
+                            if (editLabel.isNotBlank()) mapViewModel.renameFlag(flag.id, editLabel)
+                        },
+                        onCancelEdit = { editingId = null },
+                        onDelete = {
+                            mapViewModel.deleteFlag(flag.id)
+                            selectedIds = selectedIds - flag.id
+                        },
+                        renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
+                        onJump = {
+                            mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
+                            mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
+                            mapViewModel.setCoordType(CoordType.GCJ02)
+                        }
+                    )
+                }
+            }
+
+            // ---- 跳转目标 ----
+            if (jumpedFlags.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                Text("跳转目标 (${jumpedFlags.size})", fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                jumpedFlags.forEach { flag ->
+                    FlagRow(
+                        flag = flag,
+                        color = Color(0xFFE53935),
+                        isSelected = selectedIds.contains(flag.id),
+                        isEditing = editingId == flag.id,
+                        editLabel = editLabel,
+                        onToggleSelect = { id ->
+                            selectedIds = if (selectedIds.contains(id))
+                                selectedIds - id else selectedIds + id
+                        },
+                        onStartEdit = { f ->
+                            editingId = f.id
+                            editLabel = f.customName.ifEmpty { f.label }
+                        },
+                        onFinishEdit = {
+                            editingId = null
+                            if (editLabel.isNotBlank()) mapViewModel.renameFlag(flag.id, editLabel)
+                        },
+                        onCancelEdit = { editingId = null },
+                        onDelete = {
+                            mapViewModel.deleteFlag(flag.id)
+                            selectedIds = selectedIds - flag.id
+                        },
+                        renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
+                        onJump = {
+                            mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
+                            mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
+                            mapViewModel.setCoordType(CoordType.GCJ02)
+                        }
+                    )
+                }
+            }
+
+            // ---- 批量操作按钮 ----
+            if (selectedIds.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val selected = flags.filter { selectedIds.contains(it.id) }
+                    if (selected.size >= 2) {
+                        Button(
+                            onClick = {
+                                val a = CT.Coord(selected[0].gcjLon, selected[0].gcjLat)
+                                val b = CT.Coord(selected[1].gcjLon, selected[1].gcjLat)
+                                val dist = a.distanceTo(b)
+                                val bearing = a.bearingTo(b)
+                                geoResult = Pair(dist, bearing)
+                            },
+                            enabled = selected.size >= 2,
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        ) {
+                            Icon(Icons.Filled.Straighten, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("计算距离", fontSize = 12.sp)
+                        }
+                    }
+                    if (selected.size == 2 && geoResult != null) {
+                        val (dist, bearing) = geoResult!!
+                        val distText = if (dist >= 1000) "%.2f km".format(dist / 1000) else "%.0f m".format(dist)
+                        Text("$distText  ·  ${"%.1f°".format(bearing)}",
+                            fontSize = 11.sp, fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.primary)
+                    }
+                    TextButton(onClick = { selectedIds = emptySet(); geoResult = null }) {
+                        Text("取消选择", fontSize = 11.sp)
                     }
                 }
             }
 
-            if (favorites.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                favorites.forEach { p ->
-                    FavoriteRow(point = p, onClick = { favViewModel.jumpTo(p, mapViewModel) },
-                        onDelete = { favViewModel.remove(p.id) })
-                }
-                Spacer(Modifier.height(4.dp))
+            if (flags.isEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text("暂无旗标，点击地图右上角「拾取」按钮在地图上放置标记",
+                    fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center)
             }
         }
     }
 }
 
 @Composable
-private fun FavoriteRow(
-    point   : FavoritesViewModel.FavoritePoint,
-    onClick : () -> Unit,
-    onDelete: () -> Unit,
+private fun FlagRow(
+    flag          : Flag,
+    color         : Color,
+    isSelected    : Boolean,
+    isEditing     : Boolean,
+    editLabel     : String,
+    onToggleSelect: (Long) -> Unit,
+    onStartEdit   : (Flag) -> Unit,
+    onFinishEdit  : () -> Unit,
+    onCancelEdit  : () -> Unit,
+    onDelete      : () -> Unit,
+    onJump        : () -> Unit,
+    renameFlag    : (Long, String) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth()
+            .clickable(onClick = onJump)
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Filled.Person, contentDescription = null,
-            modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(6.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(point.label, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-            Text("(${point.gcjLon.toString().padStart(9, '.')}${point.gcjLat.toString().padStart(8, '.')})",
-                fontSize = 10.sp, fontFamily = FontFamily.Monospace,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // 复选框
+        Row(modifier = Modifier.clickable(onClick = { onToggleSelect(flag.id) }),
+            verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = if (isSelected) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                contentDescription = "选择",
+                modifier = Modifier.size(16.dp),
+                tint = color,
+            )
         }
-        TextButton(onClick = onDelete,
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 0.dp)) {
-            Icon(Icons.Filled.Delete, contentDescription = "删除", modifier = Modifier.size(16.dp),
+        Spacer(Modifier.width(6.dp))
+        // 色点 + 名称 + 坐标
+        Column(modifier = Modifier.weight(1f)) {
+            if (isEditing) {
+                var editLabelLocal by remember { mutableStateOf(editLabel) }
+                OutlinedTextField(
+                    value = editLabelLocal, onValueChange = { editLabelLocal = it },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface),
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = color,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    ),
+                    trailingIcon = {
+                        Row {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = "确认",
+                                modifier = Modifier.size(14.dp).clickable {
+                                    if (editLabelLocal.isNotBlank()) renameFlag(flag.id, editLabelLocal)
+                                    onFinishEdit()
+                                },
+                                tint = color)
+                            Spacer(Modifier.width(4.dp))
+                            Icon(Icons.Filled.Clear, contentDescription = "取消",
+                                modifier = Modifier.size(14.dp).clickable { onCancelEdit() },
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                )
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Person, contentDescription = null,
+                        modifier = Modifier.size(14.dp), tint = color)
+                    Spacer(Modifier.width(4.dp))
+                    Text(flag.label, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    if (flag.customName.isNotBlank() && flag.label != flag.customName) {
+                        Spacer(Modifier.width(4.dp))
+                        Text(flag.customName, fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Text("(${flag.gcjLon.toString().padStart(9, '.')},${flag.gcjLat.toString().padStart(8, '.')})",
+                    fontSize = 10.sp, fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        // 编辑 + 删除
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (!isEditing) {
+                Icon(Icons.Filled.Edit, contentDescription = "重命名",
+                    modifier = Modifier.size(16.dp).clickable { onStartEdit(flag) },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(4.dp))
+            }
+            Icon(Icons.Filled.Delete, contentDescription = "删除",
+                modifier = Modifier.size(16.dp).clickable { onDelete() },
                 tint = MaterialTheme.colorScheme.error)
         }
     }
@@ -223,6 +471,7 @@ private fun RadioChip(label: String, selected: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun DistanceBearingCard(mapViewModel: MapViewModel) {
+    val pickedCoord by mapViewModel.lastPickedCoord.collectAsState()
     var aLon by remember { mutableStateOf("") }
     var aLat by remember { mutableStateOf("") }
     var bLon by remember { mutableStateOf("") }
@@ -241,14 +490,14 @@ private fun DistanceBearingCard(mapViewModel: MapViewModel) {
             CoordsInputGroup(label = "A 点", lonText = aLon, latText = aLat, coordType = aType,
                 onLonChange = { aLon = it }, onLatChange = { aLat = it },
                 onTypeChange = { aType = it },
-                onPick = { mapViewModel.lastPickedCoord.value?.let { c ->
+                onPick = { pickedCoord?.let { c ->
                     aLon = "%.6f".format(c.lon); aLat = "%.6f".format(c.lat); aType = CoordType.GCJ02
                 }})
 
             CoordsInputGroup(label = "B 点", lonText = bLon, latText = bLat, coordType = bType,
                 onLonChange = { bLon = it }, onLatChange = { bLat = it },
                 onTypeChange = { bType = it },
-                onPick = { mapViewModel.lastPickedCoord.value?.let { c ->
+                onPick = { pickedCoord?.let { c ->
                     bLon = "%.6f".format(c.lon); bLat = "%.6f".format(c.lat); bType = CoordType.GCJ02
                 }})
 
@@ -261,7 +510,6 @@ private fun DistanceBearingCard(mapViewModel: MapViewModel) {
                 val b = when (bType) { CoordType.GCJ02 -> CT.Coord(bLonN, bLatN); CoordType.WGS84 -> CT.wgs84ToGcj02(CT.Coord(bLonN, bLatN)) }
                 val dist = a.distanceTo(b)
                 val bearing = a.bearingTo(b)
-                val reverse = b.bearingTo(a)
                 result = Pair(dist, bearing)
             }, enabled = aLon.isNotBlank() && aLat.isNotBlank() && bLon.isNotBlank() && bLat.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
@@ -355,7 +603,6 @@ private fun MeasurementCard(mapViewModel: MapViewModel) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            // 标题 + 模式切换
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("测距 / 测面积", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
@@ -365,14 +612,11 @@ private fun MeasurementCard(mapViewModel: MapViewModel) {
 
             Spacer(Modifier.height(6.dp))
 
-            // 控制按钮
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 MeasureBtn(icon = Icons.Filled.PlayArrow, label = if (isMeasuring) "继续" else "开始",
                     enabled = true, onClick = {
                         if (isMeasuring) mapViewModel.stopMeasurement()
-                        else {
-                            mapViewModel.startMeasurement(mode)
-                        }
+                        else mapViewModel.startMeasurement(mode)
                     })
                 Spacer(Modifier.width(6.dp))
                 MeasureBtn(icon = Icons.Filled.Remove, label = "撤销",
@@ -384,7 +628,6 @@ private fun MeasurementCard(mapViewModel: MapViewModel) {
                     onClick = { mapViewModel.clearWaypoints() })
             }
 
-            // 结果
             if (waypoints.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
                 ResultBox(totalDist, if (mode == MapViewModel.MeasurementMode.AREA) totalArea else null,
