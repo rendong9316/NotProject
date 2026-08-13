@@ -534,7 +534,8 @@ private fun FlagRow(
         // 色点 + 名称 + 坐标
         Column(modifier = Modifier.weight(1f)) {
             if (isEditing) {
-                var editLabelLocal by remember { mutableStateOf(editLabel) }
+                var editLabelLocal by remember(flag.id) { mutableStateOf(editLabel) }
+                LaunchedEffect(editLabel, flag.id) { editLabelLocal = editLabel }
                 OutlinedTextField(
                     value = editLabelLocal, onValueChange = { editLabelLocal = it },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
