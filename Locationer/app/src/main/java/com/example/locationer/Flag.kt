@@ -73,11 +73,11 @@ class FlagStore(private val context: Context) {
             append("[")
             list.forEachIndexed { i, f ->
                 if (i > 0) append(",")
-                append("{\"id\":${f.id},\"label\":${encodeStr(f.label)},")
+                append("{\"id\":${f.id},\"label\":\"${encodeStr(f.label)}\",")
                 append("\"gcjLon\":${f.gcjLon},\"gcjLat\":${f.gcjLat},")
                 append("\"wgsLon\":${f.wgsLon},\"wgsLat\":${f.wgsLat},")
                 append("\"type\":\"${f.type}\",\"createdAt\":${f.createdAt}")
-                if (f.customName.isNotBlank()) append(",\"customName\":${encodeStr(f.customName)}")
+                if (f.customName.isNotBlank()) append(",\"customName\":\"${encodeStr(f.customName)}\"")
                 append("}")
             }
             append("]")
