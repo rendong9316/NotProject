@@ -223,7 +223,6 @@ fun MapScreen(
     val accuracyMeters  by viewModel.accuracyMeters.collectAsState()
     val placeMode       by viewModel.placeMode.collectAsState()
     val reticleCoord    by viewModel.reticleCoord.collectAsState()
-    val pickedCoord     by viewModel.lastPickedCoord.collectAsState()
     val flags           by viewModel.flags.collectAsState()
     val bearing         by viewModel.bearing.collectAsState()
     val isTracking      by viewModel.isTracking.collectAsState()
@@ -519,22 +518,7 @@ fun MapScreen(
                     onJumpTo    = { viewModel.jumpTo() },
                 )
 
-                // -------- 已拾取坐标展示条 --------
-                if (pickedCoord != null) {
-                    PickedCoordBanner(
-                        coord = pickedCoord,
-                        isPickMode = placeMode,
-                        onCopy = {
-                            pickedCoord?.let {
-                                val text = "(%.6f, %.6f)".format(it.lon, it.lat)
-                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                                cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", text))
-                                Toast.makeText(context, "已复制：$text", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        onDismiss = { viewModel.clearPickedCoord() }
-                    )
-                }
+                // -------- 已拾取坐标展示条（已移除，坐标复制功能移至旗标管理） --------
             }
         }
     }
@@ -679,49 +663,6 @@ private fun LocateButton(onClick: () -> Unit, locating: Boolean) {
         } else {
             Icon(Icons.Filled.NearMe, contentDescription = "一键获取当前位置",
                 modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-// ============================================================================
-// 已拾取坐标展示条
-// ============================================================================
-
-@Composable
-private fun PickedCoordBanner(
-    coord      : CT.Coord?,
-    isPickMode : Boolean,
-    onCopy     : () -> Unit,
-    onDismiss  : () -> Unit,
-) {
-    Surface(
-        color = if (isPickMode) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                else MaterialTheme.colorScheme.surfaceContainerHighest,
-        tonalElevation = 2.dp,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SelectionContainer {
-                FText(
-                    text = coord?.let { "(%.6f, %.6f)".format(it.lon, it.lat) } ?: "--",
-                    fontSize = 13, fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isPickMode) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                )
-            }
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = onCopy,
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
-                FText("复制", 11)
-            }
-            TextButton(onClick = onDismiss,
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
-                FText("关闭", 11)
-            }
         }
     }
 }

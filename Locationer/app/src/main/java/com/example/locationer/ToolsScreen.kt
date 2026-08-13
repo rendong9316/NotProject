@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Draw
 import androidx.compose.material.icons.filled.Edit
@@ -56,6 +57,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.filterNotNull
 
@@ -77,7 +80,7 @@ fun ToolsScreen(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        FlagManagementCard(flags, mapViewModel, gcj, wgs)
+        FlagManagementCard(androidx.compose.ui.platform.LocalContext.current, flags, mapViewModel, gcj, wgs)
         DistanceBearingCard(mapViewModel)
         MeasurementCard(mapViewModel)
     }
@@ -89,6 +92,7 @@ fun ToolsScreen(
 
 @Composable
 private fun FlagManagementCard(
+    context     : android.content.Context,
     flags       : List<Flag>,
     mapViewModel: MapViewModel,
     currentGcj  : CT.Coord?,
@@ -226,6 +230,12 @@ private fun FlagManagementCard(
                             selectedIds = selectedIds - flag.id
                         },
                         renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
+                        onCopyCoord = {
+                            val text = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
+                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", text))
+                            Toast.makeText(context, "已复制：$text", Toast.LENGTH_SHORT).show()
+                        },
                         onJump = {
                             mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
                             mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
@@ -265,6 +275,12 @@ private fun FlagManagementCard(
                             selectedIds = selectedIds - flag.id
                         },
                         renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
+                        onCopyCoord = {
+                            val text = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
+                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", text))
+                            Toast.makeText(context, "已复制：$text", Toast.LENGTH_SHORT).show()
+                        },
                         onJump = {
                             mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
                             mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
@@ -304,6 +320,12 @@ private fun FlagManagementCard(
                             selectedIds = selectedIds - flag.id
                         },
                         renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
+                        onCopyCoord = {
+                            val text = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
+                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", text))
+                            Toast.makeText(context, "已复制：$text", Toast.LENGTH_SHORT).show()
+                        },
                         onJump = {
                             mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
                             mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
@@ -375,6 +397,7 @@ private fun FlagRow(
     onFinishEdit  : () -> Unit,
     onCancelEdit  : () -> Unit,
     onDelete      : () -> Unit,
+    onCopyCoord   : () -> Unit,
     onJump        : () -> Unit,
     renameFlag    : (Long, String) -> Unit,
 ) {
@@ -436,14 +459,18 @@ private fun FlagRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                Text("(${flag.gcjLon.toString().padStart(9, '.')},${flag.gcjLat.toString().padStart(8, '.')})",
+                Text("%.6f,%.6f".format(flag.gcjLon, flag.gcjLat),
                     fontSize = 10.sp, fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        // 编辑 + 删除
+        // 复制坐标 + 编辑 + 删除
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (!isEditing) {
+                Icon(Icons.Filled.ContentCopy, contentDescription = "复制坐标",
+                    modifier = Modifier.size(16.dp).clickable { onCopyCoord() },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(4.dp))
                 Icon(Icons.Filled.Edit, contentDescription = "重命名",
                     modifier = Modifier.size(16.dp).clickable { onStartEdit(flag) },
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
