@@ -14,6 +14,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCopy
@@ -73,11 +77,14 @@ fun ToolsScreen(
     val gcj     by mapViewModel.currentGcj.collectAsState()
     val wgs     by mapViewModel.currentWgs.collectAsState()
 
+    val statusBarTop  = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val navBarBottom  = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(start = 12.dp, top = statusBarTop + 8.dp, end = 12.dp, bottom = navBarBottom + 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         FlagManagementCard(androidx.compose.ui.platform.LocalContext.current, flags, mapViewModel, gcj, wgs)
@@ -121,7 +128,7 @@ private fun FlagManagementCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -478,42 +485,41 @@ private fun FlagRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+                // GCJ02 坐标行：标签 + 坐标 + 复制按钮 + 重命名按钮
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("GCJ02", fontSize = 8.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                     Spacer(Modifier.width(2.dp))
                     Text("%.6f,%.6f".format(flag.gcjLon, flag.gcjLat),
                         fontSize = 9.sp, fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f))
+                    Icon(Icons.Filled.ContentCopy, contentDescription = "复制GCJ02",
+                        modifier = Modifier.size(16.dp).clickable { onCopyGcj() },
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(4.dp))
+                    Icon(Icons.Filled.Edit, contentDescription = "重命名",
+                        modifier = Modifier.size(16.dp).clickable { onStartEdit(flag) },
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                // WGS84 坐标行：标签 + 坐标 + 复制按钮 + 删除按钮
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("WGS84", fontSize = 8.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                     Spacer(Modifier.width(2.dp))
                     Text("%.6f,%.6f".format(flag.wgsLon, flag.wgsLat),
                         fontSize = 9.sp, fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f))
+                    Icon(Icons.Filled.ContentCopy, contentDescription = "复制WGS84",
+                        modifier = Modifier.size(16.dp).clickable { onCopyWgs() },
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(4.dp))
+                    Icon(Icons.Filled.Delete, contentDescription = "删除",
+                        modifier = Modifier.size(16.dp).clickable { onDelete() },
+                        tint = MaterialTheme.colorScheme.error)
                 }
             }
-        }
-        // 复制坐标 + 编辑 + 删除
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (!isEditing) {
-                Icon(Icons.Filled.ContentCopy, contentDescription = "复制GCJ02",
-                    modifier = Modifier.size(16.dp).clickable { onCopyGcj() },
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.width(2.dp))
-                Icon(Icons.Filled.ContentCopy, contentDescription = "复制WGS84",
-                    modifier = Modifier.size(16.dp).clickable { onCopyWgs() },
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.width(4.dp))
-                Icon(Icons.Filled.Edit, contentDescription = "重命名",
-                    modifier = Modifier.size(16.dp).clickable { onStartEdit(flag) },
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.width(4.dp))
-            }
-            Icon(Icons.Filled.Delete, contentDescription = "删除",
-                modifier = Modifier.size(16.dp).clickable { onDelete() },
-                tint = MaterialTheme.colorScheme.error)
         }
     }
 }
@@ -544,7 +550,7 @@ private fun DistanceBearingCard(mapViewModel: MapViewModel) {
 
     Card(modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Text("距离 + 方位角", fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
@@ -663,7 +669,7 @@ private fun MeasurementCard(mapViewModel: MapViewModel) {
 
     Card(modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("测距 / 测面积", fontSize = 14.sp, fontWeight = FontWeight.Bold)
