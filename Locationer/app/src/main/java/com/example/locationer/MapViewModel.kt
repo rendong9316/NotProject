@@ -159,7 +159,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         _currentGcj.value = gcj
         _currentWgs.value = wgs
         _accuracyMeters.value = if (loc.accuracy > 0f) loc.accuracy else null
-        updateCurrentLocation(gcj, wgs)
 
         // 首次定位成功后，若用户在跟踪模式则切换到连续定位
         if (!firstFixReceived) {
@@ -232,14 +231,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         }
         val wgs = CT.gcj02ToWgs84(gcj, precision = CT.HIGH_PRECISION)
         _jumpCounter++
-        val label = toRomanNumeral(_jumpCounter)
-        val flag = Flag(
-            id = System.currentTimeMillis(), label = label,
-            gcjLon = gcj.lon, gcjLat = gcj.lat,
-            wgsLon = wgs.lon, wgsLat = wgs.lat,
-            type = FlagType.JUMPED, createdAt = System.currentTimeMillis()
-        )
-        flagStore.insert(flag)
         _jumpTarget.value = JumpTarget(++jumpId, gcj, typed, _coordType.value)
     }
 
@@ -278,21 +269,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         flagStore.insert(flag)
         _lastPickedCoord.value = gcj
         return flag
-    }
-
-    /** 定位成功后更新当前位置标记（ID 固定 -1L） */
-    fun updateCurrentLocation(gcj: CT.Coord, wgs: CT.Coord) {
-        val existing = flags.value.find { it.type == FlagType.CURRENT }
-        if (existing != null) {
-        flagStore.updateCoordinates(existing.id, gcj.lon, gcj.lat, wgs.lon, wgs.lat)
-        } else {
-            flagStore.insert(Flag(
-                id = -1L, label = "I",
-                gcjLon = gcj.lon, gcjLat = gcj.lat,
-                wgsLon = wgs.lon, wgsLat = wgs.lat,
-                type = FlagType.CURRENT, createdAt = System.currentTimeMillis()
-            ))
-        }
     }
 
     /** 删除单个旗标 */

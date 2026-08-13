@@ -301,7 +301,7 @@ fun MapScreen(
         }
     }
 
-    // ================ 当前位置标记 ================
+    // ================ 当前位置标记（带方向的大图标，不记录到旗标） ================
     LaunchedEffect(mapReady, gcj, bearing, isTracking) {
         val amap = aMap ?: return@LaunchedEffect
         val g    = gcj ?: return@LaunchedEffect
@@ -331,18 +331,18 @@ fun MapScreen(
         if (!isTracking) firstLocateDone = false
     }
 
-    // ================ 跳转目标标记 ================
+    // ================ 跳转目标（临时红色指示标记 + 镜头移动） ================
     LaunchedEffect(mapReady, jump) {
         val target = jump ?: return@LaunchedEffect
         if (target.id == lastJumpId) return@LaunchedEffect
         lastJumpId = target.id
-        val amap  = aMap ?: return@LaunchedEffect
-        val pos   = LatLng(target.gcj.lat, target.gcj.lon)
+        val amap = aMap ?: return@LaunchedEffect
+        val pos  = LatLng(target.gcj.lat, target.gcj.lon)
+        // 移除旧的临时标记
         targetMarker?.remove()
+        // 放置新的临时红色指示标记
         targetMarker = amap.addMarker(
             MarkerOptions().position(pos).title("目标点位")
-                .snippet("%s 经度 %.6f 纬度 %.6f".format(
-                    target.type.name, target.typed.lon, target.typed.lat))
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
                 .anchor(0.5f, 0.9f)
         )
@@ -377,8 +377,8 @@ fun MapScreen(
         val newMap = flags.associate { flag ->
             val pos = LatLng(flag.gcjLat, flag.gcjLon)
             val color = when (flag.type) {
-                FlagType.CURRENT  -> Color.BLUE
-                FlagType.PICKED   -> Color.rgb(255, 193, 7)
+                FlagType.CURRENT  -> Color.CYAN
+                FlagType.PICKED   -> Color.rgb(192, 20, 40)
                 FlagType.JUMPED   -> Color.RED
             }
             val marker = amap.addMarker(

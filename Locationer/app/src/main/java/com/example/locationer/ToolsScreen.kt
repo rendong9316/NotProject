@@ -121,7 +121,6 @@ private fun FlagManagementCard(
     var editLabel   by remember { mutableStateOf("") }
 
     // 过滤分组
-    val currentFlags  = flags.filter { it.type == FlagType.CURRENT }
     val pickedFlags   = flags.filter { it.type == FlagType.PICKED }
     val jumpedFlags   = flags.filter { it.type == FlagType.JUMPED }
 
@@ -129,6 +128,7 @@ private fun FlagManagementCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = null,
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -207,57 +207,6 @@ private fun FlagManagementCard(
                 }
             }
 
-            // ---- 当前定位 ----
-            if (currentFlags.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                Text("当前位置", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium)
-                currentFlags.forEach { flag ->
-                    FlagRow(
-                        flag = flag,
-                        color = Color(0xFF1E88E5),
-                        isSelected = selectedIds.contains(flag.id),
-                        isEditing = editingId == flag.id,
-                        editLabel = editLabel,
-                        onToggleSelect = { id ->
-                            selectedIds = if (selectedIds.contains(id))
-                                selectedIds - id else selectedIds + id
-                        },
-                        onStartEdit = { f ->
-                            editingId = f.id
-                            editLabel = f.customName.ifEmpty { f.label }
-                        },
-                        onFinishEdit = {
-                            editingId = null
-                            if (editLabel.isNotBlank()) mapViewModel.renameFlag(flag.id, editLabel)
-                        },
-                        onCancelEdit = { editingId = null },
-                        onDelete = {
-                            mapViewModel.deleteFlag(flag.id)
-                            selectedIds = selectedIds - flag.id
-                        },
-                        renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
-                        onCopyGcj = {
-                            val t = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
-                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
-                            Toast.makeText(context, "已复制GCJ02：$t", Toast.LENGTH_SHORT).show()
-                        },
-                        onCopyWgs = {
-                            val t = "%.6f,%.6f".format(flag.wgsLon, flag.wgsLat)
-                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
-                            Toast.makeText(context, "已复制WGS84：$t", Toast.LENGTH_SHORT).show()
-                        },
-                        onJump = {
-                            mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
-                            mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
-                            mapViewModel.setCoordType(CoordType.GCJ02)
-                        }
-                    )
-                }
-            }
-
             // ---- 拾取旗标 ----
             if (pickedFlags.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
@@ -266,7 +215,7 @@ private fun FlagManagementCard(
                 pickedFlags.forEach { flag ->
                     FlagRow(
                         flag = flag,
-                        color = Color(0xFFFFC107),
+                        color = Color(0xFFC01428),
                         isSelected = selectedIds.contains(flag.id),
                         isEditing = editingId == flag.id,
                         editLabel = editLabel,
@@ -550,7 +499,8 @@ private fun DistanceBearingCard(mapViewModel: MapViewModel) {
 
     Card(modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = null) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Text("距离 + 方位角", fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
@@ -669,7 +619,8 @@ private fun MeasurementCard(mapViewModel: MapViewModel) {
 
     Card(modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = null) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("测距 / 测面积", fontSize = 14.sp, fontWeight = FontWeight.Bold)
