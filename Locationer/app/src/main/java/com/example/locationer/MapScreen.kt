@@ -74,18 +74,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color as UiColor
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -177,7 +173,6 @@ fun MapScreen(
 ) {
     val context          = LocalContext.current
     val lifecycleOwner   = LocalLifecycleOwner.current
-    val density          = LocalDensity.current
 
     // ================ 地图实例 ================
     val mapView = remember {
@@ -244,42 +239,67 @@ fun MapScreen(
         }
     }
 
+    // 拾取模式偏移跟踪（跨 recompose 保持，LaunchedEffect 外可见）
+    var reticleOffset by remember { mutableStateOf<Pair<Float, Float>?>(null) }
+
     // ================ 地图手势锁定（拾取模式） ================
     LaunchedEffect(placeMode) {
         aMap?.setMapCustomEnable(placeMode)
+        // 显式禁用/恢复滚动手势，确保拾取模式下地图完全不可拖动
+        aMap?.uiSettings?.setScrollGesturesEnabled(!placeMode)
     }
 
     // ================ 拾取模式触摸监听 ================
+    // 新交互逻辑：
+    //   DOWN ：记录手指与屏幕中心的偏移量（初始状态下准星就在中心）
+    //   MOVE ：以该固定偏移驱动准星跟随手指同向位移
+    //   UP   ：在准星当前位置放置标记，准星复位至屏幕中心，清空偏移
     LaunchedEffect(placeMode, aMap) {
         if (aMap == null) return@LaunchedEffect
         if (placeMode) {
             aMap!!.setOnMapTouchListener { event ->
+                val projection = aMap!!.projection ?: run { false; return@setOnMapTouchListener }
                 when (event.action) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                        val latlng = aMap!!.projection?.fromScreenLocation(
-                            android.graphics.Point(event.x.toInt(), event.y.toInt())
-                        )
-                        latlng?.let { viewModel.setReticleCoord(CT.Coord(it.longitude, it.latitude)) }
+                    MotionEvent.ACTION_DOWN -> {
+                        // 计算手指相对屏幕中心的初始偏移（像素），用于后续跟随
+                        val cx = mapView.width / 2f
+                        val cy = mapView.height / 2f
+                        reticleOffset = Pair(event.x - cx, event.y - cy)
+                        true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        val offset = reticleOffset
+                        if (offset != null) {
+                            // 准星屏幕坐标 = 手指当前位置 - 初始偏移（保持固定距离）
+                            val rx = event.x - offset.first
+                            val ry = event.y - offset.second
+                            val latlng = projection.fromScreenLocation(
+                                android.graphics.Point(rx.toInt(), ry.toInt())
+                            )
+                            latlng?.let { viewModel.setReticleCoord(CT.Coord(it.longitude, it.latitude)) }
+                        }
                         true
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        // 松手确认放置
+                        // 松手：在准星当前位置确认放置
                         val reticle = viewModel.reticleCoord.value
                         if (reticle != null) {
                             viewModel.confirmPlacement(reticle)
-                            // 准星回到屏幕中心
-                            val centerPt = android.graphics.Point(
-                                mapView.width / 2, mapView.height / 2
-                            )
-                            val centerLatlng = aMap!!.projection?.fromScreenLocation(centerPt)
-                            centerLatlng?.let { viewModel.setReticleCoord(CT.Coord(it.longitude, it.latitude)) }
                         }
+                        // 准星复位至屏幕中心
+                        val centerLatlng = projection.fromScreenLocation(
+                            android.graphics.Point(mapView.width / 2, mapView.height / 2)
+                        )
+                        centerLatlng?.let { viewModel.setReticleCoord(CT.Coord(it.longitude, it.latitude)) }
+                        // 清空偏移，等待下次 DOWN
+                        reticleOffset = null
                         true
                     }
                     else -> false
                 }
             }
         } else {
+            reticleOffset = null
             aMap!!.setOnMapTouchListener(null)
         }
     }
@@ -470,15 +490,6 @@ fun MapScreen(
                         modifier = Modifier.fillMaxSize(),
                         update    = { mapReady = true },
                     )
-                    // 准星 + 预览 Canvas 叠加层
-                    if (placeMode && reticleCoord != null && mapReady) {
-                        ReticleOverlay(
-                            reticleCoord = reticleCoord!!,
-                            density = density,
-                            mapSize = { android.graphics.Point(mapView.width, mapView.height) },
-                            aMapGetter = { aMap },
-                        )
-                    }
                     // FAB
                     PickModeFab(
                         placeMode = placeMode,
@@ -526,70 +537,6 @@ fun MapScreen(
                 }
             }
         }
-    }
-}
-
-// ============================================================================
-// 准星 + 预览叠加层（Canvas）
-// ============================================================================
-
-@Composable
-private fun ReticleOverlay(
-    reticleCoord : CT.Coord,
-    density      : Density,
-    mapSize      : () -> android.graphics.Point,
-    aMapGetter   : () -> com.amap.api.maps.AMap?,
-) {
-    val ctx = LocalContext.current
-    val previewOffsetDp = 60.dp
-    val previewOffsetPx = with(density) { previewOffsetDp.toPx() }
-
-    // 计算准星的屏幕坐标
-    val reticleScreenPt = remember(reticleCoord, mapSize) {
-        aMapGetter()?.projection?.toScreenLocation(
-            LatLng(reticleCoord.lat, reticleCoord.lon)
-        )
-    }
-
-    // 计算预览偏移方向
-    val previewOffsetDir = remember(reticleScreenPt, mapSize) {
-        val mapW = mapSize().x.toFloat()
-        val mapH = mapSize().y.toFloat()
-        val cx = reticleScreenPt?.x?.toFloat() ?: mapW / 2
-        val cy = reticleScreenPt?.y?.toFloat() ?: mapH / 2
-        // 判断是否需要翻转
-        if (cy < 80f) Offset(0f, previewOffsetPx)        // 靠近顶部 → 向下偏移
-        else if (cx < 60f) Offset(previewOffsetPx, 0f)   // 靠近左侧 → 向右偏移
-        else if (cx > mapW - 60f) Offset(-previewOffsetPx, 0f)  // 靠近右侧 → 向左偏移
-        else Offset(0f, -previewOffsetPx)                 // 默认 → 向上偏移
-    }
-
-    val previewScreenX = (reticleScreenPt?.x?.toFloat() ?: mapSize().x / 2f) + previewOffsetDir.x
-    val previewScreenY = (reticleScreenPt?.y?.toFloat() ?: mapSize().y / 2f) + previewOffsetDir.y
-
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val rx = (reticleScreenPt?.x?.toFloat() ?: size.width / 2f)
-        val ry = (reticleScreenPt?.y?.toFloat() ?: size.height / 2f)
-
-        // 连接线（准星 → 预览）
-        drawLine(
-            color = UiColor.Yellow.copy(alpha = 0.6f),
-            start = Offset(rx, ry),
-            end   = Offset(previewScreenX, previewScreenY),
-            strokeWidth = 2f,
-        )
-
-        // 预览图钉（半透明黄色圆点）
-        drawCircle(
-            color = UiColor.Yellow.copy(alpha = 0.5f),
-            radius = 16f,
-            center = Offset(previewScreenX, previewScreenY),
-        )
-        drawCircle(
-            color = UiColor.Yellow.copy(alpha = 0.8f),
-            radius = 8f,
-            center = Offset(previewScreenX, previewScreenY),
-        )
     }
 }
 
