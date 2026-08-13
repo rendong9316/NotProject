@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -183,6 +184,12 @@ private fun FlagManagementCard(
     // 正在编辑的旗标
     var editingId   by remember { mutableStateOf<Long?>(null) }
     var editLabel   by remember { mutableStateOf("") }
+    // 删除确认弹框
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var deleteTargetLabel by remember { mutableStateOf("") }
+    var deleteFlagId by remember { mutableStateOf<Long?>(null) }
+    // 清除全部确认弹框
+    var showClearAllDialog by remember { mutableStateOf(false) }
 
     // 过滤分组
     val pickedFlags   = flags.filter { it.type == FlagType.PICKED }
@@ -196,8 +203,7 @@ private fun FlagManagementCard(
         onToggle = { isExpanded = !isExpanded },
         clearBtn = {
             TextButton(onClick = {
-                mapViewModel.clearAllFlags()
-                selectedIds = emptySet()
+                showClearAllDialog = true
             }) { Text("清除全部", fontSize = 11.sp) }
         },
     ) {
@@ -294,8 +300,9 @@ private fun FlagManagementCard(
                     },
                     onCancelEdit = { editingId = null },
                     onDelete = {
-                        mapViewModel.deleteFlag(flag.id)
-                        selectedIds = selectedIds - flag.id
+                        deleteFlagId = flag.id
+                        deleteTargetLabel = flag.label
+                        showDeleteDialog = true
                     },
                     renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
                     onCopyGcj = {
@@ -345,8 +352,9 @@ private fun FlagManagementCard(
                     },
                     onCancelEdit = { editingId = null },
                     onDelete = {
-                        mapViewModel.deleteFlag(flag.id)
-                        selectedIds = selectedIds - flag.id
+                        deleteFlagId = flag.id
+                        deleteTargetLabel = flag.label
+                        showDeleteDialog = true
                     },
                     renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
                     onCopyGcj = {
@@ -416,6 +424,45 @@ private fun FlagManagementCard(
                 fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center)
         }
+    }
+
+    // ── 删除单个旗标确认 ──
+    if (showDeleteDialog) {
+        AlertDialog(
+            icon = { Icon(Icons.Filled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("确认删除旗标") },
+            text = { Text("确定要删除旗标「$deleteTargetLabel」吗？此操作不可撤销。") },
+            onDismissRequest = { showDeleteDialog = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    mapViewModel.deleteFlag(deleteFlagId!!)
+                    selectedIds = selectedIds - deleteFlagId!!
+                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("取消") }
+            },
+        )
+    }
+    // ── 清除全部旗标确认 ──
+    if (showClearAllDialog) {
+        AlertDialog(
+            icon = { Icon(Icons.Filled.Clear, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("确认清除全部旗标") },
+            text = { Text("确定要清除所有旗标吗？此操作不可撤销。") },
+            onDismissRequest = { showClearAllDialog = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearAllDialog = false
+                    mapViewModel.clearAllFlags()
+                    selectedIds = emptySet()
+                }) { Text("清除全部", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearAllDialog = false }) { Text("取消") }
+            },
+        )
     }
 }
 

@@ -1,6 +1,8 @@
 package com.example.locationer
 
 import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -36,9 +38,25 @@ import androidx.compose.ui.unit.sp
 import com.example.locationer.ui.theme.LocationerTheme
 
 class MainActivity : ComponentActivity() {
+
+    private var lastBackPressTime = 0L
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // 双击返回键退出：间隔不超过 2 秒，否则重置计时
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val now = System.currentTimeMillis()
+                if (now - lastBackPressTime < 2000) {
+                    isEnabled = false
+                    finish()
+                } else {
+                    lastBackPressTime = now
+                    Toast.makeText(this@MainActivity, "再按一次退出应用", Toast.LENGTH_SHORT).show()
+                }
+            }
+        })
         setContent {
             LocationerTheme {
                 CompositionLocalProvider(FixedTextScaleFactor provides 1f) {
