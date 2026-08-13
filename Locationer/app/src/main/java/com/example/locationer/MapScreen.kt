@@ -50,6 +50,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -68,7 +69,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -100,6 +100,8 @@ import com.amap.api.maps.model.BitmapDescriptorFactory
 import com.amap.api.maps.model.LatLng
 import com.amap.api.maps.model.Marker
 import com.amap.api.maps.model.MarkerOptions
+import com.amap.api.maps.model.Polygon
+import com.amap.api.maps.model.PolygonOptions
 import com.amap.api.maps.model.Polyline
 import com.amap.api.maps.model.PolylineOptions
 
@@ -173,6 +175,7 @@ private fun createFlagBitmap(color: Int, label: String): Bitmap {
 fun MapScreen(
     modifier: Modifier = Modifier,
     viewModel: MapViewModel = viewModel(),
+    isActive: Boolean = true,
 ) {
     val context          = LocalContext.current
     val lifecycleOwner   = LocalLifecycleOwner.current
@@ -228,26 +231,23 @@ fun MapScreen(
     val bearing         by viewModel.bearing.collectAsState()
     val isTracking      by viewModel.isTracking.collectAsState()
     // ================ 测量相关状态 ================
-    val isMeasuring     by remember { derivedStateOf { viewModel.measurementWaypoints.value.isNotEmpty() } }
+    val measurementMode by viewModel.measurementMode.collectAsState()
+    val measurementState by viewModel.measurementState.collectAsState()
     val waypoints       by viewModel.measurementWaypoints.collectAsState()
-    val showFab         by viewModel.showMeasurementFab.collectAsState()
-    val collapsePanel   by viewModel.collapsePanelOnMap.collectAsState()
+    val collapsePanelEvent by viewModel.collapsePanelEvent.collectAsState()
+    val isMeasuring = measurementState == MapViewModel.MeasurementState.PLACING
+    val canCalculate = isMeasurementReady(measurementMode, waypoints.size)
 
     // ================ 面板折叠状态（统一） ================
     var panelExpanded by remember { mutableStateOf(true) }
+    var handledCollapseEvent by remember { mutableStateOf(0L) }
 
     // ================ 测量模式驱动面板折叠 ================
-    LaunchedEffect(collapsePanel) {
-        if (collapsePanel) {
+    LaunchedEffect(isActive, collapsePanelEvent) {
+        if (isActive && collapsePanelEvent > handledCollapseEvent) {
+            handledCollapseEvent = collapsePanelEvent
             panelExpanded = false
-            viewModel.triggerCollapsePanel() // 重置，只生效一次
-        }
-    }
-
-    // ================ 进入测量模式时 Toast 提示 ================
-    LaunchedEffect(isMeasuring) {
-        if (isMeasuring) {
-            Toast.makeText(context, "在地图上点击放置测量点", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "可以开始放点", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -324,9 +324,9 @@ fun MapScreen(
     }
 
     // ================ 长按地图快捷放置 ================
-    LaunchedEffect(aMap) {
+    LaunchedEffect(aMap, placeMode, measurementState) {
         aMap?.setOnMapLongClickListener { latlng ->
-            if (!placeMode) {
+            if (!placeMode && measurementState != MapViewModel.MeasurementState.PLACING) {
                 val gcj = CT.Coord(latlng.longitude, latlng.latitude)
                 viewModel.confirmPlacement(gcj)
             }
@@ -335,11 +335,12 @@ fun MapScreen(
     }
 
     // ================ 地图点击监听（兼容旧接口 + 测量加点） ================
-    LaunchedEffect(aMap) {
+    LaunchedEffect(aMap, placeMode, measurementState) {
         aMap?.setOnMapClickListener { latlng ->
             when {
                 placeMode       -> Unit  // 由 OnMapTouchListener 处理
-                isMeasuring     -> viewModel.addWaypoint(latlng.longitude, latlng.latitude)
+                measurementState == MapViewModel.MeasurementState.PLACING ->
+                    viewModel.addWaypoint(latlng.longitude, latlng.latitude)
                 else            -> viewModel.onMapClick(latlng.longitude, latlng.latitude)
             }
             true
@@ -440,29 +441,47 @@ fun MapScreen(
     // ================ 测量折线 + Waypoint 标记渲染 ================
     var oldMarkers by remember { mutableStateOf<List<Marker>>(emptyList()) }
     var oldPolyline by remember { mutableStateOf<Polyline?>(null) }
-    LaunchedEffect(waypoints, mapReady) {
+    var oldPolygon by remember { mutableStateOf<Polygon?>(null) }
+    LaunchedEffect(waypoints, measurementMode, mapReady) {
         if (!mapReady) return@LaunchedEffect
         val amap = aMap ?: return@LaunchedEffect
         // 清除旧对象
         oldMarkers.forEach { it.remove() }
         oldPolyline?.remove()
+        oldPolygon?.remove()
         if (waypoints.isEmpty()) {
-            oldMarkers = emptyList(); oldPolyline = null
+            oldMarkers = emptyList()
+            oldPolyline = null
+            oldPolygon = null
             return@LaunchedEffect
         }
-        // 绘制折线（蓝色）
-        oldPolyline = amap.addPolyline(PolylineOptions()
-            .addAll(waypoints.map { LatLng(it.lat, it.lon) })
-            .color(Color.parseColor("#2196F3"))
-            .width(6f))
+        val positions = waypoints.map { LatLng(it.lat, it.lon) }
+        val linePositions = if (
+            measurementMode == MapViewModel.MeasurementMode.AREA && positions.size >= 3
+        ) positions + positions.first() else positions
+        oldPolyline = if (linePositions.size >= 2) {
+            amap.addPolyline(PolylineOptions()
+                .addAll(linePositions)
+                .color(Color.parseColor("#1976D2"))
+                .width(6f))
+        } else null
+        oldPolygon = if (
+            measurementMode == MapViewModel.MeasurementMode.AREA && positions.size >= 3
+        ) {
+            amap.addPolygon(PolygonOptions()
+                .addAll(positions)
+                .strokeColor(Color.parseColor("#1976D2"))
+                .strokeWidth(4f)
+                .fillColor(Color.argb(55, 25, 118, 210)))
+        } else null
         // 绘制带编号的圆点标记
         oldMarkers = waypoints.mapIndexed { i, wp ->
             amap.addMarker(MarkerOptions()
                 .position(LatLng(wp.lat, wp.lon))
                 .title("点 ${i + 1}")
                 .snippet("%.6f, %.6f".format(wp.lon, wp.lat))
-                .icon(BitmapDescriptorFactory.defaultMarker(
-                    BitmapDescriptorFactory.HUE_AZURE)))
+                .icon(BitmapDescriptorFactory.fromBitmap(
+                    createFlagBitmap(Color.rgb(25, 118, 210), (i + 1).toString()))))
         }
     }
 
@@ -564,27 +583,28 @@ fun MapScreen(
                             onClick     = { mapLayer = !mapLayer },
                         )
                     }
-                    PickModeFab(
-                        placeMode = placeMode,
-                        onToggle  = {
-                            val center = aMap?.cameraPosition?.target?.let {
-                                CT.Coord(it.longitude, it.latitude)
-                            }
-                            viewModel.togglePlaceMode(initCoord = center)
-                        },
-                    )
-                    // 测量完成悬浮按钮
-                    if (isMeasuring && showFab) {
+                    if (!isMeasuring) {
+                        PickModeFab(
+                            placeMode = placeMode,
+                            onToggle  = {
+                                val center = aMap?.cameraPosition?.target?.let {
+                                    CT.Coord(it.longitude, it.latitude)
+                                }
+                                viewModel.togglePlaceMode(initCoord = center)
+                            },
+                        )
+                    }
+                    if (isMeasuring && canCalculate) {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            FloatingActionButton(
+                            ExtendedFloatingActionButton(
                                 onClick = { viewModel.completeMeasurement() },
                                 modifier = Modifier
                                     .padding(16.dp)
                                     .align(androidx.compose.ui.Alignment.BottomEnd),
                                 containerColor = MaterialTheme.colorScheme.primary,
-                            ) {
-                                Icon(Icons.Filled.Check, contentDescription = "完成测量")
-                            }
+                                icon = { Icon(Icons.Filled.Check, contentDescription = null) },
+                                text = { Text("开始计算") },
+                            )
                         }
                     }
                 }

@@ -14,6 +14,36 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+internal fun minimumMeasurementPoints(mode: MapViewModel.MeasurementMode): Int = when (mode) {
+    MapViewModel.MeasurementMode.DISTANCE -> 2
+    MapViewModel.MeasurementMode.AREA -> 3
+}
+
+internal fun isMeasurementReady(mode: MapViewModel.MeasurementMode, pointCount: Int): Boolean =
+    pointCount >= minimumMeasurementPoints(mode)
+
+internal fun measurementPolygonAreaMeters(points: List<CT.Coord>): Double {
+    if (points.size < 3) return 0.0
+    val radius = 6371000.0
+    val originLon = points.map { it.lon }.average() / 180.0 * CT.PI
+    val originLat = points.map { it.lat }.average() / 180.0 * CT.PI
+    val projected = points.map { point ->
+        val lon = point.lon / 180.0 * CT.PI
+        val lat = point.lat / 180.0 * CT.PI
+        Pair(
+            (lon - originLon) * kotlin.math.cos(originLat) * radius,
+            (lat - originLat) * radius,
+        )
+    }
+    var twiceArea = 0.0
+    projected.indices.forEach { index ->
+        val current = projected[index]
+        val next = projected[(index + 1) % projected.size]
+        twiceArea += current.first * next.second - next.first * current.second
+    }
+    return kotlin.math.abs(twiceArea) / 2.0
+}
+
 /** 输入坐标类型：GCJ02（高德火星坐标）/ WGS84（GPS 原始坐标） */
 enum class CoordType { GCJ02, WGS84 }
 
@@ -29,6 +59,9 @@ data class JumpTarget(
 data class UiMessage(val text: String)
 
 class MapViewModel(application: Application) : AndroidViewModel(application) {
+
+    enum class NavigationTarget { NONE, MAP, TOOLS_MEASUREMENT }
+    data class NavigationEvent(val id: Long = 0L, val target: NavigationTarget = NavigationTarget.NONE)
 
     private val _currentGcj   = MutableStateFlow<CT.Coord?>(null)
     val currentGcj: StateFlow<CT.Coord?>   = _currentGcj.asStateFlow()
@@ -331,8 +364,13 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     /** 测量模式：DISTANCE（测距）/ AREA（测面积） */
     enum class MeasurementMode { DISTANCE, AREA }
 
+    enum class MeasurementState { IDLE, PLACING, COMPLETED }
+
     private val _measurementMode = MutableStateFlow(MeasurementMode.DISTANCE)
     val measurementMode: StateFlow<MeasurementMode> = _measurementMode.asStateFlow()
+
+    private val _measurementState = MutableStateFlow(MeasurementState.IDLE)
+    val measurementState: StateFlow<MeasurementState> = _measurementState.asStateFlow()
 
     private val _measurementWaypoints = MutableStateFlow<List<CT.Coord>>(emptyList())
     val measurementWaypoints: StateFlow<List<CT.Coord>> = _measurementWaypoints.asStateFlow()
@@ -349,56 +387,57 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _measurementTotalArea = MutableStateFlow(0.0)
     val measurementTotalArea: StateFlow<Double> = _measurementTotalArea.asStateFlow()
 
-    // ---------- 导航信号 ----------
-    private val _requestSwitchToMap = MutableStateFlow(false)
-    val requestSwitchToMap: StateFlow<Boolean> = _requestSwitchToMap.asStateFlow()
+    // ---------- 可重复消费的 UI 事件 ----------
+    private val _navigationEvent = MutableStateFlow(NavigationEvent())
+    val navigationEvent: StateFlow<NavigationEvent> = _navigationEvent.asStateFlow()
 
-    private val _requestSwitchToTools = MutableStateFlow(false)
-    val requestSwitchToTools: StateFlow<Boolean> = _requestSwitchToTools.asStateFlow()
+    private val _collapsePanelEvent = MutableStateFlow(0L)
+    val collapsePanelEvent: StateFlow<Long> = _collapsePanelEvent.asStateFlow()
 
-    private val _collapsePanelOnMap = MutableStateFlow(false)
-    val collapsePanelOnMap: StateFlow<Boolean> = _collapsePanelOnMap.asStateFlow()
-
-    private val _showMeasurementFab = MutableStateFlow(false)
-    val showMeasurementFab: StateFlow<Boolean> = _showMeasurementFab.asStateFlow()
-
-    /** 测量完成信号（waypoints 保留，供工具箱展示结果） */
-    private val _isMeasurementComplete = MutableStateFlow(false)
-    val isMeasurementComplete: StateFlow<Boolean> = _isMeasurementComplete.asStateFlow()
-
-    fun requestSwitchToMap() { _requestSwitchToMap.value = true }
-    fun requestSwitchToTools() { _requestSwitchToTools.value = true }
-    fun triggerCollapsePanel() { _collapsePanelOnMap.value = true }
+    fun requestSwitchToMap() {
+        _navigationEvent.value = NavigationEvent(
+            id = _navigationEvent.value.id + 1,
+            target = NavigationTarget.MAP,
+        )
+    }
+    fun requestSwitchToTools() {
+        _navigationEvent.value = NavigationEvent(
+            id = _navigationEvent.value.id + 1,
+            target = NavigationTarget.TOOLS_MEASUREMENT,
+        )
+    }
+    fun triggerCollapsePanel() { _collapsePanelEvent.value++ }
 
     fun startMeasurement(mode: MeasurementMode) {
+        _placeMode.value = false
+        _reticleCoord.value = null
         _measurementMode.value = mode
         _measurementWaypoints.value = emptyList()
         _measurementSegments.value = emptyList()
         _measurementTotalDist.value = 0.0
         _measurementTotalArea.value = 0.0
-        _showMeasurementFab.value = false
-        _isMeasurementComplete.value = false
-        _collapsePanelOnMap.value = false
+        _measurementState.value = MeasurementState.PLACING
     }
 
     fun stopMeasurement() {
-        _showMeasurementFab.value = false
         _measurementWaypoints.value = emptyList()
         _measurementSegments.value = emptyList()
         _measurementTotalDist.value = 0.0
         _measurementTotalArea.value = 0.0
+        _measurementState.value = MeasurementState.IDLE
     }
 
     /** 完成测量：保留 waypoints/结果，通知 UI 跳回工具箱 */
     fun completeMeasurement() {
-        _showMeasurementFab.value = false
-        _isMeasurementComplete.value = true
+        if (_measurementState.value != MeasurementState.PLACING) return
+        if (!isMeasurementReady(_measurementMode.value, _measurementWaypoints.value.size)) return
+        _measurementState.value = MeasurementState.COMPLETED
         requestSwitchToTools()
     }
 
     fun removeLastWaypoint() {
         val list = _measurementWaypoints.value
-        if (list.size > 1) {
+        if (list.isNotEmpty()) {
             _measurementWaypoints.value = list.dropLast(1)
             _measurementTotalDist.value = 0.0
             _measurementTotalArea.value = 0.0
@@ -411,15 +450,17 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         _measurementSegments.value = emptyList()
         _measurementTotalDist.value = 0.0
         _measurementTotalArea.value = 0.0
+        if (_measurementState.value == MeasurementState.COMPLETED) {
+            _measurementState.value = MeasurementState.IDLE
+        }
     }
 
     fun addWaypoint(lon: Double, lat: Double) {
+        if (_measurementState.value != MeasurementState.PLACING) return
         val coord = CT.Coord(lon, lat)
         val list = _measurementWaypoints.value + coord
         _measurementWaypoints.value = list
         recalcSegments()
-        // 放置第一个点后显示完成 FAB
-        if (list.size >= 1) _showMeasurementFab.value = true
     }
 
     private fun recalcSegments() {
@@ -433,34 +474,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         }
         _measurementSegments.value = segs
         _measurementTotalDist.value = totalDist
-        // 面积：用鞋带公式（仅多边形闭合时有效）
-        _measurementTotalArea.value = if (list.size >= 3) shooLaceArea(list) else 0.0
-    }
-
-    /**
-     * 球面多边形面积（平方米），基于 GRS80 椭球参数。
-     * 使用勒让德（Legendre）球面过剩公式，逐边计算球面角亏，精度优于平面近似。
-     */
-    private fun shooLaceArea(points: List<CT.Coord>): Double {
-        val n = points.size
-        if (n < 3) return 0.0
-        val R = 6371000.0 // GRS80 平均地球半径（米）
-        var excess = 0.0  // 球面过剩 E = Σ(θ_i) - (n-2)·π，面积 = E · R²
-        for (i in points.indices) {
-            val prev = points[(i - 1 + n) % n]
-            val curr = points[i]
-            val next = points[(i + 1) % n]
-            // 用方位角方法计算每个顶点的内角（球面角）
-            val azPrev = curr.bearingTo(prev) / 180.0 * CT.PI  // 反方位角方向
-            val azNext = curr.bearingTo(next) / 180.0 * CT.PI
-            // 内角 = 两条边方位角的差值（取小于 π 的那一侧）
-            var angle = azNext - azPrev
-            if (angle < 0.0) angle += 2.0 * CT.PI
-            if (angle > CT.PI) angle -= 2.0 * CT.PI
-            excess += angle
-        }
-        excess -= (n - 2) * CT.PI
-        return kotlin.math.abs(excess * R * R)
+        _measurementTotalArea.value = measurementPolygonAreaMeters(list)
     }
 
     // ---------- 连续定位 / 传感器 ----------

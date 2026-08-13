@@ -1,6 +1,8 @@
 package com.example.locationer
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,7 +38,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Straighten
-import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -57,7 +58,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,7 +74,6 @@ import androidx.compose.ui.unit.sp
 import android.content.Context
 import android.widget.Toast
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.flow.filterNotNull
 
 /** 距离计算结果 */
 data class GeoResult(
@@ -88,6 +87,7 @@ data class GeoResult(
 @Composable
 fun ToolsScreen(
     mapViewModel: MapViewModel = viewModel(),
+    isActive: Boolean = true,
 ) {
     val flags by mapViewModel.flags.collectAsState()
     val gcj     by mapViewModel.currentGcj.collectAsState()
@@ -96,15 +96,22 @@ fun ToolsScreen(
     val statusBarTop  = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarBottom  = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
+    val scrollState = rememberScrollState()
+    val measurementRequester = remember { BringIntoViewRequester() }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(start = 8.dp, top = statusBarTop + 4.dp, end = 8.dp, bottom = navBarBottom + 4.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         FlagManagementCard(androidx.compose.ui.platform.LocalContext.current, flags, mapViewModel, gcj, wgs)
-        MeasurementCard(mapViewModel)
+        MeasurementCard(
+            mapViewModel = mapViewModel,
+            isToolsActive = isActive,
+            bringIntoViewRequester = measurementRequester,
+        )
     }
 }
 
@@ -633,7 +640,11 @@ private fun FlagRow(
 // ============================================================================
 
 @Composable
-private fun MeasurementCard(mapViewModel: MapViewModel) {
+private fun MeasurementCard(
+    mapViewModel: MapViewModel,
+    isToolsActive: Boolean,
+    bringIntoViewRequester: BringIntoViewRequester,
+) {
     var isExpanded by remember { mutableStateOf(true) }
     val vmMode by mapViewModel.measurementMode.collectAsState()
     var uiMode by remember { mutableStateOf(vmMode) }
@@ -643,25 +654,34 @@ private fun MeasurementCard(mapViewModel: MapViewModel) {
     val segments by mapViewModel.measurementSegments.collectAsState()
     val totalDist by mapViewModel.measurementTotalDist.collectAsState()
     val totalArea by mapViewModel.measurementTotalArea.collectAsState()
-    val isMeasuring by remember { derivedStateOf { mapViewModel.measurementWaypoints.value.isNotEmpty() } }
+    val measurementState by mapViewModel.measurementState.collectAsState()
+    val isMeasuring = measurementState == MapViewModel.MeasurementState.PLACING
+    val isComplete = measurementState == MapViewModel.MeasurementState.COMPLETED
 
-    CollapsibleToolCard(
-        title = "测距 / 测面积",
-        icon = Icons.Filled.Draw,
-        iconTint = MaterialTheme.colorScheme.secondary,
-        isExpanded = isExpanded,
-        onToggle = { isExpanded = !isExpanded },
-    ) {
+    LaunchedEffect(isToolsActive, isComplete, isExpanded) {
+        if (isToolsActive && isComplete && !isExpanded) {
+            isExpanded = true
+        } else if (isToolsActive && isComplete) {
+            bringIntoViewRequester.bringIntoView()
+        }
+    }
+
+    Column(modifier = Modifier.bringIntoViewRequester(bringIntoViewRequester)) {
+        CollapsibleToolCard(
+            title = "测距 / 测面积",
+            icon = Icons.Filled.Draw,
+            iconTint = MaterialTheme.colorScheme.secondary,
+            isExpanded = isExpanded,
+            onToggle = { isExpanded = !isExpanded },
+        ) {
         // 模式选择
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.weight(1f))
-            ModeChip("测距", uiMode == MapViewModel.MeasurementMode.DISTANCE) {
+            ModeChip("测距", uiMode == MapViewModel.MeasurementMode.DISTANCE, enabled = !isMeasuring) {
                 uiMode = MapViewModel.MeasurementMode.DISTANCE
-                mapViewModel.startMeasurement(MapViewModel.MeasurementMode.DISTANCE)
             }
-            ModeChip("测面积", uiMode == MapViewModel.MeasurementMode.AREA) {
+            ModeChip("测面积", uiMode == MapViewModel.MeasurementMode.AREA, enabled = !isMeasuring) {
                 uiMode = MapViewModel.MeasurementMode.AREA
-                mapViewModel.startMeasurement(MapViewModel.MeasurementMode.AREA)
             }
         }
 
@@ -678,25 +698,27 @@ private fun MeasurementCard(mapViewModel: MapViewModel) {
                 })
             Spacer(Modifier.width(6.dp))
             MeasureBtn(icon = Icons.Filled.Remove, label = "撤销",
-                enabled = waypoints.size > 1 && isMeasuring,
+                enabled = waypoints.isNotEmpty() && isMeasuring,
                 onClick = { mapViewModel.removeLastWaypoint() })
             Spacer(Modifier.width(6.dp))
             MeasureBtn(icon = Icons.Filled.Clear, label = "清除",
-                enabled = waypoints.isNotEmpty() && isMeasuring,
-                onClick = { mapViewModel.clearWaypoints() })
+                enabled = waypoints.isNotEmpty(),
+                onClick = {
+                    if (isMeasuring) mapViewModel.clearWaypoints()
+                    else mapViewModel.stopMeasurement()
+                })
         }
 
         // 测量中提示
         if (isMeasuring) {
             Spacer(Modifier.height(4.dp))
-            Text("已在地图上点击放置测点，完成后点击下方「✓」返回查看结果",
+            Text("正在地图上放置测点，达到最低点数后点击「开始计算」",
                 fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
         }
 
-        // 结果展示（测量完成后或暂停状态）
-        if (waypoints.isNotEmpty() && !isMeasuring) {
+        if (waypoints.isNotEmpty() && isComplete) {
             Spacer(Modifier.height(6.dp))
-            ResultBox(totalDist, if (uiMode == MapViewModel.MeasurementMode.AREA) totalArea else null,
+            ResultBox(totalDist, if (vmMode == MapViewModel.MeasurementMode.AREA) totalArea else null,
                 segmentCount = segments.size)
 
             if (segments.isNotEmpty()) {
@@ -724,13 +746,20 @@ private fun MeasurementCard(mapViewModel: MapViewModel) {
                 }
             }
         }
+        }
     }
 }
 
 @Composable
-private fun ModeChip(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun ModeChip(
+    label: String,
+    selected: Boolean,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
     TextButton(
         onClick = onClick,
+        enabled = enabled,
         colors = ButtonDefaults.textButtonColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
                              else MaterialTheme.colorScheme.surfaceVariant),

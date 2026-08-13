@@ -74,14 +74,14 @@ class MainActivity : ComponentActivity() {
 fun LocationerApp() {
     var selectedTab by remember { mutableStateOf(0) }
     val viewModel: MapViewModel = viewModel()
-    val requestSwitchToMap by viewModel.requestSwitchToMap.collectAsState()
-    val requestSwitchToTools by viewModel.requestSwitchToTools.collectAsState()
+    val navigationEvent by viewModel.navigationEvent.collectAsState()
 
-    LaunchedEffect(requestSwitchToMap) {
-        if (requestSwitchToMap) { selectedTab = 0; viewModel.requestSwitchToMap() }
-    }
-    LaunchedEffect(requestSwitchToTools) {
-        if (requestSwitchToTools) { selectedTab = 1; viewModel.requestSwitchToTools() }
+    LaunchedEffect(navigationEvent) {
+        selectedTab = when (navigationEvent.target) {
+            MapViewModel.NavigationTarget.MAP -> 0
+            MapViewModel.NavigationTarget.TOOLS_MEASUREMENT -> 1
+            MapViewModel.NavigationTarget.NONE -> selectedTab
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -94,13 +94,13 @@ fun LocationerApp() {
                     .fillMaxSize()
                     .alpha(if (selectedTab == 0) 1f else 0f)
                     .zIndex(if (selectedTab == 0) 1f else 0f),
-            ) { MapScreen(viewModel = viewModel) }
+            ) { MapScreen(viewModel = viewModel, isActive = selectedTab == 0) }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .alpha(if (selectedTab == 1) 1f else 0f)
                     .zIndex(if (selectedTab == 1) 1f else 0f),
-            ) { ToolsScreen(mapViewModel = viewModel) }
+            ) { ToolsScreen(mapViewModel = viewModel, isActive = selectedTab == 1) }
         }
         Surface(color = MaterialTheme.colorScheme.surfaceVariant, tonalElevation = 2.dp) {
             Row(modifier = Modifier.fillMaxWidth()) {
