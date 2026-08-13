@@ -110,6 +110,12 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     companion object {
         private const val MAX_NETWORK_RETRY = 2
         private const val RETRY_DELAY_MS    = 1500L
+        /** 自动选单位：≥1000m 显示 km，<1000m 显示 m */
+        fun formatDist(meters: Double): String =
+            if (meters >= 1000) "%.2f km".format(meters / 1000) else "%.0f m".format(meters)
+        /** 自动选单位：≥1km² 显示 km²，<1km² 显示 m² */
+        fun formatArea(sqMeters: Double): String =
+            if (sqMeters >= 1_000_000) "%.2f km²".format(sqMeters / 1_000_000) else "%.0f m²".format(sqMeters)
     }
 
     // ================ 拾取模式开关 ================
@@ -376,7 +382,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     val measurementWaypoints: StateFlow<List<CT.Coord>> = _measurementWaypoints.asStateFlow()
 
     data class Segment(val index: Int, val dist: Double) {
-        val distText: String get() = if (dist >= 1000) "%.2f km".format(dist / 1000) else "%.0f m".format(dist)
+        val distText: String get() = formatDist(dist)
     }
     private val _measurementSegments = MutableStateFlow<List<Segment>>(emptyList())
     val measurementSegments: StateFlow<List<Segment>> = _measurementSegments.asStateFlow()

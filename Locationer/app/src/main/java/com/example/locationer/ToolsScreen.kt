@@ -440,7 +440,7 @@ private fun FlagManagementCard(
                 if (selected.size == 2 && geoResult != null) {
                     val r = geoResult!!
                     val reverse = (r.bearing + 180.0) % 360.0
-                    val distText = if (r.dist >= 1000) "%.2f km".format(r.dist / 1000) else "%.0f m".format(r.dist)
+                    val distText = MapViewModel.formatDist(r.dist)
                     Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                         modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) {
                         Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -793,16 +793,12 @@ private fun ResultBox(dist: Double, area: Double?, segmentCount: Int) {
     Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
         modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) {
         Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            val distText = if (dist >= 1000) "%.2f km".format(dist / 1000) else "%.0f m".format(dist)
+            val distText = MapViewModel.formatDist(dist)
             Text("累计 $distText  ·  $segmentCount 段",
                 fontSize = 12.sp, fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
             if (area != null) {
-                val areaText = when {
-                    area >= 1_000_000 -> "%.2f km²".format(area / 1_000_000)
-                    area >= 666.67    -> "%.2f 亩".format(area / 666.67)
-                    else              -> "%.0f m²".format(area)
-                }
+                val areaText = MapViewModel.formatArea(area)
                 Text("面积 $areaText",
                     fontSize = 12.sp, fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.tertiary, textAlign = TextAlign.Center)
