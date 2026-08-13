@@ -733,15 +733,27 @@ private fun MeasurementCard(
                 }
             }
 
-            // 各点位坐标
+            // 各点位坐标（GCJ02 + WGS84 并列显示）
             if (waypoints.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
                 waypoints.forEachIndexed { i, wp ->
+                    Text("点 ${i + 1}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(1.dp))
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("点 ${i + 1}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.weight(1f))
-                        Text("GCJ02: %.6f, %.6f".format(wp.lon, wp.lat),
-                            fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                        Text("GCJ02", fontSize = 8.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                        Spacer(Modifier.width(2.dp))
+                        Text("%.6f,%.6f".format(wp.gcj.lon, wp.gcj.lat),
+                            fontSize = 10.sp, fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.weight(1f))
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("WGS84", fontSize = 8.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                        Spacer(Modifier.width(2.dp))
+                        Text("%.6f,%.6f".format(wp.wgs.lon, wp.wgs.lat),
+                            fontSize = 10.sp, fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.weight(1f))
                     }
                 }
             }

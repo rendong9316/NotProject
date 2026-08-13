@@ -231,9 +231,10 @@ fun MapScreen(
     val bearing         by viewModel.bearing.collectAsState()
     val isTracking      by viewModel.isTracking.collectAsState()
     // ================ 测量相关状态 ================
-    val measurementMode by viewModel.measurementMode.collectAsState()
-    val measurementState by viewModel.measurementState.collectAsState()
-    val waypoints       by viewModel.measurementWaypoints.collectAsState()
+    val measurementMode       by viewModel.measurementMode.collectAsState()
+    val measurementState      by viewModel.measurementState.collectAsState()
+    val measurementPickMode   by viewModel.measurementPickMode.collectAsState()
+    val waypoints             by viewModel.measurementWaypoints.collectAsState()
     val collapsePanelEvent by viewModel.collapsePanelEvent.collectAsState()
     val isMeasuring = measurementState == MapViewModel.MeasurementState.PLACING
     val canCalculate = isMeasurementReady(measurementMode, waypoints.size)
@@ -249,6 +250,11 @@ fun MapScreen(
             panelExpanded = false
             Toast.makeText(context, "可以开始放点", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    // 测量拾取模式开启时自动收起面板，避免遮挡地图触摸
+    LaunchedEffect(measurementPickMode) {
+        if (measurementPickMode) panelExpanded = false
     }
 
     // ================ 地图图层切换 + 深色模式适配 ================
@@ -267,32 +273,58 @@ fun MapScreen(
         }
     }
 
-    // 拾取模式偏移跟踪
-    var reticleOffset by remember { mutableStateOf<Pair<Float, Float>?>(null) }
+    // 拾取模式偏移跟踪（分别用于普通拾取和测量拾取）
+    var reticleOffset      by remember { mutableStateOf<Pair<Float, Float>?>(null) }
+    // 测量拾取：手指与准星的屏幕像素偏移（ACTION_DOWN 时记录，拖动时保持固定）
+    var measurePickDelta   by remember { mutableStateOf<Pair<Float, Float>?>(null) }
 
-    // ================ 地图手势：全局禁用旋转，平移仅在拾取模式时锁定 ================
+    // ================ 地图手势：全局禁用旋转；平移在拾取/测量拾取模式下锁定 ================
     LaunchedEffect(aMap) {
         aMap?.uiSettings?.isRotateGesturesEnabled = false
     }
-    LaunchedEffect(placeMode) {
-        aMap?.setMapCustomEnable(placeMode)
-        aMap?.uiSettings?.setScrollGesturesEnabled(!placeMode)
+    LaunchedEffect(placeMode, measurementPickMode) {
+        aMap?.setMapCustomEnable(placeMode || measurementPickMode)
+        aMap?.uiSettings?.setScrollGesturesEnabled(!(placeMode || measurementPickMode))
     }
 
-    // ================ 拾取模式触摸监听 ================
-    LaunchedEffect(placeMode, aMap) {
+    // ================ 触摸监听：支持普通拾取和测量拾取双模式 ================
+    LaunchedEffect(placeMode, measurementPickMode, aMap) {
         if (aMap == null) return@LaunchedEffect
-        if (placeMode) {
-            aMap!!.setOnMapTouchListener { event ->
-                val projection = aMap!!.projection ?: run { false; return@setOnMapTouchListener }
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
+        val active = placeMode || measurementPickMode
+        if (!active) {
+            reticleOffset = null
+            measurePickDelta = null
+            aMap!!.setOnMapTouchListener(null)
+            return@LaunchedEffect
+        }
+        aMap!!.setOnMapTouchListener { event ->
+            val projection = aMap!!.projection ?: run { false; return@setOnMapTouchListener }
+            val isMeasurePick = measurementPickMode
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (isMeasurePick) {
+                        // 记录手指初始落点与屏幕中心的偏移，作为准星的固定偏移量
+                        measurePickDelta = Pair(event.x - mapView.width / 2f, event.y - mapView.height / 2f)
+                    } else {
                         val cx = mapView.width / 2f
                         val cy = mapView.height / 2f
                         reticleOffset = Pair(event.x - cx, event.y - cy)
-                        true
                     }
-                    MotionEvent.ACTION_MOVE -> {
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (isMeasurePick) {
+                        // 准星始终在手指前方固定距离处，不遮挡视线
+                        val delta = measurePickDelta
+                        if (delta != null) {
+                            val rx = event.x - delta.first
+                            val ry = event.y - delta.second
+                            val latlng = projection.fromScreenLocation(
+                                android.graphics.Point(rx.toInt(), ry.toInt())
+                            )
+                            latlng?.let { viewModel.setReticleCoord(CT.Coord(it.longitude, it.latitude)) }
+                        }
+                    } else {
                         val offset = reticleOffset
                         if (offset != null) {
                             val rx = event.x - offset.first
@@ -302,46 +334,46 @@ fun MapScreen(
                             )
                             latlng?.let { viewModel.setReticleCoord(CT.Coord(it.longitude, it.latitude)) }
                         }
-                        true
                     }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        val reticle = viewModel.reticleCoord.value
-                        if (reticle != null) viewModel.confirmPlacement(reticle)
-                        val centerLatlng = projection.fromScreenLocation(
-                            android.graphics.Point(mapView.width / 2, mapView.height / 2)
-                        )
-                        centerLatlng?.let { viewModel.setReticleCoord(CT.Coord(it.longitude, it.latitude)) }
-                        reticleOffset = null
-                        true
-                    }
-                    else -> false
+                    true
                 }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val reticle = viewModel.reticleCoord.value
+                    if (reticle != null) {
+                        if (isMeasurePick) viewModel.addWaypoint(reticle.lon, reticle.lat)
+                        else viewModel.confirmPlacement(reticle)
+                    }
+                    // 准星回中心（与普通拾取模式行为一致）
+                    val centerLatlng = projection.fromScreenLocation(
+                        android.graphics.Point(mapView.width / 2, mapView.height / 2)
+                    )
+                    centerLatlng?.let { viewModel.setReticleCoord(CT.Coord(it.longitude, it.latitude)) }
+                    if (isMeasurePick) measurePickDelta = null
+                    else reticleOffset = null
+                    true
+                }
+                else -> false
             }
-        } else {
-            reticleOffset = null
-            aMap!!.setOnMapTouchListener(null)
         }
     }
 
-    // ================ 长按地图快捷放置 ================
-    LaunchedEffect(aMap, placeMode, measurementState) {
+    // ================ 长按地图快捷放置（仅非测量、非拾取模式） ================
+    LaunchedEffect(aMap, placeMode, measurementPickMode) {
         aMap?.setOnMapLongClickListener { latlng ->
-            if (!placeMode && measurementState != MapViewModel.MeasurementState.PLACING) {
-                val gcj = CT.Coord(latlng.longitude, latlng.latitude)
-                viewModel.confirmPlacement(gcj)
+            if (!placeMode && !measurementPickMode) {
+                viewModel.confirmPlacement(CT.Coord(latlng.longitude, latlng.latitude))
             }
             true
         }
     }
 
-    // ================ 地图点击监听（兼容旧接口 + 测量加点） ================
-    LaunchedEffect(aMap, placeMode, measurementState) {
+    // ================ 地图点击监听（非测量、非拾取时传递到旧接口） ================
+    LaunchedEffect(aMap, placeMode, measurementPickMode) {
         aMap?.setOnMapClickListener { latlng ->
             when {
-                placeMode       -> Unit  // 由 OnMapTouchListener 处理
-                measurementState == MapViewModel.MeasurementState.PLACING ->
-                    viewModel.addWaypoint(latlng.longitude, latlng.latitude)
-                else            -> viewModel.onMapClick(latlng.longitude, latlng.latitude)
+                placeMode                                       -> Unit  // 由 OnMapTouchListener 处理
+                measurementPickMode                             -> Unit  // 由长按确认，单击忽略
+                else                                            -> viewModel.onMapClick(latlng.longitude, latlng.latitude)
             }
             true
         }
@@ -395,9 +427,9 @@ fun MapScreen(
         amap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 17f))
     }
 
-    // ================ 准星标记（拾取模式中） ================
-    LaunchedEffect(reticleCoord, placeMode) {
-        if (!placeMode || reticleCoord == null) {
+    // ================ 准星标记（拾取模式 / 测量拾取模式中） ================
+    LaunchedEffect(reticleCoord, placeMode, measurementPickMode) {
+        if ((!placeMode && !measurementPickMode) || reticleCoord == null) {
             reticleMarker?.remove()
             reticleMarker = null
             return@LaunchedEffect
@@ -442,7 +474,7 @@ fun MapScreen(
     var oldMarkers by remember { mutableStateOf<List<Marker>>(emptyList()) }
     var oldPolyline by remember { mutableStateOf<Polyline?>(null) }
     var oldPolygon by remember { mutableStateOf<Polygon?>(null) }
-    LaunchedEffect(waypoints, measurementMode, mapReady) {
+    LaunchedEffect(waypoints, measurementMode, measurementPickMode, mapReady) {
         if (!mapReady) return@LaunchedEffect
         val amap = aMap ?: return@LaunchedEffect
         // 清除旧对象
@@ -455,7 +487,7 @@ fun MapScreen(
             oldPolygon = null
             return@LaunchedEffect
         }
-        val positions = waypoints.map { LatLng(it.lat, it.lon) }
+        val positions = waypoints.map { LatLng(it.gcj.lat, it.gcj.lon) }
         val linePositions = if (
             measurementMode == MapViewModel.MeasurementMode.AREA && positions.size >= 3
         ) positions + positions.first() else positions
@@ -474,14 +506,12 @@ fun MapScreen(
                 .strokeWidth(4f)
                 .fillColor(Color.argb(55, 25, 118, 210)))
         } else null
-        // 绘制带编号的圆点标记
+        // 绘制无名称标签的蓝色圆点标记（仅编号）
         oldMarkers = waypoints.mapIndexed { i, wp ->
             amap.addMarker(MarkerOptions()
-                .position(LatLng(wp.lat, wp.lon))
-                .title("点 ${i + 1}")
-                .snippet("%.6f, %.6f".format(wp.lon, wp.lat))
-                .icon(BitmapDescriptorFactory.fromBitmap(
-                    createFlagBitmap(Color.rgb(25, 118, 210), (i + 1).toString()))))
+                .position(LatLng(wp.gcj.lat, wp.gcj.lon))
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                .anchor(0.5f, 0.5f))
         }
     }
 
@@ -583,14 +613,42 @@ fun MapScreen(
                             onClick     = { mapLayer = !mapLayer },
                         )
                     }
-                    if (!isMeasuring) {
+                    // 测量拾取模式：显示 Close 按钮；否则显示 PickModeFab
+                    if (measurementPickMode) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            FloatingActionButton(
+                                onClick = {
+                                    val center = aMap?.cameraPosition?.target?.let {
+                                        CT.Coord(it.longitude, it.latitude)
+                                    }
+                                    viewModel.toggleMeasurementPickMode(initCoord = center)
+                                },
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .align(androidx.compose.ui.Alignment.TopEnd),
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor   = MaterialTheme.colorScheme.onPrimary,
+                            ) {
+                                Icon(Icons.Filled.Close, contentDescription = "退出拾取测点")
+                            }
+                        }
+                    } else {
+                        // 非测量拾取时：根据是否在测量中决定按钮行为
                         PickModeFab(
                             placeMode = placeMode,
                             onToggle  = {
-                                val center = aMap?.cameraPosition?.target?.let {
-                                    CT.Coord(it.longitude, it.latitude)
+                                if (isMeasuring) {
+                                    // 测量中：切换为测量拾取模式（放置测量断点）
+                                    val center = aMap?.cameraPosition?.target?.let {
+                                        CT.Coord(it.longitude, it.latitude)
+                                    }
+                                    viewModel.toggleMeasurementPickMode(initCoord = center)
+                                } else {
+                                    val center = aMap?.cameraPosition?.target?.let {
+                                        CT.Coord(it.longitude, it.latitude)
+                                    }
+                                    viewModel.togglePlaceMode(initCoord = center)
                                 }
-                                viewModel.togglePlaceMode(initCoord = center)
                             },
                         )
                     }

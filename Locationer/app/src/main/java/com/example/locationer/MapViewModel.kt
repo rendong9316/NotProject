@@ -378,8 +378,11 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _measurementState = MutableStateFlow(MeasurementState.IDLE)
     val measurementState: StateFlow<MeasurementState> = _measurementState.asStateFlow()
 
-    private val _measurementWaypoints = MutableStateFlow<List<CT.Coord>>(emptyList())
-    val measurementWaypoints: StateFlow<List<CT.Coord>> = _measurementWaypoints.asStateFlow()
+    /** 测量端点：独立存储 GCJ02 与 WGS84，不存入旗标管理 */
+    data class MeasurementPoint(val gcj: CT.Coord, val wgs: CT.Coord)
+
+    private val _measurementWaypoints = MutableStateFlow<List<MeasurementPoint>>(emptyList())
+    val measurementWaypoints: StateFlow<List<MeasurementPoint>> = _measurementWaypoints.asStateFlow()
 
     data class Segment(val index: Int, val dist: Double) {
         val distText: String get() = formatDist(dist)
@@ -392,6 +395,10 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _measurementTotalArea = MutableStateFlow(0.0)
     val measurementTotalArea: StateFlow<Double> = _measurementTotalArea.asStateFlow()
+
+    /** 测量拾取模式：在地图上启用手指拖动准星后轻触放置测点 */
+    private val _measurementPickMode = MutableStateFlow(false)
+    val measurementPickMode: StateFlow<Boolean> = _measurementPickMode.asStateFlow()
 
     // ---------- 可重复消费的 UI 事件 ----------
     private val _navigationEvent = MutableStateFlow(NavigationEvent())
@@ -417,6 +424,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     fun startMeasurement(mode: MeasurementMode) {
         _placeMode.value = false
         _reticleCoord.value = null
+        _measurementPickMode.value = false
         _measurementMode.value = mode
         _measurementWaypoints.value = emptyList()
         _measurementSegments.value = emptyList()
@@ -431,6 +439,19 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         _measurementTotalDist.value = 0.0
         _measurementTotalArea.value = 0.0
         _measurementState.value = MeasurementState.IDLE
+        _measurementPickMode.value = false
+    }
+
+    /** 切换测量拾取模式：启用后在地图上拖动准星，轻触放置测点 */
+    fun toggleMeasurementPickMode(initCoord: CT.Coord? = null) {
+        if (_measurementPickMode.value) {
+            _measurementPickMode.value = false
+            _reticleCoord.value = null
+        } else {
+            _measurementPickMode.value = true
+            _placeMode.value = false
+            _reticleCoord.value = initCoord ?: _currentGcj.value
+        }
     }
 
     /** 完成测量：保留 waypoints/结果，通知 UI 跳回工具箱 */
@@ -463,8 +484,9 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addWaypoint(lon: Double, lat: Double) {
         if (_measurementState.value != MeasurementState.PLACING) return
-        val coord = CT.Coord(lon, lat)
-        val list = _measurementWaypoints.value + coord
+        val gcj = CT.Coord(lon, lat)
+        val wgs = CT.gcj02ToWgs84(gcj, precision = CT.HIGH_PRECISION)
+        val list = _measurementWaypoints.value + MeasurementPoint(gcj, wgs)
         _measurementWaypoints.value = list
         recalcSegments()
     }
@@ -474,13 +496,13 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         val segs = mutableListOf<Segment>()
         var totalDist = 0.0
         val n = list.size; for (i in 0 until n - 1) {
-            val d = list[i].distanceTo(list[i + 1])
+            val d = list[i].gcj.distanceTo(list[i + 1].gcj)
             totalDist += d
             segs.add(Segment(i, d))
         }
         _measurementSegments.value = segs
         _measurementTotalDist.value = totalDist
-        _measurementTotalArea.value = measurementPolygonAreaMeters(list)
+        _measurementTotalArea.value = measurementPolygonAreaMeters(list.map { it.gcj })
     }
 
     // ---------- 连续定位 / 传感器 ----------
