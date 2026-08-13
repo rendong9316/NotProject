@@ -514,8 +514,7 @@ private fun UnifiedPanel(
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(if (expanded) 360.dp else 56.dp),
+            .fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
         ),
@@ -527,7 +526,7 @@ private fun UnifiedPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
@@ -552,8 +551,8 @@ private fun UnifiedPanel(
             // -------- 展开内容 --------
             if (expanded) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(1.dp),
                 ) {
                     // 当前位置坐标
                     CoordsRow(label = "GCJ02", coord = gcj,
@@ -563,16 +562,14 @@ private fun UnifiedPanel(
                     AccuracyRow(meters = accuracyMeters)
 
                     // 分隔线
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(2.dp))
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(1.dp),
                         color = MaterialTheme.colorScheme.outlineVariant,
                     ) {}
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(2.dp))
 
                     // 经纬度输入
-                    FText("跳转定位", 12, fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -581,7 +578,7 @@ private fun UnifiedPanel(
                             value        = lonText,
                             onValueChange = onLonChange,
                             modifier     = Modifier.weight(1f),
-                            label        = { FText("经度", 12) },
+                            label        = { FText("经度", 11) },
                             placeholder  = { FText("116.397428", 13) },
                             singleLine   = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -597,7 +594,7 @@ private fun UnifiedPanel(
                             value        = latText,
                             onValueChange = onLatChange,
                             modifier     = Modifier.weight(1f),
-                            label        = { FText("纬度", 12) },
+                            label        = { FText("纬度", 11) },
                             placeholder  = { FText("39.90923", 13) },
                             singleLine   = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
