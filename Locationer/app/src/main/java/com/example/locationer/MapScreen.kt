@@ -595,7 +595,7 @@ private fun CoordsRow(
     color : androidx.compose.ui.graphics.Color,
 ) {
     val context = LocalContext.current
-    val text = coord?.let { "(%.6f, %.6f)".format(it.lon, it.lat) } ?: "(--, --)"
+    val text = coord?.let { "%.6f,%.6f".format(it.lon, it.lat) } ?: "--"
     Row(
         modifier = Modifier
             .fillMaxWidth()

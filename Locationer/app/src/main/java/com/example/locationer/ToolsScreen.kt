@@ -230,11 +230,17 @@ private fun FlagManagementCard(
                             selectedIds = selectedIds - flag.id
                         },
                         renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
-                        onCopyCoord = {
-                            val text = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
+                        onCopyGcj = {
+                            val t = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
                             val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", text))
-                            Toast.makeText(context, "已复制：$text", Toast.LENGTH_SHORT).show()
+                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
+                            Toast.makeText(context, "已复制GCJ02：$t", Toast.LENGTH_SHORT).show()
+                        },
+                        onCopyWgs = {
+                            val t = "%.6f,%.6f".format(flag.wgsLon, flag.wgsLat)
+                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
+                            Toast.makeText(context, "已复制WGS84：$t", Toast.LENGTH_SHORT).show()
                         },
                         onJump = {
                             mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
@@ -275,11 +281,17 @@ private fun FlagManagementCard(
                             selectedIds = selectedIds - flag.id
                         },
                         renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
-                        onCopyCoord = {
-                            val text = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
+                        onCopyGcj = {
+                            val t = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
                             val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", text))
-                            Toast.makeText(context, "已复制：$text", Toast.LENGTH_SHORT).show()
+                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
+                            Toast.makeText(context, "已复制GCJ02：$t", Toast.LENGTH_SHORT).show()
+                        },
+                        onCopyWgs = {
+                            val t = "%.6f,%.6f".format(flag.wgsLon, flag.wgsLat)
+                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
+                            Toast.makeText(context, "已复制WGS84：$t", Toast.LENGTH_SHORT).show()
                         },
                         onJump = {
                             mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
@@ -320,11 +332,17 @@ private fun FlagManagementCard(
                             selectedIds = selectedIds - flag.id
                         },
                         renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
-                        onCopyCoord = {
-                            val text = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
+                        onCopyGcj = {
+                            val t = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
                             val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", text))
-                            Toast.makeText(context, "已复制：$text", Toast.LENGTH_SHORT).show()
+                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
+                            Toast.makeText(context, "已复制GCJ02：$t", Toast.LENGTH_SHORT).show()
+                        },
+                        onCopyWgs = {
+                            val t = "%.6f,%.6f".format(flag.wgsLon, flag.wgsLat)
+                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
+                            Toast.makeText(context, "已复制WGS84：$t", Toast.LENGTH_SHORT).show()
                         },
                         onJump = {
                             mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
@@ -397,7 +415,8 @@ private fun FlagRow(
     onFinishEdit  : () -> Unit,
     onCancelEdit  : () -> Unit,
     onDelete      : () -> Unit,
-    onCopyCoord   : () -> Unit,
+    onCopyGcj     : () -> Unit,
+    onCopyWgs     : () -> Unit,
     onJump        : () -> Unit,
     renameFlag    : (Long, String) -> Unit,
 ) {
@@ -459,16 +478,32 @@ private fun FlagRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                Text("%.6f,%.6f".format(flag.gcjLon, flag.gcjLat),
-                    fontSize = 10.sp, fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("GCJ02", fontSize = 8.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                    Spacer(Modifier.width(2.dp))
+                    Text("%.6f,%.6f".format(flag.gcjLon, flag.gcjLat),
+                        fontSize = 9.sp, fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(4.dp))
+                    Text("WGS84", fontSize = 8.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                    Spacer(Modifier.width(2.dp))
+                    Text("%.6f,%.6f".format(flag.wgsLon, flag.wgsLat),
+                        fontSize = 9.sp, fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
         // 复制坐标 + 编辑 + 删除
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (!isEditing) {
-                Icon(Icons.Filled.ContentCopy, contentDescription = "复制坐标",
-                    modifier = Modifier.size(16.dp).clickable { onCopyCoord() },
+                Icon(Icons.Filled.ContentCopy, contentDescription = "复制GCJ02",
+                    modifier = Modifier.size(16.dp).clickable { onCopyGcj() },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(2.dp))
+                Icon(Icons.Filled.ContentCopy, contentDescription = "复制WGS84",
+                    modifier = Modifier.size(16.dp).clickable { onCopyWgs() },
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(4.dp))
                 Icon(Icons.Filled.Edit, contentDescription = "重命名",

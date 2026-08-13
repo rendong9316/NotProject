@@ -30,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,8 +53,9 @@ class MainActivity : ComponentActivity() {
 fun LocationerApp() {
     var selectedTab by remember { mutableStateOf(0) }
     Column(modifier = Modifier.fillMaxSize()) {
-        // 两个页面实例始终存在于 composition 中（不销毁），仅通过 alpha + zIndex 控制显隐。
-        // 激活页 zIndex=1 覆盖非激活页（0f），确保触摸事件不被隐藏层拦截。
+        // 两个页面始终在 composition 中（永不销毁），仅通过 alpha + zIndex 控制显隐。
+        // 激活页 alpha=1 zIndex=1 在上层接收触摸；非激活页 alpha=0 zIndex=0 完全隐藏。
+        // 瞬时切换，无动画。
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             Box(
                 modifier = Modifier
