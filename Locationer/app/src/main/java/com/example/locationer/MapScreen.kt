@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -51,6 +52,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -86,6 +89,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.amap.api.maps.AMap
 import com.amap.api.maps.CameraUpdateFactory
 import com.amap.api.maps.MapView
 import com.amap.api.maps.MapsInitializer
@@ -222,9 +227,17 @@ fun MapScreen(
     // ================ 面板折叠状态（统一） ================
     var panelExpanded by remember { mutableStateOf(true) }
 
-    // ================ 初始镜头 ================
-    LaunchedEffect(mapReady) {
-        if (mapReady && !initialCameraSet) {
+    // ================ 地图图层切换 + 深色模式适配 ================
+    val darkTheme = isSystemInDarkTheme()
+    var mapLayer by remember { mutableStateOf(false) } // false=标准，true=卫星
+    LaunchedEffect(mapReady, mapLayer, darkTheme) {
+        if (!mapReady) return@LaunchedEffect
+        aMap?.setMapType(when {
+            mapLayer   -> AMap.MAP_TYPE_SATELLITE
+            darkTheme  -> AMap.MAP_TYPE_NIGHT
+            else       -> AMap.MAP_TYPE_NORMAL
+        })
+        if (!initialCameraSet) {
             initialCameraSet = true
             aMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.0, 104.0), 4.5f))
         }
@@ -463,6 +476,16 @@ fun MapScreen(
                         modifier = Modifier.fillMaxSize(),
                         update    = { mapReady = true },
                     )
+                    // 图层切换按钮（标准 / 卫星），位于右上角
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.TopStart,
+                    ) {
+                        LayerToggleButton(
+                            isSatellite = mapLayer,
+                            onClick     = { mapLayer = !mapLayer },
+                        )
+                    }
                     PickModeFab(
                         placeMode = placeMode,
                         onToggle  = { viewModel.togglePlaceMode() },
@@ -744,5 +767,31 @@ private fun PickModeFab(placeMode: Boolean, onToggle: () -> Unit) {
             else
                 Icon(Icons.Filled.Search, contentDescription = "拾取坐标")
         }
+    }
+}
+
+// ============================================================================
+// 图层切换按钮（标准 / 卫星）
+// ============================================================================
+
+@Composable
+private fun LayerToggleButton(isSatellite: Boolean, onClick: () -> Unit) {
+    FilledTonalButton(
+        onClick = onClick,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            contentColor   = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Tune,
+            contentDescription = if (isSatellite) "切换到标准地图" else "切换到卫星地图",
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = if (isSatellite) "标准" else "卫星",
+            fontSize = 12.sp,
+        )
     }
 }

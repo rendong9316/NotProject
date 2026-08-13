@@ -14,11 +14,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -84,12 +91,68 @@ fun ToolsScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = 12.dp, top = statusBarTop + 8.dp, end = 12.dp, bottom = navBarBottom + 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(start = 8.dp, top = statusBarTop + 4.dp, end = 8.dp, bottom = navBarBottom + 4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         FlagManagementCard(androidx.compose.ui.platform.LocalContext.current, flags, mapViewModel, gcj, wgs)
         DistanceBearingCard(mapViewModel)
         MeasurementCard(mapViewModel)
+    }
+}
+
+// ============================================================================
+// 折叠卡片包装器
+// ============================================================================
+
+@Composable
+private fun CollapsibleToolCard(
+    title     : String,
+    icon      : androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint  : androidx.compose.ui.graphics.Color,
+    isExpanded: Boolean,
+    onToggle  : () -> Unit,
+    clearBtn  : (@Composable () -> Unit)? = null,
+    content   : @Composable () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = null,
+    ) {
+        Column {
+            // 标题栏：点击展开/收起
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(icon, contentDescription = null,
+                    modifier = Modifier.size(18.dp), tint = iconTint)
+                Spacer(Modifier.width(8.dp))
+                Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                if (clearBtn != null) clearBtn()
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    imageVector = if (isExpanded) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown,
+                    contentDescription = if (isExpanded) "收起" else "展开",
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = fadeIn() + scaleIn(initialScale = 0.97f),
+                exit = fadeOut() + scaleOut(targetScale = 0.97f),
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                    content()
+                }
+            }
+        }
     }
 }
 
@@ -105,6 +168,7 @@ private fun FlagManagementCard(
     currentGcj  : CT.Coord?,
     currentWgs  : CT.Coord?,
 ) {
+    var isExpanded by remember { mutableStateOf(true) }
     // 手动添加表单状态
     var showAddForm by remember { mutableStateOf(false) }
     var addLabel    by remember { mutableStateOf("") }
@@ -124,237 +188,233 @@ private fun FlagManagementCard(
     val pickedFlags   = flags.filter { it.type == FlagType.PICKED }
     val jumpedFlags   = flags.filter { it.type == FlagType.JUMPED }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = null,
+    CollapsibleToolCard(
+        title = "旗标管理",
+        icon = Icons.Filled.Person,
+        iconTint = MaterialTheme.colorScheme.primary,
+        isExpanded = isExpanded,
+        onToggle = { isExpanded = !isExpanded },
+        clearBtn = {
+            TextButton(onClick = {
+                mapViewModel.clearAllFlags()
+                selectedIds = emptySet()
+            }) { Text("清除全部", fontSize = 11.sp) }
+        },
     ) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("旗标管理", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = {
-                    mapViewModel.clearAllFlags()
-                    selectedIds = emptySet()
-                }) { Text("清除全部", fontSize = 11.sp) }
-            }
-
-            // ---- 手动添加 ----
-            if (showAddForm) {
-                Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedTextField(value = addLabel, onValueChange = { addLabel = it },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true,
-                        label = { Text("名称", fontSize = 11.sp) },
-                        placeholder = { Text("可选，留空则自动生成", fontSize = 12.sp) },
+        // ---- 手动添加 ----
+        if (showAddForm) {
+            Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedTextField(value = addLabel, onValueChange = { addLabel = it },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    label = { Text("名称", fontSize = 11.sp) },
+                    placeholder = { Text("可选，留空则自动生成", fontSize = 12.sp) },
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    ))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(value = addLon, onValueChange = { addLon = it },
+                        modifier = Modifier.weight(1f), singleLine = true,
+                        label = { Text("经度", fontSize = 11.sp) },
+                        placeholder = { Text("116.397428", fontSize = 12.sp) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         colors = TextFieldDefaults.colors(
                             focusedIndicatorColor = MaterialTheme.colorScheme.primary,
                             unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
                             focusedContainerColor = MaterialTheme.colorScheme.surface,
                             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                         ))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedTextField(value = addLon, onValueChange = { addLon = it },
-                            modifier = Modifier.weight(1f), singleLine = true,
-                            label = { Text("经度", fontSize = 11.sp) },
-                            placeholder = { Text("116.397428", fontSize = 12.sp) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            colors = TextFieldDefaults.colors(
-                                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            ))
-                        OutlinedTextField(value = addLat, onValueChange = { addLat = it },
-                            modifier = Modifier.weight(1f), singleLine = true,
-                            label = { Text("纬度", fontSize = 11.sp) },
-                            placeholder = { Text("39.90923", fontSize = 12.sp) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            colors = TextFieldDefaults.colors(
-                                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            ))
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("坐标类型", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.width(6.dp))
-                        RadioChip("GCJ02", addType == CoordType.GCJ02) { addType = CoordType.GCJ02 }
-                        RadioChip("WGS84", addType == CoordType.WGS84) { addType = CoordType.WGS84 }
-                        Spacer(Modifier.weight(1f))
-                        TextButton(onClick = {
-                            val lonN = addLon.trim().toDoubleOrNull() ?: return@TextButton
-                            val latN = addLat.trim().toDoubleOrNull() ?: return@TextButton
-                            val typed = CT.Coord(lonN, latN)
-                            val gcj = when (addType) {
-                                CoordType.GCJ02 -> typed
-                                CoordType.WGS84 -> CT.wgs84ToGcj02(typed)
-                            }
-                            val wgs = CT.gcj02ToWgs84(gcj, precision = CT.HIGH_PRECISION)
-                            val name = addLabel.trim()
-                            mapViewModel.confirmPlacement(gcj) // 复用现有方法，但手动设置名称
-                            addLabel = ""; addLon = ""; addLat = ""
-                            showAddForm = false
-                        }) { Text("放置", fontSize = 12.sp) }
-                        TextButton(onClick = { showAddForm = false }) { Text("取消", fontSize = 11.sp) }
-                    }
+                    OutlinedTextField(value = addLat, onValueChange = { addLat = it },
+                        modifier = Modifier.weight(1f), singleLine = true,
+                        label = { Text("纬度", fontSize = 11.sp) },
+                        placeholder = { Text("39.90923", fontSize = 12.sp) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                            unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        ))
                 }
-            } else {
-                TextButton(onClick = { showAddForm = true },
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 0.dp)) {
-                    Text("+ 手动添加", fontSize = 11.sp)
-                }
-            }
-
-            // ---- 拾取旗标 ----
-            if (pickedFlags.isNotEmpty()) {
-                Spacer(Modifier.height(4.dp))
-                Text("拾取旗标 (${pickedFlags.size})", fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-                pickedFlags.forEach { flag ->
-                    FlagRow(
-                        flag = flag,
-                        color = Color(0xFFC01428),
-                        isSelected = selectedIds.contains(flag.id),
-                        isEditing = editingId == flag.id,
-                        editLabel = editLabel,
-                        onToggleSelect = { id ->
-                            selectedIds = if (selectedIds.contains(id))
-                                selectedIds - id else selectedIds + id
-                        },
-                        onStartEdit = { f ->
-                            editingId = f.id
-                            editLabel = f.customName.ifEmpty { f.label }
-                        },
-                        onFinishEdit = {
-                            editingId = null
-                            if (editLabel.isNotBlank()) mapViewModel.renameFlag(flag.id, editLabel)
-                        },
-                        onCancelEdit = { editingId = null },
-                        onDelete = {
-                            mapViewModel.deleteFlag(flag.id)
-                            selectedIds = selectedIds - flag.id
-                        },
-                        renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
-                        onCopyGcj = {
-                            val t = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
-                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
-                            Toast.makeText(context, "已复制GCJ02：$t", Toast.LENGTH_SHORT).show()
-                        },
-                        onCopyWgs = {
-                            val t = "%.6f,%.6f".format(flag.wgsLon, flag.wgsLat)
-                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
-                            Toast.makeText(context, "已复制WGS84：$t", Toast.LENGTH_SHORT).show()
-                        },
-                        onJump = {
-                            mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
-                            mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
-                            mapViewModel.setCoordType(CoordType.GCJ02)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("坐标类型", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(6.dp))
+                    RadioChip("GCJ02", addType == CoordType.GCJ02) { addType = CoordType.GCJ02 }
+                    RadioChip("WGS84", addType == CoordType.WGS84) { addType = CoordType.WGS84 }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = {
+                        val lonN = addLon.trim().toDoubleOrNull() ?: return@TextButton
+                        val latN = addLat.trim().toDoubleOrNull() ?: return@TextButton
+                        val typed = CT.Coord(lonN, latN)
+                        val gcj = when (addType) {
+                            CoordType.GCJ02 -> typed
+                            CoordType.WGS84 -> CT.wgs84ToGcj02(typed)
                         }
-                    )
+                        val wgs = CT.gcj02ToWgs84(gcj, precision = CT.HIGH_PRECISION)
+                        val name = addLabel.trim()
+                        mapViewModel.confirmPlacement(gcj)
+                        addLabel = ""; addLon = ""; addLat = ""
+                        showAddForm = false
+                    }) { Text("放置", fontSize = 12.sp) }
+                    TextButton(onClick = { showAddForm = false }) { Text("取消", fontSize = 11.sp) }
                 }
             }
+        } else {
+            TextButton(onClick = { showAddForm = true },
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 0.dp)) {
+                Text("+ 手动添加", fontSize = 11.sp)
+            }
+        }
 
-            // ---- 跳转目标 ----
-            if (jumpedFlags.isNotEmpty()) {
-                Spacer(Modifier.height(4.dp))
-                Text("跳转目标 (${jumpedFlags.size})", fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-                jumpedFlags.forEach { flag ->
-                    FlagRow(
-                        flag = flag,
-                        color = Color(0xFFE53935),
-                        isSelected = selectedIds.contains(flag.id),
-                        isEditing = editingId == flag.id,
-                        editLabel = editLabel,
-                        onToggleSelect = { id ->
-                            selectedIds = if (selectedIds.contains(id))
-                                selectedIds - id else selectedIds + id
+        // ---- 拾取旗标 ----
+        if (pickedFlags.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Text("拾取旗标 (${pickedFlags.size})", fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+            pickedFlags.forEach { flag ->
+                FlagRow(
+                    flag = flag,
+                    color = Color(0xFFC01428),
+                    isSelected = selectedIds.contains(flag.id),
+                    isEditing = editingId == flag.id,
+                    editLabel = editLabel,
+                    onToggleSelect = { id ->
+                        selectedIds = if (selectedIds.contains(id))
+                            selectedIds - id else selectedIds + id
+                    },
+                    onStartEdit = { f ->
+                        editingId = f.id
+                        editLabel = f.customName.ifEmpty { f.label }
+                    },
+                    onFinishEdit = {
+                        editingId = null
+                        if (editLabel.isNotBlank()) mapViewModel.renameFlag(flag.id, editLabel)
+                    },
+                    onCancelEdit = { editingId = null },
+                    onDelete = {
+                        mapViewModel.deleteFlag(flag.id)
+                        selectedIds = selectedIds - flag.id
+                    },
+                    renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
+                    onCopyGcj = {
+                        val t = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
+                        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
+                        Toast.makeText(context, "已复制GCJ02：$t", Toast.LENGTH_SHORT).show()
+                    },
+                    onCopyWgs = {
+                        val t = "%.6f,%.6f".format(flag.wgsLon, flag.wgsLat)
+                        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
+                        Toast.makeText(context, "已复制WGS84：$t", Toast.LENGTH_SHORT).show()
+                    },
+                    onJump = {
+                        mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
+                        mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
+                        mapViewModel.setCoordType(CoordType.GCJ02)
+                    }
+                )
+            }
+        }
+
+        // ---- 跳转目标 ----
+        if (jumpedFlags.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Text("跳转目标 (${jumpedFlags.size})", fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+            jumpedFlags.forEach { flag ->
+                FlagRow(
+                    flag = flag,
+                    color = Color(0xFFE53935),
+                    isSelected = selectedIds.contains(flag.id),
+                    isEditing = editingId == flag.id,
+                    editLabel = editLabel,
+                    onToggleSelect = { id ->
+                        selectedIds = if (selectedIds.contains(id))
+                            selectedIds - id else selectedIds + id
+                    },
+                    onStartEdit = { f ->
+                        editingId = f.id
+                        editLabel = f.customName.ifEmpty { f.label }
+                    },
+                    onFinishEdit = {
+                        editingId = null
+                        if (editLabel.isNotBlank()) mapViewModel.renameFlag(flag.id, editLabel)
+                    },
+                    onCancelEdit = { editingId = null },
+                    onDelete = {
+                        mapViewModel.deleteFlag(flag.id)
+                        selectedIds = selectedIds - flag.id
+                    },
+                    renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
+                    onCopyGcj = {
+                        val t = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
+                        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
+                        Toast.makeText(context, "已复制GCJ02：$t", Toast.LENGTH_SHORT).show()
+                    },
+                    onCopyWgs = {
+                        val t = "%.6f,%.6f".format(flag.wgsLon, flag.wgsLat)
+                        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
+                        Toast.makeText(context, "已复制WGS84：$t", Toast.LENGTH_SHORT).show()
+                    },
+                    onJump = {
+                        mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
+                        mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
+                        mapViewModel.setCoordType(CoordType.GCJ02)
+                    }
+                )
+            }
+        }
+
+        // ---- 批量操作按钮 ----
+        if (selectedIds.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val selected = flags.filter { selectedIds.contains(it.id) }
+                if (selected.size >= 2) {
+                    Button(
+                        onClick = {
+                            val a = CT.Coord(selected[0].gcjLon, selected[0].gcjLat)
+                            val b = CT.Coord(selected[1].gcjLon, selected[1].gcjLat)
+                            val dist = a.distanceTo(b)
+                            val bearing = a.bearingTo(b)
+                            geoResult = Pair(dist, bearing)
                         },
-                        onStartEdit = { f ->
-                            editingId = f.id
-                            editLabel = f.customName.ifEmpty { f.label }
-                        },
-                        onFinishEdit = {
-                            editingId = null
-                            if (editLabel.isNotBlank()) mapViewModel.renameFlag(flag.id, editLabel)
-                        },
-                        onCancelEdit = { editingId = null },
-                        onDelete = {
-                            mapViewModel.deleteFlag(flag.id)
-                            selectedIds = selectedIds - flag.id
-                        },
-                        renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
-                        onCopyGcj = {
-                            val t = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
-                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
-                            Toast.makeText(context, "已复制GCJ02：$t", Toast.LENGTH_SHORT).show()
-                        },
-                        onCopyWgs = {
-                            val t = "%.6f,%.6f".format(flag.wgsLon, flag.wgsLat)
-                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                            cm?.setPrimaryClip(android.content.ClipData.newPlainText("坐标", t))
-                            Toast.makeText(context, "已复制WGS84：$t", Toast.LENGTH_SHORT).show()
-                        },
-                        onJump = {
-                            mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
-                            mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
-                            mapViewModel.setCoordType(CoordType.GCJ02)
-                        }
-                    )
+                        enabled = selected.size >= 2,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    ) {
+                        Icon(Icons.Filled.Straighten, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("计算距离", fontSize = 12.sp)
+                    }
+                }
+                if (selected.size == 2 && geoResult != null) {
+                    val (dist, bearing) = geoResult!!
+                    val distText = if (dist >= 1000) "%.2f km".format(dist / 1000) else "%.0f m".format(dist)
+                    Text("$distText  ·  ${"%.1f°".format(bearing)}",
+                        fontSize = 11.sp, fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.primary)
+                }
+                TextButton(onClick = { selectedIds = emptySet(); geoResult = null }) {
+                    Text("取消选择", fontSize = 11.sp)
                 }
             }
+        }
 
-            // ---- 批量操作按钮 ----
-            if (selectedIds.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    val selected = flags.filter { selectedIds.contains(it.id) }
-                    if (selected.size >= 2) {
-                        Button(
-                            onClick = {
-                                val a = CT.Coord(selected[0].gcjLon, selected[0].gcjLat)
-                                val b = CT.Coord(selected[1].gcjLon, selected[1].gcjLat)
-                                val dist = a.distanceTo(b)
-                                val bearing = a.bearingTo(b)
-                                geoResult = Pair(dist, bearing)
-                            },
-                            enabled = selected.size >= 2,
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        ) {
-                            Icon(Icons.Filled.Straighten, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("计算距离", fontSize = 12.sp)
-                        }
-                    }
-                    if (selected.size == 2 && geoResult != null) {
-                        val (dist, bearing) = geoResult!!
-                        val distText = if (dist >= 1000) "%.2f km".format(dist / 1000) else "%.0f m".format(dist)
-                        Text("$distText  ·  ${"%.1f°".format(bearing)}",
-                            fontSize = 11.sp, fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary)
-                    }
-                    TextButton(onClick = { selectedIds = emptySet(); geoResult = null }) {
-                        Text("取消选择", fontSize = 11.sp)
-                    }
-                }
-            }
-
-            if (flags.isEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Text("暂无旗标，点击地图右上角「拾取」按钮在地图上放置标记",
-                    fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center)
-            }
+        if (flags.isEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text("暂无旗标，点击地图右上角「拾取」按钮在地图上放置标记",
+                fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center)
         }
     }
 }
@@ -434,7 +494,7 @@ private fun FlagRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                // GCJ02 坐标行：标签 + 坐标 + 复制按钮 + 重命名按钮
+                // GCJ02 坐标行
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("GCJ02", fontSize = 8.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
@@ -451,7 +511,7 @@ private fun FlagRow(
                         modifier = Modifier.size(16.dp).clickable { onStartEdit(flag) },
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                // WGS84 坐标行：标签 + 坐标 + 复制按钮 + 删除按钮
+                // WGS84 坐标行
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("WGS84", fontSize = 8.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
@@ -488,6 +548,7 @@ private fun RadioChip(label: String, selected: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun DistanceBearingCard(mapViewModel: MapViewModel) {
+    var isExpanded by remember { mutableStateOf(true) }
     val pickedCoord by mapViewModel.lastPickedCoord.collectAsState()
     var aLon by remember { mutableStateOf("") }
     var aLat by remember { mutableStateOf("") }
@@ -497,60 +558,58 @@ private fun DistanceBearingCard(mapViewModel: MapViewModel) {
     var bType by remember { mutableStateOf(CoordType.GCJ02) }
     var result by remember { mutableStateOf<Pair<Double, Double>?>(null) }
 
-    Card(modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = null) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Text("距离 + 方位角", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
+    CollapsibleToolCard(
+        title = "距离 + 方位角",
+        icon = Icons.Filled.Straighten,
+        iconTint = MaterialTheme.colorScheme.tertiary,
+        isExpanded = isExpanded,
+        onToggle = { isExpanded = !isExpanded },
+    ) {
+        CoordsInputGroup(label = "A 点", lonText = aLon, latText = aLat, coordType = aType,
+            onLonChange = { aLon = it }, onLatChange = { aLat = it },
+            onTypeChange = { aType = it },
+            onPick = { pickedCoord?.let { c ->
+                aLon = "%.6f".format(c.lon); aLat = "%.6f".format(c.lat); aType = CoordType.GCJ02
+            }})
 
-            CoordsInputGroup(label = "A 点", lonText = aLon, latText = aLat, coordType = aType,
-                onLonChange = { aLon = it }, onLatChange = { aLat = it },
-                onTypeChange = { aType = it },
-                onPick = { pickedCoord?.let { c ->
-                    aLon = "%.6f".format(c.lon); aLat = "%.6f".format(c.lat); aType = CoordType.GCJ02
-                }})
+        CoordsInputGroup(label = "B 点", lonText = bLon, latText = bLat, coordType = bType,
+            onLonChange = { bLon = it }, onLatChange = { bLat = it },
+            onTypeChange = { bType = it },
+            onPick = { pickedCoord?.let { c ->
+                bLon = "%.6f".format(c.lon); bLat = "%.6f".format(c.lat); bType = CoordType.GCJ02
+            }})
 
-            CoordsInputGroup(label = "B 点", lonText = bLon, latText = bLat, coordType = bType,
-                onLonChange = { bLon = it }, onLatChange = { bLat = it },
-                onTypeChange = { bType = it },
-                onPick = { pickedCoord?.let { c ->
-                    bLon = "%.6f".format(c.lon); bLat = "%.6f".format(c.lat); bType = CoordType.GCJ02
-                }})
+        Spacer(Modifier.height(6.dp))
+        Button(onClick = {
+            val aLonN = aLon.toDoubleOrNull(); val aLatN = aLat.toDoubleOrNull()
+            val bLonN = bLon.toDoubleOrNull(); val bLatN = bLat.toDoubleOrNull()
+            if (aLonN == null || aLatN == null || bLonN == null || bLatN == null) return@Button
+            val a = when (aType) { CoordType.GCJ02 -> CT.Coord(aLonN, aLatN); CoordType.WGS84 -> CT.wgs84ToGcj02(CT.Coord(aLonN, aLatN)) }
+            val b = when (bType) { CoordType.GCJ02 -> CT.Coord(bLonN, bLatN); CoordType.WGS84 -> CT.wgs84ToGcj02(CT.Coord(bLonN, bLatN)) }
+            val dist = a.distanceTo(b)
+            val bearing = a.bearingTo(b)
+            result = Pair(dist, bearing)
+        }, enabled = aLon.isNotBlank() && aLat.isNotBlank() && bLon.isNotBlank() && bLat.isNotBlank(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 6.dp)) {
+            Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("计算", fontSize = 12.sp)
+        }
 
-            Spacer(Modifier.height(6.dp))
-            Button(onClick = {
-                val aLonN = aLon.toDoubleOrNull(); val aLatN = aLat.toDoubleOrNull()
-                val bLonN = bLon.toDoubleOrNull(); val bLatN = bLat.toDoubleOrNull()
-                if (aLonN == null || aLatN == null || bLonN == null || bLatN == null) return@Button
-                val a = when (aType) { CoordType.GCJ02 -> CT.Coord(aLonN, aLatN); CoordType.WGS84 -> CT.wgs84ToGcj02(CT.Coord(aLonN, aLatN)) }
-                val b = when (bType) { CoordType.GCJ02 -> CT.Coord(bLonN, bLatN); CoordType.WGS84 -> CT.wgs84ToGcj02(CT.Coord(bLonN, bLatN)) }
-                val dist = a.distanceTo(b)
-                val bearing = a.bearingTo(b)
-                result = Pair(dist, bearing)
-            }, enabled = aLon.isNotBlank() && aLat.isNotBlank() && bLon.isNotBlank() && bLat.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 6.dp)) {
-                Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("计算", fontSize = 12.sp)
-            }
-
-            if (result != null) {
-                val (dist, bearing) = result!!
-                val reverse = (bearing + 180.0) % 360.0
-                val distText = if (dist >= 1000) "%.2f km".format(dist / 1000) else "%.0f m".format(dist)
-                Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) {
-                    Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("$distText  ·  A→B: ${"%.1f°".format(bearing)} ${bearingCardinal(bearing)}",
-                            fontSize = 12.sp, fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
-                        Text("B→A: ${"%.1f°".format(reverse)} ${bearingCardinal(reverse)}",
-                            fontSize = 12.sp, fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                    }
+        if (result != null) {
+            val (dist, bearing) = result!!
+            val reverse = (bearing + 180.0) % 360.0
+            val distText = if (dist >= 1000) "%.2f km".format(dist / 1000) else "%.0f m".format(dist)
+            Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) {
+                Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("$distText  ·  A→B: ${"%.1f°".format(bearing)} ${bearingCardinal(bearing)}",
+                        fontSize = 12.sp, fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
+                    Text("B→A: ${"%.1f°".format(reverse)} ${bearingCardinal(reverse)}",
+                        fontSize = 12.sp, fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                 }
             }
         }
@@ -610,6 +669,7 @@ private fun CoordsInputGroup(
 
 @Composable
 private fun MeasurementCard(mapViewModel: MapViewModel) {
+    var isExpanded by remember { mutableStateOf(true) }
     var mode by remember { mutableStateOf(MapViewModel.MeasurementMode.DISTANCE) }
     val waypoints by mapViewModel.measurementWaypoints.collectAsState()
     val segments by mapViewModel.measurementSegments.collectAsState()
@@ -617,59 +677,59 @@ private fun MeasurementCard(mapViewModel: MapViewModel) {
     val totalArea by mapViewModel.measurementTotalArea.collectAsState()
     val isMeasuring by remember(waypoints) { mutableStateOf(waypoints.isNotEmpty()) }
 
-    Card(modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = null) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("测距 / 测面积", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.weight(1f))
-                ModeChip("测距", mode == MapViewModel.MeasurementMode.DISTANCE) { mode = MapViewModel.MeasurementMode.DISTANCE }
-                ModeChip("测面积", mode == MapViewModel.MeasurementMode.AREA) { mode = MapViewModel.MeasurementMode.AREA }
-            }
+    CollapsibleToolCard(
+        title = "测距 / 测面积",
+        icon = Icons.Filled.Draw,
+        iconTint = MaterialTheme.colorScheme.secondary,
+        isExpanded = isExpanded,
+        onToggle = { isExpanded = !isExpanded },
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.weight(1f))
+            ModeChip("测距", mode == MapViewModel.MeasurementMode.DISTANCE) { mode = MapViewModel.MeasurementMode.DISTANCE }
+            ModeChip("测面积", mode == MapViewModel.MeasurementMode.AREA) { mode = MapViewModel.MeasurementMode.AREA }
+        }
 
+        Spacer(Modifier.height(6.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            MeasureBtn(icon = Icons.Filled.PlayArrow, label = if (isMeasuring) "继续" else "开始",
+                enabled = true, onClick = {
+                    if (isMeasuring) mapViewModel.stopMeasurement()
+                    else mapViewModel.startMeasurement(mode)
+                })
+            Spacer(Modifier.width(6.dp))
+            MeasureBtn(icon = Icons.Filled.Remove, label = "撤销",
+                enabled = waypoints.size > 1,
+                onClick = { mapViewModel.removeLastWaypoint() })
+            Spacer(Modifier.width(6.dp))
+            MeasureBtn(icon = Icons.Filled.Clear, label = "清除",
+                enabled = waypoints.isNotEmpty(),
+                onClick = { mapViewModel.clearWaypoints() })
+        }
+
+        if (waypoints.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
+            ResultBox(totalDist, if (mode == MapViewModel.MeasurementMode.AREA) totalArea else null,
+                segmentCount = segments.size)
 
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                MeasureBtn(icon = Icons.Filled.PlayArrow, label = if (isMeasuring) "继续" else "开始",
-                    enabled = true, onClick = {
-                        if (isMeasuring) mapViewModel.stopMeasurement()
-                        else mapViewModel.startMeasurement(mode)
-                    })
-                Spacer(Modifier.width(6.dp))
-                MeasureBtn(icon = Icons.Filled.Remove, label = "撤销",
-                    enabled = waypoints.size > 1,
-                    onClick = { mapViewModel.removeLastWaypoint() })
-                Spacer(Modifier.width(6.dp))
-                MeasureBtn(icon = Icons.Filled.Clear, label = "清除",
-                    enabled = waypoints.isNotEmpty(),
-                    onClick = { mapViewModel.clearWaypoints() })
-            }
-
-            if (waypoints.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                ResultBox(totalDist, if (mode == MapViewModel.MeasurementMode.AREA) totalArea else null,
-                    segmentCount = segments.size)
-
-                if (segments.isNotEmpty()) {
-                    Spacer(Modifier.height(4.dp))
-                    segments.forEachIndexed { i, seg ->
-                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("${i+1}→${i+2}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.weight(1f))
-                            Text(seg.distText, fontSize = 11.sp, fontFamily = FontFamily.Monospace,
-                                color = MaterialTheme.colorScheme.primary)
-                        }
+            if (segments.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                segments.forEachIndexed { i, seg ->
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${i+1}→${i+2}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.weight(1f))
+                        Text(seg.distText, fontSize = 11.sp, fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
+        }
 
-            if (waypoints.isEmpty()) {
-                Spacer(Modifier.height(4.dp))
-                Text("点击「开始」后到地图标签页依次点击加点，再点击「继续」结束测量",
-                    fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+        if (waypoints.isEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Text("点击「开始」后到地图标签页依次点击加点，再点击「继续」结束测量",
+                fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
