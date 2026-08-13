@@ -570,12 +570,11 @@ private fun FlagRow(
                     Icon(Icons.Filled.Person, contentDescription = null,
                         modifier = Modifier.size(14.dp), tint = color)
                     Spacer(Modifier.width(4.dp))
-                    Text(flag.label, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    if (flag.customName.isNotBlank() && flag.label != flag.customName) {
-                        Spacer(Modifier.width(4.dp))
-                        Text(flag.customName, fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    // 有自定义名时主文本显示自定义名，否则显示默认编号
+                    Text(
+                        text = if (flag.customName.isNotBlank()) flag.customName else flag.label,
+                        fontSize = 12.sp, fontWeight = FontWeight.Medium
+                    )
                 }
                 // GCJ02 坐标行
                 Row(verticalAlignment = Alignment.CenterVertically) {
