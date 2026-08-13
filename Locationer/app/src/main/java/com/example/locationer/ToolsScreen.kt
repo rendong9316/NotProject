@@ -76,8 +76,14 @@ import android.widget.Toast
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.filterNotNull
 
+/** 距离计算结果 */
+data class GeoResult(
+    val from: String, val to: String,
+    val dist: Double, val bearing: Double,
+)
+
 /**
- * 工具箱标签页：旗标管理 / 距离方位角计算 / 折线测距与面积测量
+ * 工具箱标签页：旗标管理 / 折线测距与面积测量
  */
 @Composable
 fun ToolsScreen(
@@ -98,7 +104,6 @@ fun ToolsScreen(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         FlagManagementCard(androidx.compose.ui.platform.LocalContext.current, flags, mapViewModel, gcj, wgs)
-        DistanceBearingCard(mapViewModel)
         MeasurementCard(mapViewModel)
     }
 }
@@ -186,7 +191,7 @@ private fun FlagManagementCard(
 
     // 批量操作
     var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
-    var geoResult   by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var geoResult   by remember { mutableStateOf<GeoResult?>(null) }
 
     // 正在编辑的旗标
     var editingId   by remember { mutableStateOf<Long?>(null) }
@@ -406,11 +411,15 @@ private fun FlagManagementCard(
                 if (selected.size >= 2) {
                     Button(
                         onClick = {
-                            val a = CT.Coord(selected[0].gcjLon, selected[0].gcjLat)
-                            val b = CT.Coord(selected[1].gcjLon, selected[1].gcjLat)
+                            val flagA = selected[0]
+                            val flagB = selected[1]
+                            val a = CT.Coord(flagA.gcjLon, flagA.gcjLat)
+                            val b = CT.Coord(flagB.gcjLon, flagB.gcjLat)
                             val dist = a.distanceTo(b)
                             val bearing = a.bearingTo(b)
-                            geoResult = Pair(dist, bearing)
+                            val nameA = flagA.customName.ifEmpty { flagA.label }
+                            val nameB = flagB.customName.ifEmpty { flagB.label }
+                            geoResult = GeoResult(nameA, nameB, dist, bearing)
                         },
                         enabled = selected.size >= 2,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
@@ -422,11 +431,20 @@ private fun FlagManagementCard(
                     }
                 }
                 if (selected.size == 2 && geoResult != null) {
-                    val (dist, bearing) = geoResult!!
-                    val distText = if (dist >= 1000) "%.2f km".format(dist / 1000) else "%.0f m".format(dist)
-                    Text("$distText  ·  ${"%.1f°".format(bearing)}",
-                        fontSize = 11.sp, fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.primary)
+                    val r = geoResult!!
+                    val reverse = (r.bearing + 180.0) % 360.0
+                    val distText = if (r.dist >= 1000) "%.2f km".format(r.dist / 1000) else "%.0f m".format(r.dist)
+                    Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) {
+                        Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("$distText  ·  ${r.from}→${r.to}: ${"%.1f°".format(r.bearing)} ${bearingCardinal(r.bearing)}",
+                                fontSize = 12.sp, fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
+                            Text("${r.to}→${r.from}: ${"%.1f°".format(reverse)} ${bearingCardinal(reverse)}",
+                                fontSize = 12.sp, fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                        }
+                    }
                 }
                 Button(
                     onClick = {
@@ -610,138 +628,8 @@ private fun FlagRow(
     }
 }
 
-@Composable
-private fun RadioChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Row(modifier = Modifier.clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically) {
-        RadioButton(selected = selected, onClick = onClick)
-        Text(label, fontSize = 11.sp)
-    }
-}
-
 // ============================================================================
-// 卡片 2：距离 + 方位角计算器
-// ============================================================================
-
-@Composable
-private fun DistanceBearingCard(mapViewModel: MapViewModel) {
-    var isExpanded by remember { mutableStateOf(true) }
-    val pickedCoord by mapViewModel.lastPickedCoord.collectAsState()
-    var aLon by remember { mutableStateOf("") }
-    var aLat by remember { mutableStateOf("") }
-    var bLon by remember { mutableStateOf("") }
-    var bLat by remember { mutableStateOf("") }
-    var aType by remember { mutableStateOf(CoordType.GCJ02) }
-    var bType by remember { mutableStateOf(CoordType.GCJ02) }
-    var result by remember { mutableStateOf<Pair<Double, Double>?>(null) }
-
-    CollapsibleToolCard(
-        title = "距离 + 方位角",
-        icon = Icons.Filled.Straighten,
-        iconTint = MaterialTheme.colorScheme.tertiary,
-        isExpanded = isExpanded,
-        onToggle = { isExpanded = !isExpanded },
-    ) {
-        CoordsInputGroup(label = "A 点", lonText = aLon, latText = aLat, coordType = aType,
-            onLonChange = { aLon = it }, onLatChange = { aLat = it },
-            onTypeChange = { aType = it },
-            onPick = { pickedCoord?.let { c ->
-                aLon = "%.6f".format(c.lon); aLat = "%.6f".format(c.lat); aType = CoordType.GCJ02
-            }})
-
-        CoordsInputGroup(label = "B 点", lonText = bLon, latText = bLat, coordType = bType,
-            onLonChange = { bLon = it }, onLatChange = { bLat = it },
-            onTypeChange = { bType = it },
-            onPick = { pickedCoord?.let { c ->
-                bLon = "%.6f".format(c.lon); bLat = "%.6f".format(c.lat); bType = CoordType.GCJ02
-            }})
-
-        Spacer(Modifier.height(6.dp))
-        Button(onClick = {
-            val aLonN = aLon.toDoubleOrNull(); val aLatN = aLat.toDoubleOrNull()
-            val bLonN = bLon.toDoubleOrNull(); val bLatN = bLat.toDoubleOrNull()
-            if (aLonN == null || aLatN == null || bLonN == null || bLatN == null) return@Button
-            val a = when (aType) { CoordType.GCJ02 -> CT.Coord(aLonN, aLatN); CoordType.WGS84 -> CT.wgs84ToGcj02(CT.Coord(aLonN, aLatN)) }
-            val b = when (bType) { CoordType.GCJ02 -> CT.Coord(bLonN, bLatN); CoordType.WGS84 -> CT.wgs84ToGcj02(CT.Coord(bLonN, bLatN)) }
-            val dist = a.distanceTo(b)
-            val bearing = a.bearingTo(b)
-            result = Pair(dist, bearing)
-        }, enabled = aLon.isNotBlank() && aLat.isNotBlank() && bLon.isNotBlank() && bLat.isNotBlank(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 6.dp)) {
-            Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
-            Spacer(Modifier.width(4.dp))
-            Text("计算", fontSize = 12.sp)
-        }
-
-        if (result != null) {
-            val (dist, bearing) = result!!
-            val reverse = (bearing + 180.0) % 360.0
-            val distText = if (dist >= 1000) "%.2f km".format(dist / 1000) else "%.0f m".format(dist)
-            Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) {
-                Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("$distText  ·  A→B: ${"%.1f°".format(bearing)} ${bearingCardinal(bearing)}",
-                        fontSize = 12.sp, fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
-                    Text("B→A: ${"%.1f°".format(reverse)} ${bearingCardinal(reverse)}",
-                        fontSize = 12.sp, fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CoordsInputGroup(
-    label     : String,
-    lonText   : String,
-    latText   : String,
-    coordType : CoordType,
-    onLonChange : (String) -> Unit,
-    onLatChange : (String) -> Unit,
-    onTypeChange: (CoordType) -> Unit,
-    onPick      : () -> Unit,
-) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp))
-        Spacer(Modifier.width(4.dp))
-        OutlinedTextField(value = lonText, onValueChange = onLonChange, modifier = Modifier.weight(1f),
-            label = { Text("经", fontSize = 10.sp) }, placeholder = { Text("116.397", fontSize = 11.sp) },
-            singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            colors = TextFieldDefaults.colors(
-                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            ))
-        Spacer(Modifier.width(4.dp))
-        OutlinedTextField(value = latText, onValueChange = onLatChange, modifier = Modifier.weight(1f),
-            label = { Text("纬", fontSize = 10.sp) }, placeholder = { Text("39.909", fontSize = 11.sp) },
-            singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            colors = TextFieldDefaults.colors(
-                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            ))
-        Spacer(Modifier.width(4.dp))
-        TextButton(onClick = onPick,
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 0.dp)) {
-            Icon(Icons.Filled.Draw, contentDescription = "从地图拾取", modifier = Modifier.size(18.dp))
-        }
-    }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Spacer(Modifier.width(32.dp))
-        RadioChip("GCJ02", coordType == CoordType.GCJ02) { onTypeChange(CoordType.GCJ02) }
-        RadioChip("WGS84", coordType == CoordType.WGS84) { onTypeChange(CoordType.WGS84) }
-    }
-    Spacer(Modifier.height(4.dp))
-}
-
-// ============================================================================
-// 卡片 3：折线测距 / 面积测量
+// 卡片 2：折线测距 / 面积测量
 // ============================================================================
 
 @Composable

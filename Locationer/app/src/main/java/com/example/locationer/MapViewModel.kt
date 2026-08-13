@@ -235,8 +235,14 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ---------- 拾取模式（连续放置）----------
-    /** 切换拾取模式 */
-    fun togglePlaceMode() { if (_placeMode.value) disablePlaceMode() else enablePlaceMode() }
+    /** 切换拾取模式；进入时 initCoord 为屏幕中心坐标，退出时传 null */
+    fun togglePlaceMode(initCoord: CT.Coord? = null) {
+        if (_placeMode.value) {
+            disablePlaceMode()
+        } else {
+            enablePlaceMode(initCoord)
+        }
+    }
 
     /** 进入拾取模式，准星初始位置为当前定位或指定坐标 */
     fun enablePlaceMode(initCoord: CT.Coord? = null) {

@@ -135,32 +135,33 @@ private fun FText(
 // 位图工具函数
 // ============================================================================
 
-/** 绘制准星图标：红色圆环 + 红色中心点（64x64） */
+/** 绘制准星图标：红色圆环 + 红色中心点（128x128） */
 private fun createReticleBitmap(): Bitmap {
-    val size = 64
+    val size = 128
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
-    val ring = Paint().apply { color = Color.RED; style = Paint.Style.STROKE; strokeWidth = 3f }
+    val ring = Paint().apply { color = Color.RED; style = Paint.Style.STROKE; strokeWidth = 5f }
     val dot  = Paint().apply { color = Color.RED; style = Paint.Style.FILL }
-    c.drawCircle(32f, 32f, 20f, ring)
-    c.drawCircle(32f, 32f, 6f, dot)
+    c.drawCircle(64f, 64f, 40f, ring)
+    c.drawCircle(64f, 64f, 10f, dot)
     return bmp
 }
 
-/** 绘制标记图标：带标签的圆点 */
-private fun createFlagBitmap(color: Int, label: String, size: Int = 64): Bitmap {
+/** 绘制旗标图标：带标签的圆点（144x144） */
+private fun createFlagBitmap(color: Int, label: String): Bitmap {
+    val size = 144
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
     val circlePaint = Paint().apply { this.color = color; style = Paint.Style.FILL }
-    c.drawCircle((size / 2).toFloat(), (size / 2 + 4).toFloat(), 14f, circlePaint)
+    c.drawCircle((size / 2).toFloat(), (size / 2 + 8).toFloat(), 28f, circlePaint)
     val textPaint = Paint().apply {
         this.color = Color.WHITE
-        this.textSize = 18f
+        this.textSize = 30f
         this.isAntiAlias = true
         this.textAlign = Paint.Align.CENTER
     }
     val metrics = textPaint.descent() - textPaint.ascent()
-    c.drawText(label, (size / 2).toFloat(), (size / 2 - 10).toFloat() - metrics / 2, textPaint)
+    c.drawText(label, (size / 2).toFloat(), (size / 2 - 20).toFloat() - metrics / 2, textPaint)
     return bmp
 }
 
@@ -269,7 +270,10 @@ fun MapScreen(
     // 拾取模式偏移跟踪
     var reticleOffset by remember { mutableStateOf<Pair<Float, Float>?>(null) }
 
-    // ================ 地图手势锁定（拾取模式） ================
+    // ================ 地图手势：全局禁用旋转，平移仅在拾取模式时锁定 ================
+    LaunchedEffect(aMap) {
+        aMap?.uiSettings?.isRotateGesturesEnabled = false
+    }
     LaunchedEffect(placeMode) {
         aMap?.setMapCustomEnable(placeMode)
         aMap?.uiSettings?.setScrollGesturesEnabled(!placeMode)
@@ -425,10 +429,7 @@ fun MapScreen(
             val marker = amap.addMarker(
                 MarkerOptions().position(pos)
                     .icon(BitmapDescriptorFactory.fromBitmap(
-                        createFlagBitmap(
-                            color,
-                            flag.customName.ifBlank { flag.label },
-                            size = 64)))
+                        createFlagBitmap(color, flag.customName.ifBlank { flag.label })))
                     .anchor(0.5f, 0.9f)
             )
             flag.id to marker
@@ -565,7 +566,12 @@ fun MapScreen(
                     }
                     PickModeFab(
                         placeMode = placeMode,
-                        onToggle  = { viewModel.togglePlaceMode() },
+                        onToggle  = {
+                            val center = aMap?.cameraPosition?.target?.let {
+                                CT.Coord(it.longitude, it.latitude)
+                            }
+                            viewModel.togglePlaceMode(initCoord = center)
+                        },
                     )
                     // 测量完成悬浮按钮
                     if (isMeasuring && showFab) {
