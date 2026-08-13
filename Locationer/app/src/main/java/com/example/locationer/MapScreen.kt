@@ -110,7 +110,7 @@ val FixedTextScaleFactor = compositionLocalOf { 1f }
 
 // ---------- 字体缩放感知的 Text ----------
 @Composable
-private fun FText(
+fun FText(
     text      : String,
     fontSize  : Int,
     modifier  : Modifier = Modifier,
@@ -910,7 +910,7 @@ private fun LocateButton(onClick: () -> Unit, locating: Boolean) {
 }
 
 @Composable
-private fun CoordRadio(label    : String, selected : Boolean, onClick  : () -> Unit) {
+fun CoordRadio(label    : String, selected : Boolean, onClick  : () -> Unit) {
     Row(
         modifier = Modifier.selectable(selected = selected, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,

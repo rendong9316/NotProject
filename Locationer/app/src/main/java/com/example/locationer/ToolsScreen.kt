@@ -263,6 +263,13 @@ private fun FlagManagementCard(
                             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                         ))
                 }
+                // 坐标类型选择（GCJ02 / WGS84）
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    FText("坐标类型", 10, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(4.dp))
+                    CoordRadio("GCJ02", addType == CoordType.GCJ02) { addType = CoordType.GCJ02 }
+                    CoordRadio("WGS84", addType == CoordType.WGS84) { addType = CoordType.WGS84 }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = {
@@ -277,8 +284,8 @@ private fun FlagManagementCard(
                         mapViewModel.addFlag(gcj, wgs, FlagType.PICKED, addLabel.trim())
                         addLabel = ""; addLon = ""; addLat = ""
                         showAddForm = false
-                    }) { Text("放置", fontSize = 12.sp) }
-                    TextButton(onClick = { showAddForm = false }) { Text("取消", fontSize = 11.sp) }
+                    }) { Text("放置", fontSize = 11.sp) }
+                    TextButton(onClick = { showAddForm = false }) { Text("取消", fontSize = 10.sp) }
                 }
             }
         } else {
