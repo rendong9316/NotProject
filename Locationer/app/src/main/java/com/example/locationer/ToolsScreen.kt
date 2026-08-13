@@ -178,7 +178,11 @@ private fun FlagManagementCard(
     var addLon      by remember { mutableStateOf("") }
     var addLat      by remember { mutableStateOf("") }
     var addType     by remember { mutableStateOf(CoordType.GCJ02) }
-    var addFlagType by remember { mutableStateOf(FlagType.PICKED) }
+
+    // 手动添加表单打开时自动展开卡片
+    LaunchedEffect(showAddForm) {
+        if (showAddForm) isExpanded = true
+    }
 
     // 批量操作
     var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
@@ -248,15 +252,6 @@ private fun FlagManagementCard(
                         ))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("坐标类型", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(6.dp))
-                    RadioChip("GCJ02", addType == CoordType.GCJ02) { addType = CoordType.GCJ02 }
-                    RadioChip("WGS84", addType == CoordType.WGS84) { addType = CoordType.WGS84 }
-                    Spacer(Modifier.width(12.dp))
-                    Text("旗标类型", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(6.dp))
-                    RadioChip("拾取", addFlagType == FlagType.PICKED) { addFlagType = FlagType.PICKED }
-                    RadioChip("跳转", addFlagType == FlagType.JUMPED) { addFlagType = FlagType.JUMPED }
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = {
                         val lonN = addLon.trim().toDoubleOrNull() ?: return@TextButton
@@ -267,7 +262,7 @@ private fun FlagManagementCard(
                             CoordType.WGS84 -> CT.wgs84ToGcj02(typed)
                         }
                         val wgs = CT.gcj02ToWgs84(gcj, precision = CT.HIGH_PRECISION)
-                        mapViewModel.addFlag(gcj, wgs, addFlagType, addLabel.trim())
+                        mapViewModel.addFlag(gcj, wgs, FlagType.PICKED, addLabel.trim())
                         addLabel = ""; addLon = ""; addLat = ""
                         showAddForm = false
                     }) { Text("放置", fontSize = 12.sp) }
