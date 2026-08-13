@@ -25,16 +25,19 @@
             android:name="com.amap.api.v2.apikey"
             android:value="afead164540ed20313a6cccf0723c4ef" />
         <activity
-            android:name=".MainActivity"
+            android:name=".SplashActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Locationer">
+            android:theme="@style/Theme.Locationer.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Locationer" />
     </application>
 
 </manifest>

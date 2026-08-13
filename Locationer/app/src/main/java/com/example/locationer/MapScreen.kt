@@ -194,6 +194,8 @@ fun MapScreen(
     var reticleMarker    by remember(mapView) { mutableStateOf<Marker?>(null) }
     var mapReady         by remember { mutableStateOf(false) }
     var initialCameraSet by remember(mapView) { mutableStateOf(false) }
+    /** 是否已执行过首次镜头平移到当前位置（后续持续定位不再跟相机） */
+    var firstLocateDone  by remember(mapView) { mutableStateOf(false) }
     // 所有旗标 marker 列表（key = flag.id）
     var flagMarkers      by remember(mapView) { mutableStateOf<Map<Long, Marker>>(emptyMap()) }
 
@@ -322,7 +324,16 @@ fun MapScreen(
         if (isTracking && bearing != null) {
             currentMarker?.rotateAngle = ((180f - bearing!!) % 360f + 360f) % 360f
         }
-        amap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 17f))
+        // 首次定位成功后才平移镜头，后续持续跟踪不再跟随相机
+        if (!firstLocateDone) {
+            firstLocateDone = true
+            amap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 17f))
+        }
+    }
+
+    // ================ 跟踪停止时重置镜头跟随状态 ================
+    LaunchedEffect(isTracking) {
+        if (!isTracking) firstLocateDone = false
     }
 
     // ================ 跳转目标标记 ================
@@ -417,6 +428,7 @@ fun MapScreen(
     }
 
     val onClickLocate = {
+        firstLocateDone = false  // 每次点击重新开始定位，镜头重新跟随
         val hasPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
                 ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         if (hasPerm) viewModel.locate()

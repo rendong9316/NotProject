@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- 外圈 -->
+    <path
+        android:fillColor="#4A90D9"
+        android:pathData="M60,10 A50,50 0 1,1 59.99,10 Z
+                         M60,16 A44,44 0 1,0 60.01,16 Z"
+        android:fillType="evenOdd"/>
+    <!-- 十字准线 -->
+    <path
+        android:fillColor="#4A90D9"
+        android:pathData="M56,0 L64,0 L64,46 L60,46 L60,0 Z
+                         M56,74 L64,74 L64,120 L60,120 L60,74 Z
+                         M0,56 L0,64 L46,64 L46,60 L0,60 Z
+                         M74,56 L74,64 L120,64 L120,60 L74,60 Z"/>
+    <!-- 内圈 -->
+    <path
+        android:fillColor="#4A90D9"
+        android:pathData="M60,36 A24,24 0 1,1 59.99,36 Z
+                         M60,41 A19,19 0 1,0 60.01,41 Z"
+        android:fillType="evenOdd"/>
+    <!-- 中心点 -->
+    <path
+        android:fillColor="#4A90D9"
+        android:pathData="M60,55 A5,5 0 1,1 59.99,55 Z
+                         M60,57 A3,3 0 1,0 60.01,57 Z"
+        android:fillType="evenOdd"/>
+</vector>

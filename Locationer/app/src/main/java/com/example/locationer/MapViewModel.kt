@@ -3,7 +3,6 @@ package com.example.locationer
 import android.app.Application
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClient
@@ -76,7 +75,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private var sensorListener: ISensorListenerDelegate? = null
 
     companion object {
-        private const val TAG = "LocationerVM"
         private const val MAX_NETWORK_RETRY = 2
         private const val RETRY_DELAY_MS    = 1500L
     }
@@ -446,7 +444,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                 // 注册高德传感器监听获取实时朝向
                 sensorListener = object : ISensorListenerDelegate {
                     override fun onSetHeading(timestamp: Long, status: Int, heading: Float) {
-                        Log.d(TAG, "onSetHeading: heading=$heading status=$status")
                         _bearing.value = heading
                     }
                     override fun onSetAccelerometer(timestamp: Long, status: Int,
