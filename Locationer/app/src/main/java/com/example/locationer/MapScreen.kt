@@ -422,7 +422,7 @@ fun MapScreen(
         targetMarker = amap.addMarker(
             MarkerOptions().position(pos).title("目标点位")
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-                .anchor(0.5f, 0.9f)
+                .anchor(0.5f, 0.5f)
         )
         amap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 17f))
     }
@@ -463,7 +463,7 @@ fun MapScreen(
                 MarkerOptions().position(pos)
                     .icon(BitmapDescriptorFactory.fromBitmap(
                         createFlagBitmap(color, flag.customName.ifBlank { flag.label })))
-                    .anchor(0.5f, 0.9f)
+                    .anchor(0.5f, 0.5f)
             )
             flag.id to marker
         }
