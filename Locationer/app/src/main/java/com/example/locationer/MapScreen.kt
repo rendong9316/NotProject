@@ -35,12 +35,16 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.NearMe
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -71,6 +75,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -286,12 +292,17 @@ fun MapScreen(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 verticalArrangement = Arrangement.Bottom
             ) {
-                // -------- 地图（占满可用区域） --------
+                // -------- 地图（占满可用区域，右上角拾取按钮）--------
                 Box(modifier = Modifier.weight(1f)) {
                     AndroidView(
                         factory = { mapView },
                         modifier = Modifier.fillMaxSize(),
                         update    = { mapReady = true },
+                    )
+                    // 拾取模式浮动按钮（仅显示在地图区域）
+                    PickMapFab(
+                        pickMode = pickMode,
+                        onToggle = { viewModel.togglePickMode() },
                     )
                 }
 
@@ -304,6 +315,17 @@ fun MapScreen(
                     locating       = locating,
                     onToggle       = { panelExpanded = !panelExpanded },
                     onLocate       = { onClickLocate() },
+                )
+
+                // -------- 底部坐标输入栏（跳转目标位置）--------
+                BottomInputBar(
+                    lonText     = lonText,
+                    latText     = latText,
+                    coordType   = coordType,
+                    onLonChange = { viewModel.updateLonText(it) },
+                    onLatChange = { viewModel.updateLatText(it) },
+                    onCoordType = { viewModel.setCoordType(it) },
+                    onJumpTo    = { viewModel.jumpTo() },
                 )
 
                 // -------- 已拾取坐标展示条 --------
@@ -327,14 +349,6 @@ fun MapScreen(
                         onDismiss = { viewModel.clearPickedCoord(); viewModel.togglePickMode() }
                     )
                 }
-
-                // -------- 拾取模式按钮（替代原定位 FAB） --------
-                PickModeFab(
-                    pickMode = pickMode,
-                    locating = locating,
-                    onToggle = { viewModel.togglePickMode() },
-                    onLocate = { onClickLocate() }
-                )
             }
         }
     }
@@ -578,32 +592,31 @@ private fun PickedCoordBanner(
 }
 
 // ============================================================================
-// 拾取模式浮动按钮
+// 拾取模式浮动按钮（地图区域右上角，始终可见）
 // ============================================================================
 
 @Composable
-private fun PickModeFab(
-    pickMode : Boolean,
-    locating : Boolean,
-    onToggle : () -> Unit,
-    onLocate : () -> Unit,
-) {
-    FloatingActionButton(
-        onClick = if (pickMode) onToggle else onLocate,
-        modifier = Modifier.padding(16.dp),
-        containerColor = if (pickMode) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-        contentColor   = MaterialTheme.colorScheme.onPrimary,
+private fun PickMapFab(pickMode: Boolean, onToggle: () -> Unit) {
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = statusBarTop) // 避开状态栏
     ) {
-        if (locating)
-            CircularProgressIndicator(
-                modifier   = Modifier.size(22.dp),
-                strokeWidth = 2.dp,
-            )
-        else
-            Icon(
-                imageVector = Icons.Filled.NearMe,
-                contentDescription = if (pickMode) "退出拾取" else "拾取坐标",
-            )
+        FloatingActionButton(
+            onClick = onToggle,
+            modifier = Modifier
+                .padding(16.dp)
+                .align(androidx.compose.ui.Alignment.TopEnd),
+            containerColor = if (pickMode) MaterialTheme.colorScheme.error
+                             else MaterialTheme.colorScheme.primary,
+            contentColor   = MaterialTheme.colorScheme.onPrimary,
+        ) {
+            if (pickMode)
+                Icon(Icons.Filled.PushPin, contentDescription = "退出拾取")
+            else
+                Icon(Icons.Filled.Search, contentDescription = "拾取坐标")
+        }
     }
 }
 
