@@ -21,6 +21,8 @@ data class FlagStyle(
     val flagTextColor: Long = 0xFFFFFFFFL,
     // 旗标文字字号（像素），默认 30
     val flagTextSize: Float = 30f,
+    // 测点图标颜色（Hex ARGB），默认蓝色
+    val waypointIconColor: Long = 0xFF1976D2L,
     // 全局字体大小（倍率，1.0 = 正常）
     val globalTextScale: Float = 1.0f,
     // 全局字体族
@@ -44,13 +46,14 @@ class SettingsManager(context: Context) {
         return try {
             val parts = json.split("|")
             FlagStyle(
-                themeMode      = runCatching { ThemeMode.valueOf(parts[0]) }.getOrDefault(ThemeMode.FOLLOW_SYSTEM),
-                flagIconColor  = parts.getOrNull(1)?.toLongOrNull() ?: 0xFFC01428L,
-                flagIconSize   = parts.getOrNull(2)?.toFloatOrNull() ?: 28f,
-                flagTextColor  = parts.getOrNull(3)?.toLongOrNull() ?: 0xFFFFFFFFL,
-                flagTextSize   = parts.getOrNull(4)?.toFloatOrNull() ?: 30f,
-                globalTextScale = parts.getOrNull(5)?.toFloatOrNull() ?: 1.0f,
-                globalFontFamily = runCatching { FontFamilyOption.valueOf(parts.getOrNull(6) ?: "") }
+                themeMode         = runCatching { ThemeMode.valueOf(parts[0]) }.getOrDefault(ThemeMode.FOLLOW_SYSTEM),
+                flagIconColor     = parts.getOrNull(1)?.toLongOrNull() ?: 0xFFC01428L,
+                flagIconSize      = parts.getOrNull(2)?.toFloatOrNull() ?: 28f,
+                flagTextColor     = parts.getOrNull(3)?.toLongOrNull() ?: 0xFFFFFFFFL,
+                flagTextSize      = parts.getOrNull(4)?.toFloatOrNull() ?: 30f,
+                waypointIconColor = parts.getOrNull(5)?.toLongOrNull() ?: 0xFF1976D2L,
+                globalTextScale   = parts.getOrNull(6)?.toFloatOrNull() ?: 1.0f,
+                globalFontFamily  = runCatching { FontFamilyOption.valueOf(parts.getOrNull(7) ?: "") }
                     .getOrDefault(FontFamilyOption.DEFAULT),
             )
         } catch (_: Exception) {
@@ -65,6 +68,7 @@ class SettingsManager(context: Context) {
             append("|${style.flagIconSize}")
             append("|${style.flagTextColor}")
             append("|${style.flagTextSize}")
+            append("|${style.waypointIconColor}")
             append("|${style.globalTextScale}")
             append("|${style.globalFontFamily.name}")
         }

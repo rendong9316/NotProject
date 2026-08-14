@@ -17,7 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Download
+
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.TextFields
@@ -84,7 +84,7 @@ fun SettingsScreen(
             ValueSliderRow(
                 label = "图标大小",
                 value = currentStyle.flagIconSize,
-                valueRange = 16f..48f,
+                valueRange = 4f..48f,
                 valueText = "%.0f px".format(currentStyle.flagIconSize),
                 onValueChange = { onStyleChange(currentStyle.copy(flagIconSize = it)) },
             )
@@ -100,9 +100,18 @@ fun SettingsScreen(
             ValueSliderRow(
                 label = "文字大小",
                 value = currentStyle.flagTextSize,
-                valueRange = 12f..48f,
+                valueRange = 12f..60f,
                 valueText = "%.0f px".format(currentStyle.flagTextSize),
                 onValueChange = { onStyleChange(currentStyle.copy(flagTextSize = it)) },
+            )
+        }
+
+        SettingsGroup(title = "测点图标", icon = Icons.Filled.Palette) {
+            ColorSelectorRow(
+                label = "图标颜色",
+                currentValue = currentStyle.waypointIconColor,
+                presets = FLAG_COLOR_PRESETS,
+                onSelect = { onStyleChange(currentStyle.copy(waypointIconColor = it.value)) },
             )
         }
 
@@ -147,51 +156,6 @@ fun SettingsScreen(
             }
         }
 
-        // ─── 离线地图瓦片缓存 ───
-        val dbSizeBytes = mapViewModel?.getOfflineDbSizeBytes() ?: 0L
-        val dbSizeText = when {
-            dbSizeBytes < 1024                  -> "${dbSizeBytes} B"
-            dbSizeBytes < 1024 * 1024           -> "%.1f KB".format(dbSizeBytes / 1024.0)
-            dbSizeBytes < 1024 * 1024 * 1024    -> "%.1f MB".format(dbSizeBytes / (1024.0 * 1024.0))
-            else                                -> "%.1f GB".format(dbSizeBytes / (1024.0 * 1024.0 * 1024.0))
-        }
-
-        SettingsGroup(title = "离线地图", icon = Icons.Filled.Download) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "数据库大小：$dbSizeText",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (mapViewModel != null && dbSizeBytes > 0) {
-                    TextButton(
-                        onClick = { mapViewModel.clearOfflineCache() },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                    ) {
-                        Text("清除", fontSize = 12.sp)
-                    }
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 2.dp),
-            ) {
-                Text(
-                    text = "联网时自动下载卫星影像，离线后可直接使用。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
     }
 }
 

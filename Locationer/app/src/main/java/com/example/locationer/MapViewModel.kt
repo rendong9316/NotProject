@@ -137,12 +137,12 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     companion object {
         private const val MAX_NETWORK_RETRY = 2
         private const val RETRY_DELAY_MS    = 1500L
-        /** 自动选单位：≥1000m 显示 km，<1000m 显示 m */
+        /** 自动选单位：≥1000m 显示 km，<1000m 显示 m，统一保留两位小数 */
         fun formatDist(meters: Double): String =
-            if (meters >= 1000) "%.2f km".format(meters / 1000) else "%.0f m".format(meters)
-        /** 自动选单位：≥1km² 显示 km²，<1km² 显示 m² */
+            if (meters >= 1000) "%.2f km".format(meters / 1000) else "%.2f m".format(meters)
+        /** 自动选单位：≥1km² 显示 km²，<1km² 显示 m²，统一保留两位小数 */
         fun formatArea(sqMeters: Double): String =
-            if (sqMeters >= 1_000_000) "%.2f km²".format(sqMeters / 1_000_000) else "%.0f m²".format(sqMeters)
+            if (sqMeters >= 1_000_000) "%.2f km²".format(sqMeters / 1_000_000) else "%.2f m²".format(sqMeters)
     }
 
     // ================ 拾取模式开关 ================
@@ -167,37 +167,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     /** 最近一次地图点击拾取的坐标（GCJ02，兼容旧接口） */
     private val _lastPickedCoord = MutableStateFlow<CT.Coord?>(null)
     val lastPickedCoord: StateFlow<CT.Coord?> = _lastPickedCoord.asStateFlow()
-
-    // ================ 离线卫星瓦片 ================
-    /** 离线瓦片提供者（单例，与 ViewModel 同生命周期） */
-    internal val offlineProvider = MbtilesTileProvider.create(application)
-    /** 当前是否离线（无网络），每 5 秒轮询刷新一次 */
-    val isOffline: StateFlow<Boolean> = MutableStateFlow(isNetworkAvailable().not())
-        .also { viewModelScope.launch {
-            while (true) {
-                kotlinx.coroutines.delay(5000L)
-                it.value = isNetworkAvailable().not()
-            }
-        }}
-
-    /** 检测网络可用性（WiFi 或移动数据） */
-    private fun isNetworkAvailable(): Boolean {
-        val cm = getApplication<Application>().getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
-            ?: return false
-        val network = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(network) ?: return false
-        return caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
-                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR)
-    }
-
-    /** 获取离线数据库文件大小（字节） */
-    fun getOfflineDbSizeBytes(): Long = offlineProvider.getDbSizeBytes()
-
-    /** 清除离线瓦片缓存 */
-    fun clearOfflineCache() {
-        offlineProvider.clearCache()
-        _message.value = UiMessage("已清除离线瓦片缓存")
-    }
 
     init {
         try {
@@ -739,6 +708,5 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         stopContinuous()
         try { locationClient?.onDestroy(); locationClient = null }
         catch (_: Exception) {}
-        offlineProvider.shutdown()
     }
 }

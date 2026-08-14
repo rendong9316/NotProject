@@ -1,8 +1,10 @@
 package com.example.locationer
 
+import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
@@ -21,7 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
 
 /** “我的”页面，收藏夹和设置子页长期共存。 */
@@ -34,14 +36,18 @@ fun MyScreen(
     onStyleChange: (FlagStyle) -> Unit,
     isActive: Boolean = true,
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val navEvent by mapViewModel.navigationEvent.collectAsState()
-
-    LaunchedEffect(navEvent, isActive) {
-        if (isActive && navEvent.target == MapViewModel.NavigationTarget.MY_FAVORITES) {
-            selectedTab = 0
-            mapViewModel.consumedNavEvent()
-        }
+    val context = LocalContext.current
+    // 从 SharedPreferences 读取上次停留的子页签，默认 0（收藏夹）
+    var selectedTab by remember {
+        mutableIntStateOf(
+            context.getSharedPreferences("my_tab_pref", Context.MODE_PRIVATE)
+                .getInt("selected_my_tab", 0)
+        )
+    }
+    // 子页签变化时持久化
+    LaunchedEffect(selectedTab) {
+        context.getSharedPreferences("my_tab_pref", Context.MODE_PRIVATE)
+            .edit().putInt("selected_my_tab", selectedTab).apply()
     }
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {

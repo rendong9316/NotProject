@@ -16,6 +16,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -91,7 +95,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -229,35 +232,6 @@ fun MapScreen(
     }
     val aMap = remember { mapView.map }
 
-    // ================ 离线卫星瓦片 ================
-    /** 离线瓦片提供者（从 ViewModel 获取，确保单例共享） */
-    val offlineProvider = viewModel.offlineProvider
-    /** 瓦片覆盖层，用于离线时叠加显示 */
-    var tileOverlay by remember { mutableStateOf<com.amap.api.maps.model.TileOverlay?>(null) }
-
-    /**
-     * 添加或移除离线瓦片覆盖层。
-     * 离线时：添加覆盖层，显示离线卫星图
-     * 在线时：移除覆盖层，显示高德在线地图
-     */
-    fun updateTileOverlay(isOffline: Boolean) {
-        val amap = aMap ?: return
-        if (isOffline) {
-            if (tileOverlay == null) {
-                tileOverlay = amap.addTileOverlay(
-                    com.amap.api.maps.model.TileOverlayOptions()
-                        .tileProvider(offlineProvider)
-                        .zIndex(100f)
-                )
-                android.util.Log.d("OfflineMap", "已添加离线瓦片覆盖层")
-            }
-        } else {
-            tileOverlay?.remove()
-            tileOverlay = null
-            android.util.Log.d("OfflineMap", "已移除离线瓦片覆盖层")
-        }
-    }
-
     // 标记管理
     var currentMarker    by remember(mapView) { mutableStateOf<Marker?>(null) }
     var targetMarker     by remember(mapView) { mutableStateOf<Marker?>(null) }
@@ -330,8 +304,6 @@ fun MapScreen(
 
     // ================ 地图图层切换 + 深色模式适配 ================
     val darkTheme = isSystemInDarkTheme()
-    /** 当前是否离线（无网络），由 ViewModel 每 5 秒轮询更新 */
-    val isOffline by viewModel.isOffline.collectAsState()
     var mapLayer by remember {
         mutableStateOf(
             context.getSharedPreferences("map_screen", android.content.Context.MODE_PRIVATE)
@@ -342,17 +314,13 @@ fun MapScreen(
         context.getSharedPreferences("map_screen", android.content.Context.MODE_PRIVATE)
             .edit().putBoolean("mapLayer", mapLayer).apply()
     }
-    LaunchedEffect(mapReady, mapLayer, darkTheme, isOffline) {
+    LaunchedEffect(mapReady, mapLayer, darkTheme) {
         if (!mapReady) return@LaunchedEffect
-        // 离线时使用卫星图（我们的离线瓦片就是卫星影像）
-        val effectiveLayer = if (isOffline) true else mapLayer
         aMap?.setMapType(when {
-            effectiveLayer -> AMap.MAP_TYPE_SATELLITE
-            darkTheme      -> AMap.MAP_TYPE_NIGHT
-            else           -> AMap.MAP_TYPE_NORMAL
+            mapLayer     -> AMap.MAP_TYPE_SATELLITE
+            darkTheme    -> AMap.MAP_TYPE_NIGHT
+            else         -> AMap.MAP_TYPE_NORMAL
         })
-        // 更新离线瓦片覆盖层
-        updateTileOverlay(isOffline)
         if (!initialCameraSet) {
             initialCameraSet = true
             aMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.0, 104.0), 4.5f))
@@ -367,6 +335,10 @@ fun MapScreen(
     // ================ 地图手势：全局禁用旋转；平移在拾取/测量拾取模式下锁定 ================
     LaunchedEffect(aMap) {
         aMap?.uiSettings?.isRotateGesturesEnabled = false
+    }
+    // 高德 logo 可能异步添加到视图树，延迟一帧重试隐藏
+    LaunchedEffect(mapReady, mapView) {
+        if (mapReady) hideMapLogo(mapView)
     }
     LaunchedEffect(placeMode, measurementPickMode) {
         aMap?.setMapCustomEnable(placeMode || measurementPickMode)
@@ -574,7 +546,7 @@ fun MapScreen(
     var oldMarkers by remember { mutableStateOf<List<Marker>>(emptyList()) }
     var oldPolyline by remember { mutableStateOf<Polyline?>(null) }
     var oldPolygon by remember { mutableStateOf<Polygon?>(null) }
-    LaunchedEffect(waypoints, measurementMode, measurementPickMode, mapReady) {
+    LaunchedEffect(waypoints, measurementMode, measurementPickMode, mapReady, flagStyle) {
         if (!mapReady) return@LaunchedEffect
         val amap = aMap ?: return@LaunchedEffect
         // 清除旧对象
@@ -606,12 +578,20 @@ fun MapScreen(
                 .strokeWidth(4f)
                 .fillColor(Color.argb(55, 25, 118, 210)))
         } else null
-        // 绘制无名称标签的蓝色圆点标记（仅编号）
+        // 绘制与旗标同款的圆形图标标记（含序号标签）
         oldMarkers = waypoints.mapIndexed { i, wp ->
+            val label = "${i + 1}"
+            val bmp = createFlagBitmap(
+                color      = flagStyle.waypointIconColor.toInt(),
+                label      = label,
+                iconRadius = flagStyle.flagIconSize,
+                textSize   = flagStyle.flagTextSize,
+                textColor  = flagStyle.flagTextColor.toInt(),
+            )
             amap.addMarker(MarkerOptions()
                 .position(LatLng(wp.gcj.lat, wp.gcj.lon))
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
-                .anchor(0.5f, 0.5f))
+                .icon(BitmapDescriptorFactory.fromBitmap(bmp.bitmap))
+                .anchor(bmp.anchorX, bmp.anchorY))
         }
     }
 
@@ -707,7 +687,10 @@ fun MapScreen(
                     AndroidView(
                         factory = { mapView },
                         modifier = Modifier.fillMaxSize(),
-                        update    = { mapReady = true },
+                        update    = {
+                            mapReady = true
+                            hideMapLogo(mapView)
+                        },
                     )
                     // 图层切换按钮（标准 / 卫星 / 离线），位于右上角
                     Box(
@@ -716,7 +699,6 @@ fun MapScreen(
                     ) {
                         LayerToggleButton(
                             isSatellite = mapLayer,
-                            isOffline   = isOffline,
                             onClick     = { mapLayer = !mapLayer },
                         )
                     }
@@ -1066,39 +1048,66 @@ private fun PickModeFab(placeMode: Boolean, onToggle: () -> Unit) {
 @Composable
 private fun LayerToggleButton(
     isSatellite : Boolean,
-    isOffline   : Boolean,
     onClick     : () -> Unit,
 ) {
-    Box {
-        FilledTonalButton(
-            onClick = onClick,
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = if (isOffline) MaterialTheme.colorScheme.primaryContainer
-                                 else MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor   = if (isOffline) MaterialTheme.colorScheme.onPrimaryContainer
-                                 else MaterialTheme.colorScheme.onSurface,
-            ),
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Tune,
-                contentDescription = if (isSatellite) "切换到标准地图" else "切换到卫星地图",
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = if (isOffline) "离线" else if (isSatellite) "标准" else "卫星",
-                fontSize = 14.sp,
-            )
+    FilledTonalButton(
+        onClick = onClick,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            contentColor   = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Tune,
+            contentDescription = if (isSatellite) "切换到标准地图" else "切换到卫星地图",
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = if (isSatellite) "标准" else "卫星",
+            fontSize = 14.sp,
+        )
+    }
+}
+
+/** 遍历 MapView 视图树，找到并隐藏高德地图的 logo / 版权文字视图 */
+private fun hideMapLogo(mapView: MapView) {
+    (mapView as? ViewGroup)?.let { root ->
+        val toHide = mutableListOf<View>()
+        val stack = mutableListOf<View>()
+        stack.add(root)
+        while (stack.isNotEmpty()) {
+            val v = stack.removeAt(stack.lastIndex)
+            when (v) {
+                is TextView -> {
+                    val idName = try { v.resources.getResourceEntryName(v.id) } catch (_: Exception) { "" }
+                    val tag = v.tag?.toString()?.lowercase() ?: ""
+                    val cd = v.contentDescription?.toString()?.lowercase() ?: ""
+                    // 匹配 amap logo 的各种可能标识
+                    if (idName.contains("logo", ignoreCase = true) ||
+                        "amap" in idName ||
+                        "amap" in tag ||
+                        "amap" in cd ||
+                        "高德" in v.text.toString()
+                    ) {
+                        toHide.add(v)
+                    }
+                }
+                is ImageView -> {
+                    val idName = try { v.resources.getResourceEntryName(v.id) } catch (_: Exception) { "" }
+                    val tag = v.tag?.toString()?.lowercase() ?: ""
+                    val cd = v.contentDescription?.toString()?.lowercase() ?: ""
+                    if (idName.contains("logo", ignoreCase = true) ||
+                        "amap" in idName ||
+                        "amap" in tag ||
+                        "amap" in cd
+                    ) {
+                        toHide.add(v)
+                    }
+                }
+                is ViewGroup -> (0 until v.childCount).forEach { stack.add(v.getChildAt(it)) }
+            }
         }
-        // 离线状态徽标：右下角蓝色圆点
-        if (isOffline) {
-            Box(
-                modifier = Modifier
-                    .padding(end = 4.dp, bottom = 4.dp)
-                    .size(8.dp)
-                    .align(androidx.compose.ui.Alignment.BottomEnd)
-                    .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
-            )
-        }
+        toHide.forEach { it.visibility = View.GONE }
     }
 }

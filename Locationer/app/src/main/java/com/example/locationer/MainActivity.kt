@@ -105,12 +105,13 @@ fun LocationerApp(style: FlagStyle, onStyleChange: (FlagStyle) -> Unit) {
     }
 
     LaunchedEffect(navigationEvent) {
-        selectedTab = when (navigationEvent.target) {
-            MapViewModel.NavigationTarget.MAP             -> 0
-            MapViewModel.NavigationTarget.TOOLS_MEASUREMENT -> 1
-            MapViewModel.NavigationTarget.MY_FAVORITES    -> 2
-            MapViewModel.NavigationTarget.NONE            -> selectedTab
+        when (navigationEvent.target) {
+            MapViewModel.NavigationTarget.MAP             -> selectedTab = 0
+            MapViewModel.NavigationTarget.TOOLS_MEASUREMENT -> selectedTab = 1
+            MapViewModel.NavigationTarget.MY_FAVORITES    -> selectedTab = 2
+            MapViewModel.NavigationTarget.NONE            -> Unit
         }
+        viewModel.consumedNavEvent()
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
