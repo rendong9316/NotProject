@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
@@ -80,6 +81,30 @@ import androidx.compose.ui.unit.sp
 import android.content.Context
 import android.widget.Toast
 import androidx.lifecycle.viewmodel.compose.viewModel
+
+// ============================================================================
+// 持久化折叠状态辅助
+// ============================================================================
+
+/**
+ * 带 SharedPreferences 持久化的布尔状态。
+ * key 对应 prefs 中的键，初始值从 prefs 读取，每次变化立即写入。
+ */
+@Composable
+private fun rememberPersistedBoolean(
+    context: android.content.Context,
+    key: String,
+    default: Boolean = true,
+): Pair<Boolean, (Boolean) -> Unit> {
+    val prefs = remember(context) {
+        context.getSharedPreferences("tool_card_prefs", Context.MODE_PRIVATE)
+    }
+    var value by remember { mutableStateOf(prefs.getBoolean(key, default)) }
+    LaunchedEffect(value) {
+        prefs.edit().putBoolean(key, value).apply()
+    }
+    return value to { newValue -> value = newValue }
+}
 
 /** 距离计算结果 */
 data class GeoResult(
@@ -127,6 +152,7 @@ fun ToolsScreen(
             isToolsActive = isActive,
             bringIntoViewRequester = measurementRequester,
         )
+        AngleConversionCard()
     }
 }
 
@@ -200,7 +226,7 @@ private fun FlagManagementCard(
     currentWgs  : CT.Coord?,
     flagStyle   : FlagStyle = FlagStyle(),
 ) {
-    var isExpanded by remember { mutableStateOf(true) }
+    val (isExpanded, onExpandedChange) = rememberPersistedBoolean(context, "card_flag_management", true)
     // 手动添加表单状态
     var showAddForm by remember { mutableStateOf(false) }
     var addLabel    by remember { mutableStateOf("") }
@@ -210,7 +236,7 @@ private fun FlagManagementCard(
 
     // 手动添加表单打开时自动展开卡片
     LaunchedEffect(showAddForm) {
-        if (showAddForm) isExpanded = true
+        if (showAddForm) onExpandedChange(true)
     }
 
     // 批量操作
@@ -235,7 +261,7 @@ private fun FlagManagementCard(
         icon = Icons.Filled.Person,
         iconTint = MaterialTheme.colorScheme.primary,
         isExpanded = isExpanded,
-        onToggle = { isExpanded = !isExpanded },
+        onToggle = { onExpandedChange(!isExpanded) },
         clearBtn = {
             TextButton(onClick = {
                 showClearAllDialog = true
@@ -712,7 +738,8 @@ private fun MeasurementCard(
     isToolsActive: Boolean,
     bringIntoViewRequester: BringIntoViewRequester,
 ) {
-    var isExpanded by remember { mutableStateOf(true) }
+    val cardContext = androidx.compose.ui.platform.LocalContext.current
+    val (isExpanded, onExpandedChange) = rememberPersistedBoolean(cardContext, "card_measurement", true)
     var userCollapsed by remember { mutableStateOf(false) }
     val vmMode by mapViewModel.measurementMode.collectAsState()
     var uiMode by remember { mutableStateOf(vmMode) }
@@ -729,7 +756,7 @@ private fun MeasurementCard(
 
     LaunchedEffect(isToolsActive, isComplete, isExpanded, userCollapsed) {
         if (isToolsActive && isComplete && !isExpanded && !userCollapsed) {
-            isExpanded = true
+            onExpandedChange(true)
         } else if (isToolsActive && isComplete) {
             bringIntoViewRequester.bringIntoView()
         }
@@ -743,7 +770,7 @@ private fun MeasurementCard(
             isExpanded = isExpanded,
             onToggle = {
                 userCollapsed = true
-                isExpanded = !isExpanded
+                onExpandedChange(!isExpanded)
             },
         ) {
         // 模式选择
@@ -887,6 +914,209 @@ private fun ResultBox(dist: Double, area: Double?, segmentCount: Int) {
                     fontSize = 14.sp, fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.tertiary, textAlign = TextAlign.Center)
             }
+        }
+    }
+}
+
+// ============================================================================
+// 卡片 3：角度换算（度 ↔ 时分秒）
+// ============================================================================
+
+@Composable
+private fun AngleConversionCard() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val (isExpanded, onExpandedChange) = rememberPersistedBoolean(context, "card_angle_conversion", true)
+    var userCollapsed by remember { mutableStateOf(false) }
+
+    // 十进制度数输入
+    var decimalInput by remember { mutableStateOf("") }
+    var decimalError by remember { mutableStateOf<String?>(null) }
+
+    // DMS 输入（分、秒分开）
+    var dmsDeg by remember { mutableStateOf("") }
+    var dmsMin by remember { mutableStateOf("") }
+    var dmsSec by remember { mutableStateOf("") }
+    var dmsError by remember { mutableStateOf<String?>(null) }
+
+    // 实时显示转换结果
+    var decimalResult by remember { mutableStateOf<String?>(null) }
+    var dmsResult by remember { mutableStateOf<String?>(null) }
+
+    Column(modifier = Modifier.bringIntoViewRequester(BringIntoViewRequester())) {
+        CollapsibleToolCard(
+            title = "角度换算",
+            icon = Icons.Filled.FormatQuote,
+            iconTint = MaterialTheme.colorScheme.tertiary,
+            isExpanded = isExpanded,
+            onToggle = {
+                userCollapsed = true
+                onExpandedChange(!isExpanded)
+            },
+        ) {
+            // ---- 十进制 → DMS ----
+            Column(modifier = Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("十进制度数 → 时分秒", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(
+                    value = decimalInput,
+                    onValueChange = { input ->
+                        decimalInput = input
+                        decimalResult = input.toDoubleOrNull()?.let { dec ->
+                            dec.toDmsString()
+                        }
+                        decimalError = if (input.isNotEmpty() && decimalResult == null) "请输入有效的数字" else null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("度数（如 116.397428）", fontSize = 12.sp) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = decimalError != null,
+                    supportingText = decimalError?.let { { Text(it, fontSize = 11.sp) } },
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                        errorIndicatorColor = MaterialTheme.colorScheme.error,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        errorContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.08f),
+                    ),
+                )
+                decimalResult?.let { result ->
+                    ResultDisplayRow(label = "时分秒结果", text = result, onCopy = {
+                        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        cm?.setPrimaryClip(android.content.ClipData.newPlainText("角度", result))
+                        Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                    })
+                }
+            }
+
+            // 分隔线
+            Spacer(Modifier.height(8.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth().height(1.dp),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            ) {}
+            Spacer(Modifier.height(8.dp))
+
+            // ---- DMS → 十进制 ----
+            Column(modifier = Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("时分秒 → 十进制度数", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(
+                        value = dmsDeg,
+                        onValueChange = { input ->
+                            dmsDeg = input
+                            val deg = input.toDoubleOrNull()
+                            val min = dmsMin.toDoubleOrNull() ?: 0.0
+                            val sec = dmsSec.toDoubleOrNull() ?: 0.0
+                            if (deg != null) {
+                                dmsResult = "%.6f".format(deg + min / 60.0 + sec / 3600.0)
+                                dmsError = null
+                            } else {
+                                dmsResult = null
+                                dmsError = if (input.isNotEmpty()) "请输入有效的度数" else null
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        label = { Text("度", fontSize = 12.sp) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = dmsError != null,
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                            unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                            errorIndicatorColor = MaterialTheme.colorScheme.error,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            errorContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.08f),
+                        ),
+                    )
+                    OutlinedTextField(
+                        value = dmsMin,
+                        onValueChange = { input ->
+                            dmsMin = input
+                            val deg = dmsDeg.toDoubleOrNull()
+                            val min = input.toDoubleOrNull() ?: 0.0
+                            val sec = dmsSec.toDoubleOrNull() ?: 0.0
+                            if (deg != null) {
+                                dmsResult = "%.6f".format(deg + min / 60.0 + sec / 3600.0)
+                                dmsError = null
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        label = { Text("分", fontSize = 12.sp) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                            unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        ),
+                    )
+                    OutlinedTextField(
+                        value = dmsSec,
+                        onValueChange = { input ->
+                            dmsSec = input
+                            val deg = dmsDeg.toDoubleOrNull()
+                            val min = dmsMin.toDoubleOrNull() ?: 0.0
+                            val sec = input.toDoubleOrNull() ?: 0.0
+                            if (deg != null) {
+                                dmsResult = "%.6f".format(deg + min / 60.0 + sec / 3600.0)
+                                dmsError = null
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        label = { Text("秒", fontSize = 12.sp) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                            unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        ),
+                    )
+                }
+                dmsResult?.let { result ->
+                    ResultDisplayRow(label = "十进制结果", text = result, onCopy = {
+                        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        cm?.setPrimaryClip(android.content.ClipData.newPlainText("角度", result))
+                        Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                    })
+                }
+                dmsError?.let { error ->
+                    Text(error, fontSize = 11.sp, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResultDisplayRow(label: String, text: String, onCopy: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(72.dp))
+            Text(
+                text = text,
+                fontSize = 14.sp,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.Filled.ContentCopy,
+                contentDescription = "复制",
+                modifier = Modifier.size(18.dp).clickable(onClick = onCopy),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

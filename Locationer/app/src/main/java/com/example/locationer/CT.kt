@@ -127,3 +127,64 @@ fun bearingCardinal(deg: Double): String {
                        "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
     return dirs[((deg + 11.25).toInt() % 360) / 22]
 }
+
+// ============================================================================
+// 角度换算：度 ↔ 时分秒（° ↔ DMS）
+// ============================================================================
+
+/**
+ * 将十进制度数转换为时分秒格式字符串。
+ * 示例：116.397428 → "116°23'50.741""
+ */
+fun CT.Coord.toDmsString(): String =
+    "${lon.toDmsString()} ${lat.toDmsString()}"
+
+/** 将单个角度值转换为 DMS 字符串（°′″） */
+fun Double.toDmsString(): String {
+    val isNegative = this < 0
+    val absVal = kotlin.math.abs(this)
+    val degrees = absVal.toInt()
+    val minutesFloat = (absVal - degrees) * 60.0
+    val minutes = minutesFloat.toInt()
+    val seconds = (minutesFloat - minutes) * 60.0
+    val secStr = "%.3f".format(seconds)
+    return "${if (isNegative) "-" else ""}$degrees°$minutes′${secStr}″"
+}
+
+/**
+ * 将 DMS 字符串解析为十进制度数。
+ * 支持格式：
+ * - "116°23'50.741""
+ * - "116 23 50.741"
+ * - "116°23'50.741"N"（带方向字母）
+ * - "-116.397428"（纯小数）
+ */
+fun String.toDecimalDegrees(): Double? {
+    val trimmed = trim()
+    // 先尝试直接解析为小数
+    val direct = trimmed.toDoubleOrNull()
+    if (direct != null) return direct
+
+    // 解析 DMS 格式
+    val cleaned = trimmed
+        .replace("°", " ").replace("′", "'").replace("\"", " ")
+        .replace("″", " ").replace("’", "'")
+        .replace(Regex("[NSEW]"), " ").trim()
+
+    val parts = cleaned.split(Regex("\\s+")).filter { it.isNotEmpty() }
+    if (parts.size < 2) return null
+
+    val deg = parts[0].toDoubleOrNull() ?: return null
+    val minStr = parts.getOrNull(1) ?: return null
+    val secStr = parts.getOrNull(2) ?: "0"
+    val min = minStr.replace(",", ".").toDoubleOrNull() ?: return null
+    val sec = secStr.replace(",", ".").toDoubleOrNull() ?: 0.0
+
+    return deg + min / 60.0 + sec / 3600.0
+}
+
+/** 将十进制度数格式化为简洁的 DMS 字符串（保留3位秒小数） */
+fun Double.formatDms(): String = toDmsString()
+
+/** 将时分秒字符串转为十进制，用于输入验证 */
+fun parseDmsToDecimal(dms: String): Double? = dms.toDecimalDegrees()

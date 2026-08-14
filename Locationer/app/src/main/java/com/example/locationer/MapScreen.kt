@@ -16,10 +16,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.MotionEvent
-import android.view.View
-import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -335,10 +331,9 @@ fun MapScreen(
     // ================ 地图手势：全局禁用旋转；平移在拾取/测量拾取模式下锁定 ================
     LaunchedEffect(aMap) {
         aMap?.uiSettings?.isRotateGesturesEnabled = false
-    }
-    // 高德 logo 可能异步添加到视图树，延迟一帧重试隐藏
-    LaunchedEffect(mapReady, mapView) {
-        if (mapReady) hideMapLogo(mapView)
+        try {
+            aMap?.uiSettings?.javaClass?.getMethod("setLogoEnable", Boolean::class.java)?.invoke(aMap.uiSettings, false)
+        } catch (_: Exception) {}
     }
     LaunchedEffect(placeMode, measurementPickMode) {
         aMap?.setMapCustomEnable(placeMode || measurementPickMode)
@@ -687,10 +682,7 @@ fun MapScreen(
                     AndroidView(
                         factory = { mapView },
                         modifier = Modifier.fillMaxSize(),
-                        update    = {
-                            mapReady = true
-                            hideMapLogo(mapView)
-                        },
+                        update    = { mapReady = true },
                     )
                     // 图层切换按钮（标准 / 卫星 / 离线），位于右上角
                     Box(
@@ -1067,47 +1059,5 @@ private fun LayerToggleButton(
             text = if (isSatellite) "标准" else "卫星",
             fontSize = 14.sp,
         )
-    }
-}
-
-/** 遍历 MapView 视图树，找到并隐藏高德地图的 logo / 版权文字视图 */
-private fun hideMapLogo(mapView: MapView) {
-    (mapView as? ViewGroup)?.let { root ->
-        val toHide = mutableListOf<View>()
-        val stack = mutableListOf<View>()
-        stack.add(root)
-        while (stack.isNotEmpty()) {
-            val v = stack.removeAt(stack.lastIndex)
-            when (v) {
-                is TextView -> {
-                    val idName = try { v.resources.getResourceEntryName(v.id) } catch (_: Exception) { "" }
-                    val tag = v.tag?.toString()?.lowercase() ?: ""
-                    val cd = v.contentDescription?.toString()?.lowercase() ?: ""
-                    // 匹配 amap logo 的各种可能标识
-                    if (idName.contains("logo", ignoreCase = true) ||
-                        "amap" in idName ||
-                        "amap" in tag ||
-                        "amap" in cd ||
-                        "高德" in v.text.toString()
-                    ) {
-                        toHide.add(v)
-                    }
-                }
-                is ImageView -> {
-                    val idName = try { v.resources.getResourceEntryName(v.id) } catch (_: Exception) { "" }
-                    val tag = v.tag?.toString()?.lowercase() ?: ""
-                    val cd = v.contentDescription?.toString()?.lowercase() ?: ""
-                    if (idName.contains("logo", ignoreCase = true) ||
-                        "amap" in idName ||
-                        "amap" in tag ||
-                        "amap" in cd
-                    ) {
-                        toHide.add(v)
-                    }
-                }
-                is ViewGroup -> (0 until v.childCount).forEach { stack.add(v.getChildAt(it)) }
-            }
-        }
-        toHide.forEach { it.visibility = View.GONE }
     }
 }
