@@ -653,10 +653,10 @@ private fun MeasurementCard(
     bringIntoViewRequester: BringIntoViewRequester,
 ) {
     var isExpanded by remember { mutableStateOf(true) }
+    var userCollapsed by remember { mutableStateOf(false) }
     val vmMode by mapViewModel.measurementMode.collectAsState()
     var uiMode by remember { mutableStateOf(vmMode) }
     LaunchedEffect(vmMode) { uiMode = vmMode }
-
     val waypoints by mapViewModel.measurementWaypoints.collectAsState()
     val segments by mapViewModel.measurementSegments.collectAsState()
     val totalDist by mapViewModel.measurementTotalDist.collectAsState()
@@ -664,9 +664,11 @@ private fun MeasurementCard(
     val measurementState by mapViewModel.measurementState.collectAsState()
     val isMeasuring = measurementState == MapViewModel.MeasurementState.PLACING
     val isComplete = measurementState == MapViewModel.MeasurementState.COMPLETED
+    // 重新开始测量时清除"已手动收起"标记，恢复自动展开行为
+    LaunchedEffect(isMeasuring) { if (isMeasuring) userCollapsed = false }
 
-    LaunchedEffect(isToolsActive, isComplete, isExpanded) {
-        if (isToolsActive && isComplete && !isExpanded) {
+    LaunchedEffect(isToolsActive, isComplete, isExpanded, userCollapsed) {
+        if (isToolsActive && isComplete && !isExpanded && !userCollapsed) {
             isExpanded = true
         } else if (isToolsActive && isComplete) {
             bringIntoViewRequester.bringIntoView()
@@ -679,7 +681,10 @@ private fun MeasurementCard(
             icon = Icons.Filled.Draw,
             iconTint = MaterialTheme.colorScheme.secondary,
             isExpanded = isExpanded,
-            onToggle = { isExpanded = !isExpanded },
+            onToggle = {
+                userCollapsed = true
+                isExpanded = !isExpanded
+            },
         ) {
         // 模式选择
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
