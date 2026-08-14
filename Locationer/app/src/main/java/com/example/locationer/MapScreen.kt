@@ -151,16 +151,16 @@ private fun createReticleBitmap(): Bitmap {
     return bmp
 }
 
-/** 绘制旗标图标：带标签的圆点（144x144） */
-private fun createFlagBitmap(color: Int, label: String): Bitmap {
+/** 绘制旗标图标：带标签的圆点（144x144），支持自定义颜色和字号 */
+private fun createFlagBitmap(color: Int, label: String, iconRadius: Float = 28f, textSize: Float = 30f, textColor: Int = Color.WHITE): Bitmap {
     val size = 144
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
     val circlePaint = Paint().apply { this.color = color; style = Paint.Style.FILL }
-    c.drawCircle((size / 2).toFloat(), (size / 2 + 8).toFloat(), 28f, circlePaint)
+    c.drawCircle((size / 2).toFloat(), (size / 2 + 8).toFloat(), iconRadius, circlePaint)
     val textPaint = Paint().apply {
-        this.color = Color.WHITE
-        this.textSize = 30f
+        this.color = textColor
+        this.textSize = textSize
         this.isAntiAlias = true
         this.textAlign = Paint.Align.CENTER
     }
@@ -175,9 +175,10 @@ private fun createFlagBitmap(color: Int, label: String): Bitmap {
 
 @Composable
 fun MapScreen(
-    modifier: Modifier = Modifier,
-    viewModel: MapViewModel = viewModel(),
-    isActive: Boolean = true,
+    modifier  : Modifier = Modifier,
+    viewModel : MapViewModel = viewModel(),
+    isActive  : Boolean = true,
+    flagStyle : FlagStyle = FlagStyle(),
 ) {
     val context          = LocalContext.current
     val lifecycleOwner   = LocalLifecycleOwner.current
@@ -449,22 +450,34 @@ fun MapScreen(
         }
     }
 
-    // ================ 旗标标记渲染 ================
-    LaunchedEffect(flags, mapReady) {
+    // ================ 旗标标记渲染（支持自定义样式） ================
+    LaunchedEffect(flags, mapReady, flagStyle) {
         if (!mapReady) return@LaunchedEffect
         val amap = aMap ?: return@LaunchedEffect
         flagMarkers.values.forEach { it.remove() }
         val newMap = flags.associate { flag ->
             val pos = LatLng(flag.gcjLat, flag.gcjLon)
-            val color = when (flag.type) {
+            val defaultColor = when (flag.type) {
                 FlagType.CURRENT  -> Color.CYAN
                 FlagType.PICKED   -> Color.rgb(192, 20, 40)
                 FlagType.JUMPED   -> Color.RED
             }
+            val iconColor = if (flag.type == FlagType.CURRENT) {
+                defaultColor
+            } else {
+                flagStyle.flagIconColor.toInt()
+            }
             val marker = amap.addMarker(
                 MarkerOptions().position(pos)
                     .icon(BitmapDescriptorFactory.fromBitmap(
-                        createFlagBitmap(color, flag.customName.ifBlank { flag.label })))
+                        createFlagBitmap(
+                            color = iconColor,
+                            label = flag.customName.ifBlank { flag.label },
+                            iconRadius = flagStyle.flagIconSize,
+                            textSize = flagStyle.flagTextSize,
+                            textColor = flagStyle.flagTextColor.toInt(),
+                        )
+                    ))
                     .anchor(0.5f, 0.5f)
             )
             flag.id to marker

@@ -1,6 +1,7 @@
 package com.example.locationer
 
 import android.app.Application
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import androidx.lifecycle.AndroidViewModel
@@ -60,7 +61,7 @@ data class UiMessage(val text: String)
 
 class MapViewModel(application: Application) : AndroidViewModel(application) {
 
-    enum class NavigationTarget { NONE, MAP, TOOLS_MEASUREMENT }
+    enum class NavigationTarget { NONE, MAP, TOOLS_MEASUREMENT, MY_FAVORITES }
     data class NavigationEvent(val id: Long = 0L, val target: NavigationTarget = NavigationTarget.NONE)
 
     private val _currentGcj   = MutableStateFlow<CT.Coord?>(null)
@@ -419,6 +420,16 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             target = NavigationTarget.TOOLS_MEASUREMENT,
         )
     }
+    fun requestSwitchToFavorites() {
+        _navigationEvent.value = NavigationEvent(
+            id = _navigationEvent.value.id + 1,
+            target = NavigationTarget.MY_FAVORITES,
+        )
+    }
+    /** 消费一次导航事件（避免反复触发） */
+    fun consumedNavEvent() {
+        _navigationEvent.value = NavigationEvent()
+    }
     fun triggerCollapsePanel() { _collapsePanelEvent.value++ }
 
     fun startMeasurement(mode: MeasurementMode) {
@@ -454,7 +465,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** 完成测量：保留 waypoints/结果，通知 UI 跳回工具箱 */
+    /** 完成测量：保留 waypoints/结果，通知 UI 跳回工具 */
     fun completeMeasurement() {
         if (_measurementState.value != MeasurementState.PLACING) return
         if (!isMeasurementReady(_measurementMode.value, _measurementWaypoints.value.size)) return

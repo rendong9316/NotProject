@@ -19,3 +19,7 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Optional classes referenced by the bundled AMap SDK but absent from this artifact.
+-dontwarn com.amap.ams.gnss.GnssSoftLocator
+-dontwarn net.jafama.FastMath

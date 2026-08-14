@@ -1,6 +1,9 @@
 package com.example.locationer
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Arrangement
@@ -82,17 +85,18 @@ data class GeoResult(
 )
 
 /**
- * 工具箱标签页：旗标管理 / 折线测距与面积测量
+ * 工具标签页：旗标管理 / 折线测距与面积测量
  */
 @Composable
 fun ToolsScreen(
     mapViewModel: MapViewModel = viewModel(),
+    favoritesViewModel: FavoritesViewModel = viewModel(),
     isActive: Boolean = true,
+    flagStyle: FlagStyle = FlagStyle(),
 ) {
     val flags by mapViewModel.flags.collectAsState()
     val gcj     by mapViewModel.currentGcj.collectAsState()
     val wgs     by mapViewModel.currentWgs.collectAsState()
-
     val statusBarTop  = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarBottom  = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
@@ -106,7 +110,15 @@ fun ToolsScreen(
             .padding(start = 8.dp, top = statusBarTop + 4.dp, end = 8.dp, bottom = navBarBottom + 4.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        FlagManagementCard(androidx.compose.ui.platform.LocalContext.current, flags, mapViewModel, gcj, wgs)
+        FlagManagementCard(
+            context = androidx.compose.ui.platform.LocalContext.current,
+            flags = flags,
+            mapViewModel = mapViewModel,
+            favoritesViewModel = favoritesViewModel,
+            currentGcj = gcj,
+            currentWgs = wgs,
+            flagStyle = flagStyle,
+        )
         MeasurementCard(
             mapViewModel = mapViewModel,
             isToolsActive = isActive,
@@ -180,8 +192,10 @@ private fun FlagManagementCard(
     context     : android.content.Context,
     flags       : List<Flag>,
     mapViewModel: MapViewModel,
+    favoritesViewModel: FavoritesViewModel,
     currentGcj  : CT.Coord?,
     currentWgs  : CT.Coord?,
+    flagStyle   : FlagStyle = FlagStyle(),
 ) {
     var isExpanded by remember { mutableStateOf(true) }
     // 手动添加表单状态
@@ -310,7 +324,7 @@ private fun FlagManagementCard(
                 val initLabel = flag.customName.ifEmpty { flag.label }
                 FlagRow(
                     flag = flag,
-                    color = Color(0xFFC01428),
+                    color = Color(flagStyle.flagIconColor),
                     isSelected = selectedIds.contains(flag.id),
                     isEditing = editingId == flag.id,
                     editLabel = editLabel,
@@ -332,6 +346,14 @@ private fun FlagManagementCard(
                         deleteTargetLabel = flag.customName.ifEmpty { flag.label }
                         showDeleteDialog = true
                     },
+                    onFavorite = {
+                        val added = favoritesViewModel.addFromFlag(flag)
+                        Toast.makeText(
+                            context,
+                            if (added) "已添加到收藏夹" else "该旗标已在收藏夹中",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    },
                     renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
                     onCopyGcj = {
                         val t = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
@@ -349,7 +371,8 @@ private fun FlagManagementCard(
                         mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
                         mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
                         mapViewModel.setCoordType(CoordType.GCJ02)
-                    }
+                    },
+                    flagStyle = flagStyle,
                 )
             }
         }
@@ -369,7 +392,7 @@ private fun FlagManagementCard(
                 val initLabel = flag.customName.ifEmpty { flag.label }
                 FlagRow(
                     flag = flag,
-                    color = Color(0xFFE53935),
+                    color = Color(flagStyle.flagIconColor),
                     isSelected = selectedIds.contains(flag.id),
                     isEditing = editingId == flag.id,
                     editLabel = editLabel,
@@ -391,6 +414,14 @@ private fun FlagManagementCard(
                         deleteTargetLabel = flag.customName.ifEmpty { flag.label }
                         showDeleteDialog = true
                     },
+                    onFavorite = {
+                        val added = favoritesViewModel.addFromFlag(flag)
+                        Toast.makeText(
+                            context,
+                            if (added) "已添加到收藏夹" else "该旗标已在收藏夹中",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    },
                     renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
                     onCopyGcj = {
                         val t = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
@@ -408,7 +439,8 @@ private fun FlagManagementCard(
                         mapViewModel.updateLonText("%.6f".format(flag.gcjLon))
                         mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
                         mapViewModel.setCoordType(CoordType.GCJ02)
-                    }
+                    },
+                    flagStyle = flagStyle,
                 )
             }
         }
@@ -528,27 +560,34 @@ private fun FlagManagementCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FlagRow(
-    flag          : Flag,
-    color         : Color,
-    isSelected    : Boolean,
-    isEditing     : Boolean,
-    editLabel     : String,
+    flag           : Flag,
+    color          : Color,
+    isSelected     : Boolean,
+    isEditing      : Boolean,
+    editLabel      : String,
     initialEditLabel : String,  // editing开始时传入的初始值，绕过remember缓存问题
-    onToggleSelect: (Long) -> Unit,
-    onStartEdit   : (Flag) -> Unit,
-    onFinishEdit  : () -> Unit,
-    onCancelEdit  : () -> Unit,
-    onDelete      : () -> Unit,
-    onCopyGcj     : () -> Unit,
-    onCopyWgs     : () -> Unit,
-    onJump        : () -> Unit,
-    renameFlag    : (Long, String) -> Unit,
+    onToggleSelect : (Long) -> Unit,
+    onFavorite     : () -> Unit,
+    onStartEdit    : (Flag) -> Unit,
+    onFinishEdit   : () -> Unit,
+    onCancelEdit   : () -> Unit,
+    onDelete       : () -> Unit,
+    onCopyGcj      : () -> Unit,
+    onCopyWgs      : () -> Unit,
+    onJump         : () -> Unit,
+    renameFlag     : (Long, String) -> Unit,
+    flagStyle      : FlagStyle = FlagStyle(),
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth()
-            .clickable(onClick = onJump)
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onJump,
+                onLongClick = onFavorite,
+            )
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -566,7 +605,7 @@ private fun FlagRow(
         // 色点 + 名称 + 坐标
         Column(modifier = Modifier.weight(1f)) {
             if (isEditing) {
-                var editLabelLocal by remember { mutableStateOf(initialEditLabel) }
+                var editLabelLocal by remember(flag.id, initialEditLabel) { mutableStateOf(initialEditLabel) }
                 OutlinedTextField(
                     value = editLabelLocal, onValueChange = { editLabelLocal = it },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,

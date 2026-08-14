@@ -35,11 +35,17 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun LocationerTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: com.example.locationer.ThemeMode = com.example.locationer.ThemeMode.FOLLOW_SYSTEM,
+    fontFamilyOption: com.example.locationer.FontFamilyOption = com.example.locationer.FontFamilyOption.DEFAULT,
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    val darkTheme = when (themeMode) {
+        com.example.locationer.ThemeMode.FOLLOW_SYSTEM -> isSystemInDarkTheme()
+        com.example.locationer.ThemeMode.LIGHT -> false
+        com.example.locationer.ThemeMode.DARK -> true
+    }
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
@@ -52,7 +58,7 @@ fun LocationerTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = locationerTypography(fontFamilyOption),
         content = content
     )
 }

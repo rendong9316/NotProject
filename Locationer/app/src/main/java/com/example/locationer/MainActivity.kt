@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.NearMe
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,6 +36,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,10 +47,12 @@ import com.example.locationer.ui.theme.LocationerTheme
 class MainActivity : ComponentActivity() {
 
     private var lastBackPressTime = 0L
+    private lateinit var settingsManager: SettingsManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        settingsManager = SettingsManager(this)
         // 双击返回键退出：间隔不超过 2 秒，否则重置计时
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -62,9 +67,25 @@ class MainActivity : ComponentActivity() {
             }
         })
         setContent {
-            LocationerTheme {
-                CompositionLocalProvider(FixedTextScaleFactor provides 1f) {
-                    LocationerApp()
+            var style by remember { mutableStateOf(settingsManager.read()) }
+            LocationerTheme(
+                themeMode = style.themeMode,
+                fontFamilyOption = style.globalFontFamily,
+            ) {
+                val density = LocalDensity.current
+                CompositionLocalProvider(
+                    LocalDensity provides Density(
+                        density = density.density,
+                        fontScale = style.globalTextScale,
+                    )
+                ) {
+                    LocationerApp(
+                        style = style,
+                        onStyleChange = { updated ->
+                            style = updated
+                            settingsManager.write(updated)
+                        },
+                    )
                 }
             }
         }
@@ -72,36 +93,62 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun LocationerApp() {
+fun LocationerApp(style: FlagStyle, onStyleChange: (FlagStyle) -> Unit) {
     var selectedTab by remember { mutableStateOf(0) }
     val viewModel: MapViewModel = viewModel()
+    val favoritesViewModel: FavoritesViewModel = viewModel()
+    val flags by viewModel.flags.collectAsState()
     val navigationEvent by viewModel.navigationEvent.collectAsState()
+
+    LaunchedEffect(flags) {
+        favoritesViewModel.migrateLegacyFavorites(flags)
+    }
 
     LaunchedEffect(navigationEvent) {
         selectedTab = when (navigationEvent.target) {
-            MapViewModel.NavigationTarget.MAP -> 0
+            MapViewModel.NavigationTarget.MAP             -> 0
             MapViewModel.NavigationTarget.TOOLS_MEASUREMENT -> 1
-            MapViewModel.NavigationTarget.NONE -> selectedTab
+            MapViewModel.NavigationTarget.MY_FAVORITES    -> 2
+            MapViewModel.NavigationTarget.NONE            -> selectedTab
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 两个页面始终在 composition 中（永不销毁），仅通过 alpha + zIndex 控制显隐。
-        // 激活页 alpha=1 zIndex=1 在上层接收触摸；非激活页 alpha=0 zIndex=0 完全隐藏。
-        // 瞬时切换，无动画。
+        // 三个页面始终在 composition 中（永不销毁），仅通过 alpha + zIndex 控制显隐。
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .alpha(if (selectedTab == 0) 1f else 0f)
                     .zIndex(if (selectedTab == 0) 1f else 0f),
-            ) { MapScreen(viewModel = viewModel, isActive = selectedTab == 0) }
+            ) { MapScreen(viewModel = viewModel, isActive = selectedTab == 0, flagStyle = style) }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .alpha(if (selectedTab == 1) 1f else 0f)
                     .zIndex(if (selectedTab == 1) 1f else 0f),
-            ) { ToolsScreen(mapViewModel = viewModel, isActive = selectedTab == 1) }
+            ) {
+                ToolsScreen(
+                    mapViewModel = viewModel,
+                    favoritesViewModel = favoritesViewModel,
+                    isActive = selectedTab == 1,
+                    flagStyle = style,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(if (selectedTab == 2) 1f else 0f)
+                    .zIndex(if (selectedTab == 2) 1f else 0f),
+            ) {
+                MyScreen(
+                    mapViewModel = viewModel,
+                    favoritesViewModel = favoritesViewModel,
+                    currentStyle = style,
+                    onStyleChange = onStyleChange,
+                    isActive = selectedTab == 2,
+                )
+            }
         }
         Surface(color = MaterialTheme.colorScheme.surfaceVariant, tonalElevation = 2.dp) {
             Row(modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
@@ -115,9 +162,19 @@ fun LocationerApp() {
                 TabItem(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Filled.Build,
-                    label = "工具箱",
+                    label = "工具",
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
+                )
+                TabItem(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Filled.Person,
+                    label = "我的",
+                    selected = selectedTab == 2,
+                    onClick = {
+                        viewModel.requestSwitchToFavorites()
+                        selectedTab = 2
+                    },
                 )
             }
         }
