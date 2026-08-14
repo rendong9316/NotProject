@@ -10,6 +10,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.text.StaticLayout
+import android.text.TextPaint
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -151,21 +153,45 @@ private fun createReticleBitmap(): Bitmap {
     return bmp
 }
 
-/** 绘制旗标图标：带标签的圆点（144x144），支持自定义颜色和字号 */
+/** 绘制旗标图标：带标签的圆点，支持任意长度名称和字号（单行显示） */
 private fun createFlagBitmap(color: Int, label: String, iconRadius: Float = 28f, textSize: Float = 30f, textColor: Int = Color.WHITE): Bitmap {
-    val size = 144
-    val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-    val c = Canvas(bmp)
-    val circlePaint = Paint().apply { this.color = color; style = Paint.Style.FILL }
-    c.drawCircle((size / 2).toFloat(), (size / 2 + 8).toFloat(), iconRadius, circlePaint)
-    val textPaint = Paint().apply {
+    // 边距常量
+    val PADDING_X = 24f      // 左右边距
+    val PADDING_Y_TOP = 16f  // 上方预留
+    val PADDING_Y_BOTTOM = 24f // 下方预留（圆圈底部以下）
+
+    // 文字画笔
+    val textPaint = TextPaint().apply {
         this.color = textColor
         this.textSize = textSize
         this.isAntiAlias = true
         this.textAlign = Paint.Align.CENTER
     }
-    val metrics = textPaint.descent() - textPaint.ascent()
-    c.drawText(label, (size / 2).toFloat(), (size / 2 - 20).toFloat() - metrics / 2, textPaint)
+
+    // 计算文字单行宽度
+    val textWidth = textPaint.measureText(label)
+    // Bitmap 宽度 = 文字宽度 + 左右边距，最小 64px
+    val bmpWidth = (textWidth + PADDING_X * 2).toInt().coerceAtLeast(64)
+    val circleCenterX = bmpWidth / 2f
+
+    // 文字高度
+    val textHeight = textPaint.descent() - textPaint.ascent()
+
+    // 计算 Bitmap 高度：文字区域 + 圆圈 + 边距
+    val circleTopY = PADDING_Y_TOP + textHeight + 8f
+    val bmpHeight = (circleTopY + iconRadius * 2 + PADDING_Y_BOTTOM + 8f).toInt()
+
+    val bmp = Bitmap.createBitmap(bmpWidth, bmpHeight, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+
+    // 绘制圆圈（居中于文字下方）
+    val circlePaint = Paint().apply { this.color = color; style = Paint.Style.FILL }
+    c.drawCircle(circleCenterX, circleTopY + iconRadius, iconRadius, circlePaint)
+
+    // 绘制单行文字
+    val textY = PADDING_Y_TOP + textHeight - textHeight / 2f
+    c.drawText(label, circleCenterX, textY, textPaint)
+
     return bmp
 }
 
