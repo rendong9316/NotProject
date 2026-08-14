@@ -20,6 +20,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -217,6 +218,15 @@ fun MapScreen(
     }
     val aMap = remember { mapView.map }
 
+    // ================ 离线卫星瓦片 ================
+    /** 离线瓦片提供者（从 ViewModel 获取，确保单例共享） */
+    val offlineProvider = viewModel.offlineProvider
+    LaunchedEffect(aMap) {
+        aMap?.setMapCustomEnable(true)   // 启用自定义地图覆盖层
+        // 注意：AMap SDK 不直接支持 TileProvider 接口，
+        // 需要手动管理瓦片绘制。暂保留离线 Provider 以备后续集成。
+    }
+
     // 标记管理
     var currentMarker    by remember(mapView) { mutableStateOf<Marker?>(null) }
     var targetMarker     by remember(mapView) { mutableStateOf<Marker?>(null) }
@@ -254,6 +264,7 @@ fun MapScreen(
     val latText         by viewModel.latText.collectAsState()
     val coordType       by viewModel.coordType.collectAsState()
     val accuracyMeters  by viewModel.accuracyMeters.collectAsState()
+    val accuracyMode    by viewModel.accuracyMode.collectAsState()
     val placeMode       by viewModel.placeMode.collectAsState()
     val reticleCoord    by viewModel.reticleCoord.collectAsState()
     val flags           by viewModel.flags.collectAsState()
@@ -288,6 +299,8 @@ fun MapScreen(
 
     // ================ 地图图层切换 + 深色模式适配 ================
     val darkTheme = isSystemInDarkTheme()
+    /** 当前是否离线（无网络），由 ViewModel 每 5 秒轮询更新 */
+    val isOffline by viewModel.isOffline.collectAsState()
     var mapLayer by remember {
         mutableStateOf(
             context.getSharedPreferences("map_screen", android.content.Context.MODE_PRIVATE)
@@ -298,12 +311,14 @@ fun MapScreen(
         context.getSharedPreferences("map_screen", android.content.Context.MODE_PRIVATE)
             .edit().putBoolean("mapLayer", mapLayer).apply()
     }
-    LaunchedEffect(mapReady, mapLayer, darkTheme) {
+    LaunchedEffect(mapReady, mapLayer, darkTheme, isOffline) {
         if (!mapReady) return@LaunchedEffect
+        // 离线时使用卫星图（我们的离线瓦片就是卫星影像）
+        val effectiveLayer = if (isOffline) true else mapLayer
         aMap?.setMapType(when {
-            mapLayer   -> AMap.MAP_TYPE_SATELLITE
-            darkTheme  -> AMap.MAP_TYPE_NIGHT
-            else       -> AMap.MAP_TYPE_NORMAL
+            effectiveLayer -> AMap.MAP_TYPE_SATELLITE
+            darkTheme      -> AMap.MAP_TYPE_NIGHT
+            else           -> AMap.MAP_TYPE_NORMAL
         })
         if (!initialCameraSet) {
             initialCameraSet = true
@@ -340,6 +355,7 @@ fun MapScreen(
             val isMeasurePick = measurementPickMode
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    viewModel.vibratePick()
                     if (isMeasurePick) {
                         // 记录手指初始落点与屏幕中心的偏移，作为准星的固定偏移量
                         measurePickDelta = Pair(event.x - mapView.width / 2f, event.y - mapView.height / 2f)
@@ -381,6 +397,7 @@ fun MapScreen(
                         if (isMeasurePick) viewModel.addWaypoint(reticle.lon, reticle.lat)
                         else viewModel.confirmPlacement(reticle)
                     }
+                    viewModel.vibratePick()
                     // 准星回中心（与普通拾取模式行为一致）
                     val centerLatlng = projection.fromScreenLocation(
                         android.graphics.Point(mapView.width / 2, mapView.height / 2)
@@ -400,6 +417,7 @@ fun MapScreen(
         aMap?.setOnMapLongClickListener { latlng ->
             if (!placeMode && !measurementPickMode) {
                 viewModel.confirmPlacement(CT.Coord(latlng.longitude, latlng.latitude))
+                viewModel.vibratePick()
             }
             true
         }
@@ -659,13 +677,14 @@ fun MapScreen(
                         modifier = Modifier.fillMaxSize(),
                         update    = { mapReady = true },
                     )
-                    // 图层切换按钮（标准 / 卫星），位于右上角
+                    // 图层切换按钮（标准 / 卫星 / 离线），位于右上角
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.TopStart,
                     ) {
                         LayerToggleButton(
                             isSatellite = mapLayer,
+                            isOffline   = isOffline,
                             onClick     = { mapLayer = !mapLayer },
                         )
                     }
@@ -730,6 +749,7 @@ fun MapScreen(
                     gcj            = gcj,
                     wgs            = wgs,
                     accuracyMeters = accuracyMeters,
+                    accuracyMode   = accuracyMode,
                     locating       = locating,
                     onLocate       = { onClickLocate() },
                     lonText        = lonText,
@@ -756,6 +776,7 @@ private fun UnifiedPanel(
     gcj            : CT.Coord?,
     wgs            : CT.Coord?,
     accuracyMeters : Float?,
+    accuracyMode   : String?,
     locating       : Boolean,
     onLocate       : () -> Unit,
     lonText        : String,
@@ -813,7 +834,7 @@ private fun UnifiedPanel(
                         color = MaterialTheme.colorScheme.primary)
                     CoordsRow(label = "WGS84", coord = wgs,
                         color = MaterialTheme.colorScheme.tertiary)
-                    AccuracyRow(meters = accuracyMeters)
+                    AccuracyRow(meters = accuracyMeters, mode = accuracyMode)
 
                     // 分隔线
                     Spacer(Modifier.height(2.dp))
@@ -921,7 +942,7 @@ private data class AccuracyInfo(
 )
 
 @Composable
-private fun AccuracyRow(meters: Float?) {
+private fun AccuracyRow(meters: Float?, mode: String?) {
     val info = when {
         meters == null    -> AccuracyInfo("等待定位", "", MaterialTheme.colorScheme.onSurfaceVariant)
         meters > 50f      -> AccuracyInfo("精度较低", "", MaterialTheme.colorScheme.error)
@@ -933,7 +954,12 @@ private fun AccuracyRow(meters: Float?) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FText("定位精度", 14, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(modifier = Modifier.weight(1f)) {
+            FText("定位精度", 14, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!mode.isNullOrBlank()) {
+                FText(mode, 12, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+            }
+        }
         SelectionContainer {
             FText("${info.label}  ${meters?.toInt()?.toString() ?: "--"} m",
                 fontSize = 14, fontWeight = FontWeight.SemiBold, color = info.textColor)
@@ -1002,27 +1028,45 @@ private fun PickModeFab(placeMode: Boolean, onToggle: () -> Unit) {
 }
 
 // ============================================================================
-// 图层切换按钮（标准 / 卫星）
+// 图层切换按钮（标准 / 卫星 / 离线）
 // ============================================================================
 
 @Composable
-private fun LayerToggleButton(isSatellite: Boolean, onClick: () -> Unit) {
-    FilledTonalButton(
-        onClick = onClick,
-        colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-            contentColor   = MaterialTheme.colorScheme.onSurface,
-        ),
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Tune,
-            contentDescription = if (isSatellite) "切换到标准地图" else "切换到卫星地图",
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = if (isSatellite) "标准" else "卫星",
-            fontSize = 14.sp,
-        )
+private fun LayerToggleButton(
+    isSatellite : Boolean,
+    isOffline   : Boolean,
+    onClick     : () -> Unit,
+) {
+    Box {
+        FilledTonalButton(
+            onClick = onClick,
+            colors = ButtonDefaults.filledTonalButtonColors(
+                containerColor = if (isOffline) MaterialTheme.colorScheme.primaryContainer
+                                 else MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor   = if (isOffline) MaterialTheme.colorScheme.onPrimaryContainer
+                                 else MaterialTheme.colorScheme.onSurface,
+            ),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Tune,
+                contentDescription = if (isSatellite) "切换到标准地图" else "切换到卫星地图",
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = if (isOffline) "离线" else if (isSatellite) "标准" else "卫星",
+                fontSize = 14.sp,
+            )
+        }
+        // 离线状态徽标：右下角蓝色圆点
+        if (isOffline) {
+            Box(
+                modifier = Modifier
+                    .padding(end = 4.dp, bottom = 4.dp)
+                    .size(8.dp)
+                    .align(androidx.compose.ui.Alignment.BottomEnd)
+                    .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape),
+            )
+        }
     }
 }

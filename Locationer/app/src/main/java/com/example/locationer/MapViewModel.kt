@@ -2,9 +2,13 @@ package com.example.locationer
 
 import android.app.Application
 import android.content.Context
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClient
 import com.amap.api.location.AMapLocationClientOption
@@ -64,6 +68,20 @@ data class UiMessage(val text: String)
 class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _context = application
 
+    /** 拾取/打点场景震动反馈：按下时 + 放置完成时各触发一次 */
+    fun vibratePick() {
+        runCatching {
+            val vibrator = _context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator ?: return@runCatching
+            if (!vibrator.hasVibrator()) return@runCatching
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(80)
+            }
+        }
+    }
+
     enum class NavigationTarget { NONE, MAP, TOOLS_MEASUREMENT, MY_FAVORITES }
     data class NavigationEvent(val id: Long = 0L, val target: NavigationTarget = NavigationTarget.NONE)
 
@@ -78,6 +96,9 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _accuracyMeters = MutableStateFlow<Float?>(null)
     val accuracyMeters: StateFlow<Float?> = _accuracyMeters.asStateFlow()
+
+    private val _accuracyMode = MutableStateFlow<String?>(null)
+    val accuracyMode: StateFlow<String?> = _accuracyMode.asStateFlow()
 
     private val _message = MutableStateFlow<UiMessage?>(null)
     val message: StateFlow<UiMessage?> = _message.asStateFlow()
@@ -147,18 +168,47 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _lastPickedCoord = MutableStateFlow<CT.Coord?>(null)
     val lastPickedCoord: StateFlow<CT.Coord?> = _lastPickedCoord.asStateFlow()
 
+    // ================ 离线卫星瓦片 ================
+    /** 离线瓦片提供者（单例，与 ViewModel 同生命周期） */
+    internal val offlineProvider = MbtilesTileProvider.create(application)
+    /** 当前是否离线（无网络），每 5 秒轮询刷新一次 */
+    val isOffline: StateFlow<Boolean> = MutableStateFlow(isNetworkAvailable().not())
+        .also { viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(5000L)
+                it.value = isNetworkAvailable().not()
+            }
+        }}
+
+    /** 检测网络可用性（WiFi 或移动数据） */
+    private fun isNetworkAvailable(): Boolean {
+        val cm = getApplication<Application>().getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+            ?: return false
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR)
+    }
+
+    /** 获取离线数据库文件大小（字节） */
+    fun getOfflineDbSizeBytes(): Long = offlineProvider.getDbSizeBytes()
+
+    /** 清除离线瓦片缓存 */
+    fun clearOfflineCache() {
+        offlineProvider.clearCache()
+        _message.value = UiMessage("已清除离线瓦片缓存")
+    }
+
     init {
         try {
             locationClient = AMapLocationClient(application).apply {
                 val option = AMapLocationClientOption().apply {
-                    setGpsFirst(true)      // 优先 GPS 卫星定位（精度最高）
                     isOnceLocation = true
                     isOnceLocationLatest = true
                     setNeedAddress(false)
                     setInterval(0)         // 单次定位：结果就绪即刻回调，不设额外等待
                     setSensorEnable(true)  // 启用传感器数据辅助过滤
                     isMockEnable = true
-                    setGpsFirstTimeout(20000L) // GPS 等待超时 20s，超时后回退网络定位
                 }
                 setLocationOption(option)
                 setLocationListener(::onLocationResult)
@@ -176,7 +226,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                 return
             }
             loc.errorCode != 0 -> {
-                if (loc.errorCode == 4 && networkRetryTimes < MAX_NETWORK_RETRY) {
+                if ((loc.errorCode == 4 || loc.errorCode == 13) && networkRetryTimes < MAX_NETWORK_RETRY) {
                     networkRetryTimes++
                     val task = Runnable {
                         _locating.value = true
@@ -204,6 +254,13 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         _currentGcj.value = gcj
         _currentWgs.value = wgs
         _accuracyMeters.value = if (loc.accuracy > 0f) loc.accuracy else null
+        _accuracyMode.value = when {
+            "gps".equals(loc.provider, ignoreCase = true)                         -> "GPS 卫星定位"
+            "network".equals(loc.provider, ignoreCase = true)                     -> "网络辅助定位"
+            (loc.accuracy ?: 0f) <= 10f                                          -> "GPS 卫星定位"
+            (loc.accuracy ?: 0f) <= 50f                                          -> "GPS+网络融合"
+            else                                                                 -> "网络辅助定位"
+        }
 
         // 首次定位成功后，若用户在跟踪模式则切换到连续定位
         if (!firstFixReceived) {
@@ -247,7 +304,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         3   -> "定位失败：系统定位服务未开启，请在设置中打开定位"
         4   -> "定位失败：网络连接异常，请检查网络后重试"
         12  -> "定位失败：定位权限被拒绝，请在系统设置中授予定位权限"
-        13  -> "定位失败：网络辅助定位失败，请稍后重试"
         16  -> "定位失败：GPS 未开启，请打开 GPS"
         else -> "定位失败（错误码 ${loc.errorCode}）：${loc.errorInfo}"
     }
@@ -605,13 +661,11 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         try {
             locationClient?.let { client ->
                 client.setLocationOption(AMapLocationClientOption().apply {
-                    setGpsFirst(true)
                     isOnceLocation = false        // 连续定位
                     setInterval(1000L)            // 1 秒更新一次
                     setNeedAddress(false)
                     setSensorEnable(true)
                     isMockEnable = true
-                    setGpsFirstTimeout(20000L)
                 })
                 // 注册高德传感器监听获取实时朝向
                 sensorListener = object : ISensorListenerDelegate {
@@ -652,14 +706,12 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         // 恢复单次定位配置（为下一次 locate() 做准备）
         try {
             locationClient?.setLocationOption(AMapLocationClientOption().apply {
-                setGpsFirst(true)
                 isOnceLocation = true
                 isOnceLocationLatest = true
                 setNeedAddress(false)
                 setInterval(0)
                 setSensorEnable(true)
                 isMockEnable = true
-                setGpsFirstTimeout(20000L)
             })
         } catch (_: Exception) {}
         firstFixReceived = false
@@ -687,6 +739,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         stopContinuous()
         try { locationClient?.onDestroy(); locationClient = null }
         catch (_: Exception) {}
-
+        offlineProvider.shutdown()
     }
 }

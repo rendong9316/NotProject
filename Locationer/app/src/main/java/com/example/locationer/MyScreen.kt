@@ -82,8 +82,9 @@ fun MyScreen(
                     .zIndex(if (selectedTab == 1) 1f else 0f),
             ) {
                 SettingsScreen(
-                    currentStyle = currentStyle,
+                    currentStyle  = currentStyle,
                     onStyleChange = onStyleChange,
+                    mapViewModel  = mapViewModel,
                 )
             }
         }

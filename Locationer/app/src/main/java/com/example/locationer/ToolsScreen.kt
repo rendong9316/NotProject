@@ -298,6 +298,7 @@ private fun FlagManagementCard(
                         }
                         val wgs = CT.gcj02ToWgs84(gcj, precision = CT.HIGH_PRECISION)
                         mapViewModel.addFlag(gcj, wgs, FlagType.PICKED, addLabel.trim())
+                        mapViewModel.vibratePick()
                         addLabel = ""; addLon = ""; addLat = ""
                         showAddForm = false
                     }) { Text("放置", fontSize = 14.sp) }
