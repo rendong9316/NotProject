@@ -41,6 +41,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -49,6 +51,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -214,9 +217,8 @@ private fun FlagManagementCard(
     var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var geoResult   by remember { mutableStateOf<GeoResult?>(null) }
 
-    // 正在编辑的旗标
-    var editingId   by remember { mutableStateOf<Long?>(null) }
-    var editLabel   by remember { mutableStateOf("") }
+    // 正在编辑的旗标（弹出重命名对话框）
+    var editingFlag by remember { mutableStateOf<Flag?>(null) }
     // 删除确认弹框
     var showDeleteDialog by remember { mutableStateOf(false) }
     var deleteTargetLabel by remember { mutableStateOf("") }
@@ -321,26 +323,17 @@ private fun FlagManagementCard(
                 }) { Text("清除全部", fontSize = 10.sp) }
             }
             pickedFlags.forEach { flag ->
-                val initLabel = flag.customName.ifEmpty { flag.label }
                 FlagRow(
                     flag = flag,
                     color = Color(flagStyle.flagIconColor),
                     isSelected = selectedIds.contains(flag.id),
-                    isEditing = editingId == flag.id,
-                    editLabel = editLabel,
-                    initialEditLabel = initLabel,
                     onToggleSelect = { id ->
                         selectedIds = if (selectedIds.contains(id))
                             selectedIds - id else selectedIds + id
                     },
-                    onStartEdit = { f ->
-                        editingId = f.id
-                        editLabel = f.customName.ifEmpty { f.label }
-                    },
-                    onFinishEdit = {
-                        editingId = null
-                    },
-                    onCancelEdit = { editingId = null },
+                    onStartEdit = { editingFlag = it },
+                    onFinishEdit = { editingFlag = null },
+                    onCancelEdit = { editingFlag = null },
                     onDelete = {
                         deleteFlagId = flag.id
                         deleteTargetLabel = flag.customName.ifEmpty { flag.label }
@@ -354,7 +347,6 @@ private fun FlagManagementCard(
                             Toast.LENGTH_SHORT,
                         ).show()
                     },
-                    renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
                     onCopyGcj = {
                         val t = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
                         val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
@@ -389,26 +381,17 @@ private fun FlagManagementCard(
                 }) { Text("清除全部", fontSize = 10.sp) }
             }
             jumpedFlags.forEach { flag ->
-                val initLabel = flag.customName.ifEmpty { flag.label }
                 FlagRow(
                     flag = flag,
                     color = Color(flagStyle.flagIconColor),
                     isSelected = selectedIds.contains(flag.id),
-                    isEditing = editingId == flag.id,
-                    editLabel = editLabel,
-                    initialEditLabel = initLabel,
                     onToggleSelect = { id ->
                         selectedIds = if (selectedIds.contains(id))
                             selectedIds - id else selectedIds + id
                     },
-                    onStartEdit = { f ->
-                        editingId = f.id
-                        editLabel = f.customName.ifEmpty { f.label }
-                    },
-                    onFinishEdit = {
-                        editingId = null
-                    },
-                    onCancelEdit = { editingId = null },
+                    onStartEdit = { editingFlag = it },
+                    onFinishEdit = { editingFlag = null },
+                    onCancelEdit = { editingFlag = null },
                     onDelete = {
                         deleteFlagId = flag.id
                         deleteTargetLabel = flag.customName.ifEmpty { flag.label }
@@ -422,7 +405,6 @@ private fun FlagManagementCard(
                             Toast.LENGTH_SHORT,
                         ).show()
                     },
-                    renameFlag = { id, name -> mapViewModel.renameFlag(id, name) },
                     onCopyGcj = {
                         val t = "%.6f,%.6f".format(flag.gcjLon, flag.gcjLat)
                         val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
@@ -520,6 +502,36 @@ private fun FlagManagementCard(
         }
     }
 
+    // ── 重命名旗标（与收藏夹一致的 AlertDialog）──
+    editingFlag?.let { flag ->
+        var label by remember(flag.id) { mutableStateOf(flag.customName.ifEmpty { flag.label }) }
+        AlertDialog(
+            onDismissRequest = { editingFlag = null },
+            title = { Text("重命名旗标") },
+            text = {
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val trimmed = label.trim()
+                        if (trimmed.isNotBlank()) mapViewModel.renameFlag(flag.id, trimmed)
+                        editingFlag = null
+                    },
+                    enabled = label.isNotBlank(),
+                ) { Text("保存") }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingFlag = null }) { Text("取消") }
+            },
+        )
+    }
+
     // ── 删除单个旗标确认 ──
     if (showDeleteDialog) {
         AlertDialog(
@@ -566,9 +578,6 @@ private fun FlagRow(
     flag           : Flag,
     color          : Color,
     isSelected     : Boolean,
-    isEditing      : Boolean,
-    editLabel      : String,
-    initialEditLabel : String,  // editing开始时传入的初始值，绕过remember缓存问题
     onToggleSelect : (Long) -> Unit,
     onFavorite     : () -> Unit,
     onStartEdit    : (Flag) -> Unit,
@@ -578,106 +587,111 @@ private fun FlagRow(
     onCopyGcj      : () -> Unit,
     onCopyWgs      : () -> Unit,
     onJump         : () -> Unit,
-    renameFlag     : (Long, String) -> Unit,
     flagStyle      : FlagStyle = FlagStyle(),
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onJump,
-                onLongClick = onFavorite,
-            )
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    var expanded by remember(flag.id) { mutableStateOf(true) }
+    val displayName = if (flag.customName.isNotBlank()) flag.customName else flag.label
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        // 复选框
-        Row(modifier = Modifier.clickable(onClick = { onToggleSelect(flag.id) }),
-            verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = if (isSelected) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                contentDescription = "选择",
-                modifier = Modifier.size(16.dp),
-                tint = color,
-            )
-        }
-        Spacer(Modifier.width(6.dp))
-        // 色点 + 名称 + 坐标
-        Column(modifier = Modifier.weight(1f)) {
-            if (isEditing) {
-                var editLabelLocal by remember(flag.id, initialEditLabel) { mutableStateOf(initialEditLabel) }
-                OutlinedTextField(
-                    value = editLabelLocal, onValueChange = { editLabelLocal = it },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = color,
-                        unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    ),
-                    trailingIcon = {
-                        Row {
-                            Icon(Icons.Filled.Check, contentDescription = "确认",
-                                modifier = Modifier.size(14.dp).clickable {
-                                    if (editLabelLocal.isNotBlank()) renameFlag(flag.id, editLabelLocal)
-                                    onFinishEdit()
-                                },
-                                tint = color)
-                            Spacer(Modifier.width(4.dp))
-                            Icon(Icons.Filled.Clear, contentDescription = "取消",
-                                modifier = Modifier.size(14.dp).clickable { onCancelEdit() },
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                )
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Person, contentDescription = null,
-                        modifier = Modifier.size(14.dp), tint = color)
-                    Spacer(Modifier.width(4.dp))
-                    // 有自定义名时主文本显示自定义名，否则显示默认编号
-                    Text(
-                        text = if (flag.customName.isNotBlank()) flag.customName else flag.label,
-                        fontSize = 12.sp, fontWeight = FontWeight.Medium
+        Column {
+            // 名称行：眼睛选择 + 图标+名称 + 展开/收起按钮
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = onJump,
+                        onLongClick = onFavorite,
+                    )
+                    .padding(start = 12.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // 眼睛选择（收藏夹没有，此处新增）
+                Row(
+                    modifier = Modifier.clickable(onClick = { onToggleSelect(flag.id) }),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = if (isSelected) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                        contentDescription = "选择",
+                        modifier = Modifier.size(16.dp),
+                        tint = color,
                     )
                 }
-                // GCJ02 坐标行
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("GCJ02", fontSize = 8.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
-                    Spacer(Modifier.width(2.dp))
-                    Text("%.6f,%.6f".format(flag.gcjLon, flag.gcjLat),
-                        fontSize = 9.sp, fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f))
-                    Icon(Icons.Filled.ContentCopy, contentDescription = "复制GCJ02",
-                        modifier = Modifier.size(16.dp).clickable { onCopyGcj() },
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(4.dp))
-                    Icon(Icons.Filled.Edit, contentDescription = "重命名",
-                        modifier = Modifier.size(16.dp).clickable { onStartEdit(flag) },
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(8.dp))
+                // 图标 + 名称（字号与收藏夹一致，不显式指定 fontSize）
+                Icon(Icons.Filled.Person, contentDescription = null,
+                    modifier = Modifier.size(14.dp), tint = color)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = displayName,
+                    modifier = Modifier.weight(1f),
+                    fontWeight = FontWeight.Medium,
+                )
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(
+                        if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = if (expanded) "收起" else "展开",
+                    )
                 }
-                // WGS84 坐标行
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("WGS84", fontSize = 8.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
-                    Spacer(Modifier.width(2.dp))
-                    Text("%.6f,%.6f".format(flag.wgsLon, flag.wgsLat),
-                        fontSize = 9.sp, fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f))
-                    Icon(Icons.Filled.ContentCopy, contentDescription = "复制WGS84",
-                        modifier = Modifier.size(16.dp).clickable { onCopyWgs() },
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(4.dp))
-                    Icon(Icons.Filled.Delete, contentDescription = "删除",
-                        modifier = Modifier.size(16.dp).clickable { onDelete() },
-                        tint = MaterialTheme.colorScheme.error)
+            }
+            if (expanded) {
+                Column(modifier = Modifier.padding(start = 12.dp, end = 6.dp, bottom = 8.dp)) {
+                    FlagCoordRow("GCJ02", flag.gcjLon, flag.gcjLat, onCopyGcj)
+                    FlagCoordRow("WGS84", flag.wgsLon, flag.wgsLat, onCopyWgs)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        IconButton(onClick = { onStartEdit(flag) }) {
+                            Icon(Icons.Filled.Edit, contentDescription = "编辑")
+                        }
+                        IconButton(onClick = onDelete) {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = "删除",
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun FlagCoordRow(label: String, lon: Double, lat: Double, onCopy: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.width(52.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+        )
+        Spacer(Modifier.width(2.dp))
+        Text(
+            text = "%.6f,%.6f".format(lon, lat),
+            fontFamily = FontFamily.Monospace,
+            fontSize = 10.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            Icons.Filled.ContentCopy,
+            contentDescription = "复制$label",
+            modifier = Modifier.size(16.dp).clickable(onClick = onCopy),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
