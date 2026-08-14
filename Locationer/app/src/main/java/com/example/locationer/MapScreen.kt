@@ -91,6 +91,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -155,7 +156,13 @@ private fun createReticleBitmap(): Bitmap {
 }
 
 /** 绘制旗标图标：带标签的圆点，支持任意长度名称和字号（单行显示） */
-private fun createFlagBitmap(color: Int, label: String, iconRadius: Float = 28f, textSize: Float = 30f, textColor: Int = Color.WHITE): Bitmap {
+private data class FlagBitmap(
+    val bitmap: Bitmap,
+    val anchorX: Float,
+    val anchorY: Float,
+)
+
+private fun createFlagBitmap(color: Int, label: String, iconRadius: Float = 28f, textSize: Float = 30f, textColor: Int = Color.WHITE): FlagBitmap {
     // 边距常量
     val PADDING_X = 24f      // 左右边距
     val PADDING_Y_TOP = 16f  // 上方预留
@@ -193,7 +200,11 @@ private fun createFlagBitmap(color: Int, label: String, iconRadius: Float = 28f,
     val textY = PADDING_Y_TOP + textHeight - textHeight / 2f
     c.drawText(label, circleCenterX, textY, textPaint)
 
-    return bmp
+    return FlagBitmap(
+        bitmap = bmp,
+        anchorX = circleCenterX / bmpWidth,
+        anchorY = (circleTopY + iconRadius) / bmpHeight,
+    )
 }
 
 // ============================================================================
@@ -221,10 +232,30 @@ fun MapScreen(
     // ================ 离线卫星瓦片 ================
     /** 离线瓦片提供者（从 ViewModel 获取，确保单例共享） */
     val offlineProvider = viewModel.offlineProvider
-    LaunchedEffect(aMap) {
-        aMap?.setMapCustomEnable(true)   // 启用自定义地图覆盖层
-        // 注意：AMap SDK 不直接支持 TileProvider 接口，
-        // 需要手动管理瓦片绘制。暂保留离线 Provider 以备后续集成。
+    /** 瓦片覆盖层，用于离线时叠加显示 */
+    var tileOverlay by remember { mutableStateOf<com.amap.api.maps.model.TileOverlay?>(null) }
+
+    /**
+     * 添加或移除离线瓦片覆盖层。
+     * 离线时：添加覆盖层，显示离线卫星图
+     * 在线时：移除覆盖层，显示高德在线地图
+     */
+    fun updateTileOverlay(isOffline: Boolean) {
+        val amap = aMap ?: return
+        if (isOffline) {
+            if (tileOverlay == null) {
+                tileOverlay = amap.addTileOverlay(
+                    com.amap.api.maps.model.TileOverlayOptions()
+                        .tileProvider(offlineProvider)
+                        .zIndex(100f)
+                )
+                android.util.Log.d("OfflineMap", "已添加离线瓦片覆盖层")
+            }
+        } else {
+            tileOverlay?.remove()
+            tileOverlay = null
+            android.util.Log.d("OfflineMap", "已移除离线瓦片覆盖层")
+        }
     }
 
     // 标记管理
@@ -320,6 +351,8 @@ fun MapScreen(
             darkTheme      -> AMap.MAP_TYPE_NIGHT
             else           -> AMap.MAP_TYPE_NORMAL
         })
+        // 更新离线瓦片覆盖层
+        updateTileOverlay(isOffline)
         if (!initialCameraSet) {
             initialCameraSet = true
             aMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.0, 104.0), 4.5f))
@@ -520,18 +553,17 @@ fun MapScreen(
             } else {
                 flagStyle.flagIconColor.toInt()
             }
+            val flagBitmap = createFlagBitmap(
+                color = iconColor,
+                label = flag.customName.ifBlank { flag.label },
+                iconRadius = flagStyle.flagIconSize,
+                textSize = flagStyle.flagTextSize,
+                textColor = flagStyle.flagTextColor.toInt(),
+            )
             val marker = amap.addMarker(
                 MarkerOptions().position(pos)
-                    .icon(BitmapDescriptorFactory.fromBitmap(
-                        createFlagBitmap(
-                            color = iconColor,
-                            label = flag.customName.ifBlank { flag.label },
-                            iconRadius = flagStyle.flagIconSize,
-                            textSize = flagStyle.flagTextSize,
-                            textColor = flagStyle.flagTextColor.toInt(),
-                        )
-                    ))
-                    .anchor(0.5f, 0.5f)
+                    .icon(BitmapDescriptorFactory.fromBitmap(flagBitmap.bitmap))
+                    .anchor(flagBitmap.anchorX, flagBitmap.anchorY)
             )
             flag.id to marker
         }
