@@ -51,6 +51,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun FavoritesScreen(
@@ -133,10 +134,15 @@ fun FavoritesScreen(
                         onJump = { favoritesViewModel.jumpTo(point, mapViewModel) },
                         onEdit = { editingPoint = point },
                         onDelete = { deleteTarget = point },
-                        onCopy = {
-                            val text = favoritesViewModel.copyText(point.id) ?: return@FavoriteItemCard
-                            copyToClipboard(context, "收藏坐标", text)
-                            Toast.makeText(context, "已复制坐标", Toast.LENGTH_SHORT).show()
+                        onCopyGcj = {
+                            val text = "%.6f,%.6f".format(point.gcjLon, point.gcjLat)
+                            copyToClipboard(context, "收藏GCJ02", text)
+                            Toast.makeText(context, "已复制GCJ02：$text", Toast.LENGTH_SHORT).show()
+                        },
+                        onCopyWgs = {
+                            val text = "%.6f,%.6f".format(point.wgsLon, point.wgsLat)
+                            copyToClipboard(context, "收藏WGS84", text)
+                            Toast.makeText(context, "已复制WGS84：$text", Toast.LENGTH_SHORT).show()
                         },
                     )
                 }
@@ -212,11 +218,12 @@ fun FavoritesScreen(
 
 @Composable
 private fun FavoriteItemCard(
-    point: FavoritesViewModel.FavoritePoint,
-    onJump: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onCopy: () -> Unit,
+    point    : FavoritesViewModel.FavoritePoint,
+    onJump   : () -> Unit,
+    onEdit   : () -> Unit,
+    onDelete : () -> Unit,
+    onCopyGcj: () -> Unit,
+    onCopyWgs: () -> Unit,
 ) {
     var expanded by rememberSaveable(point.id) { mutableStateOf(true) }
     Card(
@@ -254,17 +261,14 @@ private fun FavoriteItemCard(
             }
             if (expanded) {
                 Column(modifier = Modifier.padding(start = 12.dp, end = 6.dp, bottom = 8.dp)) {
-                    FavoriteCoordRow("GCJ02", point.gcjLon, point.gcjLat)
-                    FavoriteCoordRow("WGS84", point.wgsLon, point.wgsLat)
+                    FavoriteCoordRow("GCJ02", point.gcjLon, point.gcjLat, onCopyGcj)
+                    FavoriteCoordRow("WGS84", point.wgsLon, point.wgsLat, onCopyWgs)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End,
                     ) {
                         IconButton(onClick = onEdit) {
                             Icon(Icons.Filled.Edit, contentDescription = "编辑")
-                        }
-                        IconButton(onClick = onCopy) {
-                            Icon(Icons.Filled.ContentCopy, contentDescription = "复制坐标")
                         }
                         IconButton(onClick = onDelete) {
                             Icon(
@@ -281,7 +285,7 @@ private fun FavoriteItemCard(
 }
 
 @Composable
-private fun FavoriteCoordRow(label: String, lon: Double, lat: Double) {
+private fun FavoriteCoordRow(label: String, lon: Double, lat: Double, onCopy: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -291,12 +295,21 @@ private fun FavoriteCoordRow(label: String, lon: Double, lat: Double) {
         Text(
             text = label,
             modifier = Modifier.width(52.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
         )
+        Spacer(Modifier.width(2.dp))
         Text(
-            text = "${FavoritesViewModel.formatCoordinate(lon)},${FavoritesViewModel.formatCoordinate(lat)}",
+            text = "%.6f,%.6f".format(lon, lat),
             fontFamily = FontFamily.Monospace,
+            fontSize = 10.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            Icons.Filled.ContentCopy,
+            contentDescription = "复制$label",
+            modifier = Modifier.size(16.dp).clickable(onClick = onCopy),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
