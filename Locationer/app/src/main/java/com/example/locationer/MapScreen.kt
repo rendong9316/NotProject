@@ -24,13 +24,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -592,12 +593,15 @@ fun MapScreen(
 
     // ================ 主布局 ================
     CompositionLocalProvider(FixedTextScaleFactor provides 1f) {
-        Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            // The activity's bottom navigation owns the navigation-bar inset.
+            // Keep only the top inset here so the panel can sit directly above it.
+            contentWindowInsets = WindowInsets.statusBars,
+        ) { innerPadding ->
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .navigationBarsPadding(),
+                    .padding(innerPadding),
                 verticalArrangement = Arrangement.Bottom
             ) {
                 // -------- 地图区域 --------
