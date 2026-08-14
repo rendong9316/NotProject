@@ -144,6 +144,7 @@ fun FavoritesScreen(
                             copyToClipboard(context, "收藏WGS84", text)
                             Toast.makeText(context, "已复制WGS84：$text", Toast.LENGTH_SHORT).show()
                         },
+                        onToggleExpanded = { favoritesViewModel.updateExpanded(point.id, it) },
                     )
                 }
                 item { Spacer(Modifier.height(4.dp)) }
@@ -218,14 +219,15 @@ fun FavoritesScreen(
 
 @Composable
 private fun FavoriteItemCard(
-    point    : FavoritesViewModel.FavoritePoint,
-    onJump   : () -> Unit,
-    onEdit   : () -> Unit,
-    onDelete : () -> Unit,
-    onCopyGcj: () -> Unit,
-    onCopyWgs: () -> Unit,
+    point            : FavoritesViewModel.FavoritePoint,
+    onJump           : () -> Unit,
+    onEdit           : () -> Unit,
+    onDelete         : () -> Unit,
+    onCopyGcj        : () -> Unit,
+    onCopyWgs        : () -> Unit,
+    onToggleExpanded : (Boolean) -> Unit,
 ) {
-    var expanded by rememberSaveable(point.id) { mutableStateOf(true) }
+    var expanded by remember { mutableStateOf(point.isExpanded) }
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -252,7 +254,10 @@ private fun FavoriteItemCard(
                     modifier = Modifier.weight(1f),
                     fontWeight = FontWeight.Medium,
                 )
-                IconButton(onClick = { expanded = !expanded }) {
+                IconButton(onClick = {
+                    expanded = !expanded
+                    onToggleExpanded(expanded)
+                }) {
                     Icon(
                         if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                         contentDescription = if (expanded) "收起" else "展开",

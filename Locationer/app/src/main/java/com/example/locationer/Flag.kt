@@ -22,6 +22,7 @@ data class Flag(
     val createdAt: Long,
     val customName: String = "",
     val isFavorite: Boolean = false,
+    val isExpanded: Boolean = false,
 )
 
 /** 旗标持久化存储。 */
@@ -78,6 +79,12 @@ class FlagStore(private val context: Context) {
         })
     }
 
+    fun updateExpanded(id: Long, expanded: Boolean) {
+        save(_flags.value.map { flag ->
+            if (flag.id == id) flag.copy(isExpanded = expanded) else flag
+        })
+    }
+
     private fun save(list: List<Flag>) {
         val array = JSONArray()
         list.forEach { flag ->
@@ -93,6 +100,7 @@ class FlagStore(private val context: Context) {
                     .put("createdAt", flag.createdAt)
                     .put("isFavorite", flag.isFavorite)
                     .put("customName", flag.customName)
+                    .put("isExpanded", flag.isExpanded)
             )
         }
         prefs.edit().putString(KEY_DATA, array.toString()).apply()
@@ -121,6 +129,7 @@ class FlagStore(private val context: Context) {
                         customName = item.optString("customName"),
                         isFavorite = item.optBoolean("isFavorite", false) ||
                             item.optInt("isFavorite", 0) > 0,
+                        isExpanded = item.optBoolean("isExpanded", false),
                     )
                 )
             }

@@ -22,6 +22,7 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
         val wgsLon: Double,
         val wgsLat: Double,
         val timestamp: Long,
+        val isExpanded: Boolean = false,
     )
 
     private val prefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -76,6 +77,10 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun exportAll(): String = _favorites.value.joinToString(separator = "\n\n") { it.formatForClipboard() }
 
+    fun updateExpanded(id: Long, expanded: Boolean) {
+        save(_favorites.value.map { if (it.id == id) it.copy(isExpanded = expanded) else it })
+    }
+
     fun jumpTo(point: FavoritePoint, mapViewModel: MapViewModel) {
         mapViewModel.updateLonText(formatCoordinate(point.gcjLon))
         mapViewModel.updateLatText(formatCoordinate(point.gcjLat))
@@ -92,6 +97,7 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
         wgsLon = wgsLon,
         wgsLat = wgsLat,
         timestamp = savedAt,
+        isExpanded = false,
     )
 
     private fun FavoritePoint.sameSnapshot(other: FavoritePoint): Boolean =
@@ -132,6 +138,7 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
                             wgsLon = item.optDouble("wgsLon"),
                             wgsLat = item.optDouble("wgsLat"),
                             timestamp = item.optLong("timestamp", id),
+                            isExpanded = item.optBoolean("isExpanded", false),
                         )
                     )
                 }
@@ -151,6 +158,7 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
                     .put("wgsLon", point.wgsLon)
                     .put("wgsLat", point.wgsLat)
                     .put("timestamp", point.timestamp)
+                    .put("isExpanded", point.isExpanded)
             )
         }
         _favorites.value = points

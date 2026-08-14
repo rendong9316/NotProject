@@ -364,6 +364,7 @@ private fun FlagManagementCard(
                         mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
                         mapViewModel.setCoordType(CoordType.GCJ02)
                     },
+                    onToggleExpanded = { mapViewModel.updateExpanded(flag.id, it) },
                     flagStyle = flagStyle,
                 )
             }
@@ -422,6 +423,7 @@ private fun FlagManagementCard(
                         mapViewModel.updateLatText("%.6f".format(flag.gcjLat))
                         mapViewModel.setCoordType(CoordType.GCJ02)
                     },
+                    onToggleExpanded = { mapViewModel.updateExpanded(flag.id, it) },
                     flagStyle = flagStyle,
                 )
             }
@@ -575,22 +577,23 @@ private fun FlagManagementCard(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FlagRow(
-    flag           : Flag,
-    color          : Color,
-    isSelected     : Boolean,
-    onToggleSelect : (Long) -> Unit,
-    onFavorite     : () -> Unit,
-    onStartEdit    : (Flag) -> Unit,
-    onFinishEdit   : () -> Unit,
-    onCancelEdit   : () -> Unit,
-    onDelete       : () -> Unit,
-    onCopyGcj      : () -> Unit,
-    onCopyWgs      : () -> Unit,
-    onJump         : () -> Unit,
-    flagStyle      : FlagStyle = FlagStyle(),
+    flag               : Flag,
+    color              : Color,
+    isSelected         : Boolean,
+    onToggleSelect     : (Long) -> Unit,
+    onFavorite         : () -> Unit,
+    onStartEdit        : (Flag) -> Unit,
+    onFinishEdit       : () -> Unit,
+    onCancelEdit       : () -> Unit,
+    onDelete           : () -> Unit,
+    onCopyGcj          : () -> Unit,
+    onCopyWgs          : () -> Unit,
+    onJump             : () -> Unit,
+    onToggleExpanded   : (Boolean) -> Unit,
+    flagStyle          : FlagStyle = FlagStyle(),
 ) {
-    var expanded by remember(flag.id) { mutableStateOf(true) }
     val displayName = if (flag.customName.isNotBlank()) flag.customName else flag.label
+    var expanded by remember { mutableStateOf(flag.isExpanded) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -633,7 +636,10 @@ private fun FlagRow(
                     modifier = Modifier.weight(1f),
                     fontWeight = FontWeight.Medium,
                 )
-                IconButton(onClick = { expanded = !expanded }) {
+                IconButton(onClick = {
+                    expanded = !expanded
+                    onToggleExpanded(expanded)
+                }) {
                     Icon(
                         if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                         contentDescription = if (expanded) "收起" else "展开",

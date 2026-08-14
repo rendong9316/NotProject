@@ -323,6 +323,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     /** 重命名旗标 */
     fun renameFlag(id: Long, customName: String) { flagStore.updateCustomName(id, customName) }
+    fun updateExpanded(id: Long, expanded: Boolean) { flagStore.updateExpanded(id, expanded) }
 
     /** 手动添加旗标（支持指定类型和自定义名称） */
     fun addFlag(gcj: CT.Coord, wgs: CT.Coord, type: FlagType, customName: String = "") {
