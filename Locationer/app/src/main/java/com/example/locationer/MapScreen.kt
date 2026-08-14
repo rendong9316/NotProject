@@ -288,7 +288,16 @@ fun MapScreen(
 
     // ================ 地图图层切换 + 深色模式适配 ================
     val darkTheme = isSystemInDarkTheme()
-    var mapLayer by remember { mutableStateOf(false) } // false=标准，true=卫星
+    var mapLayer by remember {
+        mutableStateOf(
+            context.getSharedPreferences("map_screen", android.content.Context.MODE_PRIVATE)
+                .getBoolean("mapLayer", false)
+        )
+    }
+    LaunchedEffect(mapLayer) {
+        context.getSharedPreferences("map_screen", android.content.Context.MODE_PRIVATE)
+            .edit().putBoolean("mapLayer", mapLayer).apply()
+    }
     LaunchedEffect(mapReady, mapLayer, darkTheme) {
         if (!mapReady) return@LaunchedEffect
         aMap?.setMapType(when {
@@ -858,7 +867,7 @@ private fun UnifiedPanel(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        FText("坐标类型", 12, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        FText("坐标类型", 14, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(6.dp))
                         CoordRadio("GCJ02", coordType == CoordType.GCJ02) { onCoordType(CoordType.GCJ02) }
                         CoordRadio("WGS84", coordType == CoordType.WGS84) { onCoordType(CoordType.WGS84) }
@@ -897,9 +906,9 @@ private fun CoordsRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FText(label, 11, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FText(label, 14, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectionContainer {
-            FText(text = text, fontSize = 11, fontFamily = FontFamily.Monospace,
+            FText(text = text, fontSize = 14, fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.SemiBold, color = color, maxLines = 1)
         }
     }
@@ -924,15 +933,15 @@ private fun AccuracyRow(meters: Float?) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FText("定位精度", 11, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FText("定位精度", 14, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectionContainer {
             FText("${info.label}  ${meters?.toInt()?.toString() ?: "--"} m",
-                fontSize = 11, fontWeight = FontWeight.SemiBold, color = info.textColor)
+                fontSize = 14, fontWeight = FontWeight.SemiBold, color = info.textColor)
         }
     }
     if (info.subtext.isNotEmpty()) {
         Spacer(Modifier.height(2.dp))
-        FText(info.subtext, 11, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FText(info.subtext, 14, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(2.dp))
     }
 }
@@ -1013,7 +1022,7 @@ private fun LayerToggleButton(isSatellite: Boolean, onClick: () -> Unit) {
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = if (isSatellite) "标准" else "卫星",
-            fontSize = 12.sp,
+            fontSize = 14.sp,
         )
     }
 }

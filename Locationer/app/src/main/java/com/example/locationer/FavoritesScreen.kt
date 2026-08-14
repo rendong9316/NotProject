@@ -306,7 +306,7 @@ private fun FavoriteCoordRow(label: String, lon: Double, lat: Double, onCopy: ()
         Text(
             text = "%.6f,%.6f".format(lon, lat),
             fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
+            fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )

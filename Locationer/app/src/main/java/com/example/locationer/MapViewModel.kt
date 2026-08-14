@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 
 internal fun minimumMeasurementPoints(mode: MapViewModel.MeasurementMode): Int = when (mode) {
     MapViewModel.MeasurementMode.DISTANCE -> 2
@@ -60,6 +62,7 @@ data class JumpTarget(
 data class UiMessage(val text: String)
 
 class MapViewModel(application: Application) : AndroidViewModel(application) {
+    private val _context = application
 
     enum class NavigationTarget { NONE, MAP, TOOLS_MEASUREMENT, MY_FAVORITES }
     data class NavigationEvent(val id: Long = 0L, val target: NavigationTarget = NavigationTarget.NONE)
@@ -86,12 +89,14 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _bearing = MutableStateFlow<Float?>(null)
     val bearing: StateFlow<Float?> = _bearing.asStateFlow()
 
-    private val _lonText  = MutableStateFlow("")
+    private val _lonText  = MutableStateFlow(loadPref("lonText", ""))
     val lonText: StateFlow<String> = _lonText.asStateFlow()
-    private val _latText  = MutableStateFlow("")
+    private val _latText  = MutableStateFlow(loadPref("latText", ""))
     val latText: StateFlow<String> = _latText.asStateFlow()
 
-    private val _coordType = MutableStateFlow(CoordType.GCJ02)
+    private val _coordType = MutableStateFlow(
+        runCatching { CoordType.valueOf(loadPref("coordType", "GCJ02")) }.getOrDefault(CoordType.GCJ02)
+    )
     val coordType: StateFlow<CoordType> = _coordType.asStateFlow()
 
     private var jumpId = 0L
@@ -374,33 +379,102 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     enum class MeasurementState { IDLE, PLACING, COMPLETED }
 
-    private val _measurementMode = MutableStateFlow(MeasurementMode.DISTANCE)
+    private val _measurementMode = MutableStateFlow(loadMeasurement()?.mode ?: MeasurementMode.DISTANCE)
+    private val _measurementWaypoints = MutableStateFlow(loadMeasurement()?.waypoints ?: emptyList())
+    private val _measurementSegments = MutableStateFlow(loadMeasurement()?.segments ?: emptyList())
+    private val _measurementTotalDist = MutableStateFlow(loadMeasurement()?.totalDist ?: 0.0)
+    private val _measurementTotalArea = MutableStateFlow(loadMeasurement()?.totalArea ?: 0.0)
+    private val _measurementState = MutableStateFlow(loadMeasurement()?.state ?: MeasurementState.IDLE)
+    private val _measurementPickMode = MutableStateFlow(false)
     val measurementMode: StateFlow<MeasurementMode> = _measurementMode.asStateFlow()
-
-    private val _measurementState = MutableStateFlow(MeasurementState.IDLE)
     val measurementState: StateFlow<MeasurementState> = _measurementState.asStateFlow()
-
-    /** 测量端点：独立存储 GCJ02 与 WGS84，不存入旗标管理 */
     data class MeasurementPoint(val gcj: CT.Coord, val wgs: CT.Coord)
-
-    private val _measurementWaypoints = MutableStateFlow<List<MeasurementPoint>>(emptyList())
     val measurementWaypoints: StateFlow<List<MeasurementPoint>> = _measurementWaypoints.asStateFlow()
-
     data class Segment(val index: Int, val dist: Double) {
         val distText: String get() = formatDist(dist)
     }
-    private val _measurementSegments = MutableStateFlow<List<Segment>>(emptyList())
     val measurementSegments: StateFlow<List<Segment>> = _measurementSegments.asStateFlow()
-
-    private val _measurementTotalDist = MutableStateFlow(0.0)
     val measurementTotalDist: StateFlow<Double> = _measurementTotalDist.asStateFlow()
-
-    private val _measurementTotalArea = MutableStateFlow(0.0)
     val measurementTotalArea: StateFlow<Double> = _measurementTotalArea.asStateFlow()
-
-    /** 测量拾取模式：在地图上启用手指拖动准星后轻触放置测点 */
-    private val _measurementPickMode = MutableStateFlow(false)
     val measurementPickMode: StateFlow<Boolean> = _measurementPickMode.asStateFlow()
+
+    // ---------- 持久化辅助 ----------
+    private fun loadPref(key: String, default: String): String =
+        _context.getSharedPreferences("map_state", Context.MODE_PRIVATE).getString(key, default) ?: default
+
+    private fun savePref(key: String, value: String) {
+        _context.getSharedPreferences("map_state", Context.MODE_PRIVATE)
+            .edit().putString(key, value).apply()
+    }
+
+    /** 从 SharedPreferences 加载上次测量的完整数据 */
+    private fun loadMeasurement(): SavedMeasurement? {
+        val raw = loadPref("measurement", "")
+        if (raw.isBlank()) return null
+        return runCatching {
+            val obj = JSONObject(raw)
+            val waypoints = buildList {
+                val arr = obj.optJSONArray("waypoints") ?: return@buildList
+                for (i in 0 until arr.length()) {
+                    val wp = arr.getJSONObject(i)
+                    add(MeasurementPoint(
+                        gcj = CT.Coord(wp.optDouble("gcjLon"), wp.optDouble("gcjLat")),
+                        wgs = CT.Coord(wp.optDouble("wgsLon"), wp.optDouble("wgsLat")),
+                    ))
+                }
+            }
+            val segments = buildList {
+                val arr = obj.optJSONArray("segments") ?: return@buildList
+                for (i in 0 until arr.length()) {
+                    val seg = arr.getJSONObject(i)
+                    add(Segment(seg.optInt("index"), seg.optDouble("dist")))
+                }
+            }
+            SavedMeasurement(
+                mode = when (obj.optString("mode")) { "AREA" -> MeasurementMode.AREA; else -> MeasurementMode.DISTANCE },
+                waypoints = waypoints,
+                segments = segments,
+                totalDist = obj.optDouble("totalDist"),
+                totalArea = obj.optDouble("totalArea"),
+                state = when (obj.optString("state")) {
+                    "PLACING" -> MeasurementState.PLACING
+                    "COMPLETED" -> MeasurementState.COMPLETED
+                    else -> MeasurementState.IDLE
+                },
+            )
+        }.getOrNull()
+    }
+
+    private fun saveMeasurement() {
+        val obj = JSONObject().apply {
+            put("mode", _measurementMode.value.name)
+            put("state", _measurementState.value.name)
+            put("totalDist", _measurementTotalDist.value)
+            put("totalArea", _measurementTotalArea.value)
+            val wpArr = JSONArray()
+            for (wp in _measurementWaypoints.value) {
+                wpArr.put(JSONObject()
+                    .put("gcjLon", wp.gcj.lon).put("gcjLat", wp.gcj.lat)
+                    .put("wgsLon", wp.wgs.lon).put("wgsLat", wp.wgs.lat))
+            }
+            put("waypoints", wpArr)
+            val segArr = JSONArray()
+            for (seg in _measurementSegments.value) {
+                segArr.put(JSONObject().put("index", seg.index).put("dist", seg.dist))
+            }
+            put("segments", segArr)
+        }
+        savePref("measurement", obj.toString())
+    }
+
+    private data class SavedMeasurement(
+        val mode: MeasurementMode,
+        val waypoints: List<MeasurementPoint>,
+        val segments: List<Segment>,
+        val totalDist: Double,
+        val totalArea: Double,
+        val state: MeasurementState,
+    )
 
     // ---------- 可重复消费的 UI 事件 ----------
     private val _navigationEvent = MutableStateFlow(NavigationEvent())
@@ -452,6 +526,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         _measurementTotalArea.value = 0.0
         _measurementState.value = MeasurementState.IDLE
         _measurementPickMode.value = false
+        saveMeasurement()
     }
 
     /** 切换测量拾取模式：启用后在地图上拖动准星，轻触放置测点 */
@@ -471,6 +546,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         if (_measurementState.value != MeasurementState.PLACING) return
         if (!isMeasurementReady(_measurementMode.value, _measurementWaypoints.value.size)) return
         _measurementState.value = MeasurementState.COMPLETED
+        saveMeasurement()
         requestSwitchToTools()
     }
 
@@ -492,6 +568,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         if (_measurementState.value == MeasurementState.COMPLETED) {
             _measurementState.value = MeasurementState.IDLE
         }
+        saveMeasurement()
     }
 
     fun addWaypoint(lon: Double, lat: Double) {
@@ -588,9 +665,20 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         firstFixReceived = false
     }
 
-    fun updateLonText(v: String)  { _lonText.value = v.filter { it.isDigit() || it == '.' || it == '-' || it == '+' } }
-    fun updateLatText(v: String)  { _latText.value = v.filter { it.isDigit() || it == '.' || it == '-' || it == '+' } }
-    fun setCoordType(t: CoordType){ _coordType.value = t }
+    fun updateLonText(v: String) {
+        val filtered = v.filter { it.isDigit() || it == '.' || it == '-' || it == '+' }
+        _lonText.value = filtered
+        savePref("lonText", filtered)
+    }
+    fun updateLatText(v: String) {
+        val filtered = v.filter { it.isDigit() || it == '.' || it == '-' || it == '+' }
+        _latText.value = filtered
+        savePref("latText", filtered)
+    }
+    fun setCoordType(t: CoordType) {
+        _coordType.value = t
+        savePref("coordType", t.name)
+    }
     fun messageShown()            { _message.value = null }
 
     override fun onCleared() {
@@ -599,5 +687,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         stopContinuous()
         try { locationClient?.onDestroy(); locationClient = null }
         catch (_: Exception) {}
+
     }
 }

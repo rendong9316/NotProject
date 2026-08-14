@@ -162,7 +162,7 @@ private fun CollapsibleToolCard(
                 Icon(icon, contentDescription = null,
                     modifier = Modifier.size(18.dp), tint = iconTint)
                 Spacer(Modifier.width(8.dp))
-                Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 if (clearBtn != null) clearBtn()
                 Spacer(Modifier.width(4.dp))
@@ -239,7 +239,7 @@ private fun FlagManagementCard(
         clearBtn = {
             TextButton(onClick = {
                 showClearAllDialog = true
-            }) { Text("清除全部", fontSize = 11.sp) }
+            }) { Text("清除全部", fontSize = 14.sp) }
         },
     ) {
         // ---- 手动添加 ----
@@ -247,8 +247,8 @@ private fun FlagManagementCard(
             Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 OutlinedTextField(value = addLabel, onValueChange = { addLabel = it },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    label = { Text("名称", fontSize = 11.sp) },
-                    placeholder = { Text("可选，留空则自动生成", fontSize = 12.sp) },
+                    label = { Text("名称", fontSize = 14.sp) },
+                    placeholder = { Text("可选，留空则自动生成", fontSize = 14.sp) },
                     colors = TextFieldDefaults.colors(
                         focusedIndicatorColor = MaterialTheme.colorScheme.primary,
                         unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
@@ -258,8 +258,8 @@ private fun FlagManagementCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedTextField(value = addLon, onValueChange = { addLon = it },
                         modifier = Modifier.weight(1f), singleLine = true,
-                        label = { Text("经度", fontSize = 11.sp) },
-                        placeholder = { Text("116.397428", fontSize = 12.sp) },
+                        label = { Text("经度", fontSize = 14.sp) },
+                        placeholder = { Text("116.397428", fontSize = 14.sp) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         colors = TextFieldDefaults.colors(
                             focusedIndicatorColor = MaterialTheme.colorScheme.primary,
@@ -269,8 +269,8 @@ private fun FlagManagementCard(
                         ))
                     OutlinedTextField(value = addLat, onValueChange = { addLat = it },
                         modifier = Modifier.weight(1f), singleLine = true,
-                        label = { Text("纬度", fontSize = 11.sp) },
-                        placeholder = { Text("39.90923", fontSize = 12.sp) },
+                        label = { Text("纬度", fontSize = 14.sp) },
+                        placeholder = { Text("39.90923", fontSize = 14.sp) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         colors = TextFieldDefaults.colors(
                             focusedIndicatorColor = MaterialTheme.colorScheme.primary,
@@ -281,7 +281,7 @@ private fun FlagManagementCard(
                 }
                 // 坐标类型选择（GCJ02 / WGS84）
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    FText("坐标类型", 10, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FText("坐标类型", 14, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(4.dp))
                     CoordRadio("GCJ02", addType == CoordType.GCJ02) { addType = CoordType.GCJ02 }
                     CoordRadio("WGS84", addType == CoordType.WGS84) { addType = CoordType.WGS84 }
@@ -300,14 +300,14 @@ private fun FlagManagementCard(
                         mapViewModel.addFlag(gcj, wgs, FlagType.PICKED, addLabel.trim())
                         addLabel = ""; addLon = ""; addLat = ""
                         showAddForm = false
-                    }) { Text("放置", fontSize = 11.sp) }
-                    TextButton(onClick = { showAddForm = false }) { Text("取消", fontSize = 10.sp) }
+                    }) { Text("放置", fontSize = 14.sp) }
+                    TextButton(onClick = { showAddForm = false }) { Text("取消", fontSize = 14.sp) }
                 }
             }
         } else {
             TextButton(onClick = { showAddForm = true },
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 0.dp)) {
-                Text("+ 手动添加", fontSize = 11.sp)
+                Text("+ 手动添加", fontSize = 14.sp)
             }
         }
 
@@ -315,12 +315,12 @@ private fun FlagManagementCard(
         if (pickedFlags.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("拾取旗标 (${pickedFlags.size})", fontSize = 11.sp,
+                Text("拾取旗标 (${pickedFlags.size})", fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = {
                     showClearAllDialog = true
-                }) { Text("清除全部", fontSize = 10.sp) }
+                }) { Text("清除全部", fontSize = 14.sp) }
             }
             pickedFlags.forEach { flag ->
                 FlagRow(
@@ -374,12 +374,12 @@ private fun FlagManagementCard(
         if (jumpedFlags.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("跳转目标 (${jumpedFlags.size})", fontSize = 11.sp,
+                Text("跳转目标 (${jumpedFlags.size})", fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = {
                     showClearAllDialog = true
-                }) { Text("清除全部", fontSize = 10.sp) }
+                }) { Text("清除全部", fontSize = 14.sp) }
             }
             jumpedFlags.forEach { flag ->
                 FlagRow(
@@ -457,7 +457,7 @@ private fun FlagManagementCard(
                     ) {
                         Icon(Icons.Filled.Straighten, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("计算距离", fontSize = 12.sp)
+                        Text("计算距离", fontSize = 14.sp)
                     }
                 }
                 if (selected.size == 2 && geoResult != null) {
@@ -468,10 +468,10 @@ private fun FlagManagementCard(
                         modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) {
                         Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text("$distText  ·  ${r.from}→${r.to}: ${"%.1f°".format(r.bearing)} ${bearingCardinal(r.bearing)}",
-                                fontSize = 12.sp, fontFamily = FontFamily.Monospace,
+                                fontSize = 14.sp, fontFamily = FontFamily.Monospace,
                                 color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
                             Text("${r.to}→${r.from}: ${"%.1f°".format(reverse)} ${bearingCardinal(reverse)}",
-                                fontSize = 12.sp, fontFamily = FontFamily.Monospace,
+                                fontSize = 14.sp, fontFamily = FontFamily.Monospace,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                         }
                     }
@@ -488,10 +488,10 @@ private fun FlagManagementCard(
                 ) {
                     Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("删除 (${selectedIds.size})", fontSize = 12.sp)
+                    Text("删除 (${selectedIds.size})", fontSize = 14.sp)
                 }
                 TextButton(onClick = { selectedIds = emptySet(); geoResult = null }) {
-                    Text("取消选择", fontSize = 11.sp)
+                    Text("取消选择", fontSize = 14.sp)
                 }
             }
         }
@@ -499,7 +499,7 @@ private fun FlagManagementCard(
         if (flags.isEmpty()) {
             Spacer(Modifier.height(8.dp))
             Text("暂无旗标，点击地图右上角「拾取」按钮在地图上放置标记",
-                fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center)
         }
     }
@@ -688,7 +688,7 @@ private fun FlagCoordRow(label: String, lon: Double, lat: Double, onCopy: () -> 
         Text(
             text = "%.6f,%.6f".format(lon, lat),
             fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
+            fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
@@ -784,7 +784,7 @@ private fun MeasurementCard(
         if (isMeasuring) {
             Spacer(Modifier.height(4.dp))
             Text("正在地图上放置测点，达到最低点数后点击「开始计算」",
-                fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
+                fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
         }
 
         if (waypoints.isNotEmpty() && isComplete) {
@@ -796,9 +796,9 @@ private fun MeasurementCard(
                 Spacer(Modifier.height(4.dp))
                 segments.forEachIndexed { i, seg ->
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("${i+1}→${i+2}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${i+1}→${i+2}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.weight(1f))
-                        Text(seg.distText, fontSize = 11.sp, fontFamily = FontFamily.Monospace,
+                        Text(seg.distText, fontSize = 14.sp, fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.primary)
                     }
                 }
@@ -808,22 +808,22 @@ private fun MeasurementCard(
             if (waypoints.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
                 waypoints.forEachIndexed { i, wp ->
-                    Text("点 ${i + 1}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("点 ${i + 1}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(1.dp))
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("GCJ02", fontSize = 8.sp,
+                        Text("GCJ02", fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                         Spacer(Modifier.width(2.dp))
                         Text("%.6f,%.6f".format(wp.gcj.lon, wp.gcj.lat),
-                            fontSize = 10.sp, fontFamily = FontFamily.Monospace,
+                            fontSize = 14.sp, fontFamily = FontFamily.Monospace,
                             modifier = Modifier.weight(1f))
                     }
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("WGS84", fontSize = 8.sp,
+                        Text("WGS84", fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                         Spacer(Modifier.width(2.dp))
                         Text("%.6f,%.6f".format(wp.wgs.lon, wp.wgs.lat),
-                            fontSize = 10.sp, fontFamily = FontFamily.Monospace,
+                            fontSize = 14.sp, fontFamily = FontFamily.Monospace,
                             modifier = Modifier.weight(1f))
                     }
                 }
@@ -847,7 +847,7 @@ private fun ModeChip(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
                              else MaterialTheme.colorScheme.surfaceVariant),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-    ) { Text(label, fontSize = 11.sp) }
+    ) { Text(label, fontSize = 14.sp) }
 }
 
 @Composable
@@ -859,14 +859,14 @@ private fun MeasureBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, la
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp)) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(4.dp))
-            Text(label, fontSize = 12.sp)
+            Text(label, fontSize = 14.sp)
         }
     } else {
         OutlinedButton(onClick = {}, enabled = false,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp)) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(4.dp))
-            Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f))
+            Text(label, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f))
         }
     }
 }
@@ -878,12 +878,12 @@ private fun ResultBox(dist: Double, area: Double?, segmentCount: Int) {
         Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             val distText = MapViewModel.formatDist(dist)
             Text("累计 $distText  ·  $segmentCount 段",
-                fontSize = 12.sp, fontFamily = FontFamily.Monospace,
+                fontSize = 14.sp, fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
             if (area != null) {
                 val areaText = MapViewModel.formatArea(area)
                 Text("面积 $areaText",
-                    fontSize = 12.sp, fontFamily = FontFamily.Monospace,
+                    fontSize = 14.sp, fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.tertiary, textAlign = TextAlign.Center)
             }
         }

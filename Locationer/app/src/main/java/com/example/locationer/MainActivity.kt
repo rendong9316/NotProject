@@ -203,7 +203,7 @@ private fun TabItem(
         )
         Spacer(Modifier.height(2.dp))
         Text(
-            text = label, fontSize = 11.sp,
+            text = label, fontSize = 14.sp,
             color = if (selected) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
         )

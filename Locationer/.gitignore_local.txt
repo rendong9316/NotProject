@@ -1,0 +1,7 @@
+# scripts/
+# 离线瓦片下载脚本
+gen_tiles.py
+
+# app/src/main/assets/
+# 离线卫星瓦片数据库
+tiles_china.mbtiles
