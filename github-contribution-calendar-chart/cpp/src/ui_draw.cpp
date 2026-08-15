@@ -93,8 +93,8 @@ HFONT MakeFont(int pixels, int weight = FW_NORMAL) {
                        DEFAULT_PITCH | FF_DONTCARE, FONT_FAMILY);
 }
 
-double LayoutScale() { return std::max(0.75, std::min(1.5, g_fontScale)); }
-double CalendarScale() { return std::max(0.75, std::min(2.5, g_fontScale)); }
+double LayoutScale() { return std::max(0.75, std::min(3.0, g_fontScale)); }
+double CalendarScale() { return std::max(0.75, std::min(4.0, g_fontScale)); }
 int ScaleIntHelper(int value) { return std::max(0, static_cast<int>(std::lround(value * LayoutScale()))); }
 int ScaleCalendarIntHelper(int value) {
     return std::max(0, static_cast<int>(std::lround(value * CalendarScale())));
