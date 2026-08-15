@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "ui_draw.h"
+#include "ai_agent.h"
 
 #include <windows.h>
 #include <windowsx.h>
@@ -40,6 +41,7 @@ void UpdateSearchFont() {
 
 void RefreshSearchControlScale() {
     UpdateSearchFont();
+    AgentRefreshInputFont();
     if (!g_hwndMain) return;
     RECT client = {};
     GetClientRect(g_hwndMain, &client);
@@ -48,17 +50,20 @@ void RefreshSearchControlScale() {
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }
 
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
-    case WM_CREATE: {
+    case WM_CREATE: { dbg("WM_CREATE");
         g_editLightBrush = CreateSolidBrush(CLR_BG_PAGE);
         g_editDarkBrush = CreateSolidBrush(CLR_DARK_BG_PAGE);
+        g_editFont = nullptr;
         g_hwndSearch = CreateWindowExW(0, L"EDIT", L"", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
                                        0, 0, 100, 24, hwnd, reinterpret_cast<HMENU>(IDC_SEARCH),
                                        reinterpret_cast<LPCREATESTRUCT>(lParam)->hInstance, nullptr);
         SendMessageW(g_hwndSearch, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(L"搜索名称或路径"));
-        InitializeState(hwnd);
+        InitializeState(hwnd); dbg("InitializeState done");
         RefreshSearchControlScale();
+        dbg("Calling AgentStartProcess"); AgentStartProcess(); dbg("AgentStartProcess done");
         return 0;
     }
     case WM_SIZE: {
@@ -81,6 +86,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
     }
     case WM_COMMAND:
         if (LOWORD(wParam) == IDC_SEARCH && HIWORD(wParam) == EN_CHANGE) { UpdateSearch(); return 0; }
+        if (LOWORD(wParam) == IDC_AGENT_INPUT && HIWORD(wParam) == EN_CHANGE) {
+            AgentInputChanged(hwnd); return 0;
+        }
+        if (LOWORD(wParam) == IDC_AGENT_INPUT && HIWORD(wParam) == EN_KILLFOCUS) {
+            // On enter key, we handle it in WM_KEYDOWN
+        }
         break;
     case WM_LBUTTONDOWN:
         SetFocus(hwnd);
@@ -109,7 +120,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
     case WM_MOUSEWHEEL: {
         POINT point = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
         ScreenToClient(hwnd, &point);
-        // Ctrl+滚轮调节字体大小
         if (GetKeyState(VK_CONTROL) & 0x8000) {
             AdjustFontSize(GET_WHEEL_DELTA_WPARAM(wParam) > 0 ? 1 : -1);
             return 0;
@@ -126,6 +136,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         if (wParam == 'D' && (GetKeyState(VK_CONTROL) & 0x8000)) { ToggleTheme(); return 0; }
         if (wParam == '+' && (GetKeyState(VK_CONTROL) & 0x8000)) { AdjustFontSize(1); return 0; }
         if (wParam == '-' && (GetKeyState(VK_CONTROL) & 0x8000)) { AdjustFontSize(-1); return 0; }
+        // Enter in agent input sends message
+        if (wParam == VK_RETURN && GetFocus() == g_hwndAgentInput) {
+            int len = GetWindowTextLengthW(g_hwndAgentInput);
+            std::wstring msg(static_cast<size_t>(len + 1), L'\0');
+            if (len > 0) GetWindowTextW(g_hwndAgentInput, &msg[0], len + 1);
+            msg.resize(static_cast<size_t>(len));
+            if (!msg.empty()) {
+                AgentSend(msg);
+                SetWindowTextW(g_hwndAgentInput, L"");
+            }
+            return 0;
+        }
         break;
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:
@@ -141,6 +163,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
     case WM_APP_PROGRESS:
         HandleOperationProgress(wParam, lParam);
         return 0;
+    case WM_APP_AI_RESULT:
+        AgentHandleResult(lParam);
+        return 0;
     case WM_GETMINMAXINFO: {
         MINMAXINFO* info = reinterpret_cast<MINMAXINFO*>(lParam);
         info->ptMinTrackSize.x = 960;
@@ -148,6 +173,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
         return 0;
     }
     case WM_DESTROY:
+        dbg("WM_DESTROY");
+        AgentStopProcess();
         ShutdownState();
         if (g_editLightBrush) DeleteObject(g_editLightBrush);
         if (g_editDarkBrush) DeleteObject(g_editDarkBrush);

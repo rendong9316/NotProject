@@ -25,6 +25,7 @@ extern std::wstring g_query;
 extern ContributionData g_contributionData;
 extern double g_fontScale;
 extern AppConfig g_config;
+extern AiResult g_aiResult;
 
 bool InitializeState(HWND hwnd);
 void ShutdownState();

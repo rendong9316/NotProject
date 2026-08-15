@@ -30,6 +30,7 @@ std::wstring g_query;
 ContributionData g_contributionData;
 double g_fontScale = 1.0;
 AppConfig g_config;
+AiResult g_aiResult;
 
 namespace {
 

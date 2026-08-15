@@ -1,6 +1,8 @@
 #pragma once
 
 #include <windows.h>
+#include <cstdint>
+#include <string>
 #include <vector>
 
 class UiDraw {
@@ -20,6 +22,35 @@ public:
     void ClearDaySelection();
     void InitColumnWidths();
     int VisibleRankingRows() const;
+    void OpenAgentWorkspace(const std::wstring& dayDate = L"");
+    void CloseAgentWorkspace();
+
+    // Agent text selection state
+    struct AgentTextSelection {
+        int messageIndex = -1;
+        int charStart = -1;
+        int charEnd = -1;
+        // Screen-space rect for selection highlight
+        RECT selRect = {};
+        // Copy button rect
+        RECT copyBtnRect = {};
+    };
+
+private:
+    void ComputeLayout(int width, int height);
+    int RepositoryAt(int x, int y) const;
+    int CommitAt(int x, int y) const;
+    int AgentMessageAt(int x, int y) const;
+    int AgentCharIndexAt(int x, int y, int msgIndex, int scroll) const;
+    void AgentClearSelection();
+    void AgentStartSelection(int x, int y);
+    void AgentUpdateSelection(int x, int y);
+    void AgentFinishSelection();
+    void AgentDrawSelection(HDC dc) const;
+    void AgentDrawCopyButton(HDC dc) const;
+    bool AgentCopySelected() const;
+    void MouseDown(int x, int y);
+    void MouseUp(int x, int y);
 
 private:
     void ComputeLayout(int width, int height);
@@ -32,6 +63,7 @@ private:
     void DrawCalendar(HDC dc);
     void DrawRanking(HDC dc);
     void DrawDayDetailPanel(HDC dc);
+    void DrawAgentPanel(HDC dc);
     void DrawStatusbar(HDC dc);
     void DrawTooltip(HDC dc);
 
@@ -40,6 +72,8 @@ private:
     RECT refreshRect_ = {};
     RECT discoverRect_ = {};
     RECT themeRect_ = {};
+    RECT calendarTabRect_ = {};
+    RECT aiTabRect_ = {};
     RECT yearPreviousRect_ = {};
     RECT yearNextRect_ = {};
     RECT selectAllRect_ = {};
@@ -58,8 +92,19 @@ private:
     int selectedDay_ = -1;
     int commitScroll_ = 0;
     int repoScroll_ = 0;
+    int agentScroll_ = 0;
+    int agentContentHeight_ = 0;
+    int agentViewportHeight_ = 0;
+    std::uint64_t agentSeenRevision_ = 0;
+    std::wstring agentDisplayedSession_;
+    bool agentAutoFollow_ = true;
     int mouseX_ = 0;
     int mouseY_ = 0;
+    bool aiWorkspace_ = false;
+    bool agentTextSelecting_ = false;
+    int agentDragStartX_ = 0;
+    int agentDragStartY_ = 0;
+    AgentTextSelection agentTextSelection_;
 
     // Column resize state
     enum class ColResizeState { None, Dragging };
@@ -76,3 +121,4 @@ private:
 extern UiDraw g_ui;
 
 void RefreshSearchControlScale();
+void StartAiAnalysis(int dayIndex);
