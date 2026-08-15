@@ -823,8 +823,10 @@ private fun MeasurementCard(
             if (segments.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
                 segments.forEachIndexed { i, seg ->
+                    val from = i + 1
+                    val to = if (i == segments.size - 1 && waypoints.size >= 3 && vmMode == MapViewModel.MeasurementMode.AREA) 1 else i + 2
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("${i+1}→${i+2}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("$from→$to", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.weight(1f))
                         Text(seg.distText, fontSize = 14.sp, fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.primary)

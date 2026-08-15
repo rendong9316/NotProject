@@ -611,10 +611,17 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         val list = _measurementWaypoints.value
         val segs = mutableListOf<Segment>()
         var totalDist = 0.0
-        val n = list.size; for (i in 0 until n - 1) {
+        val n = list.size
+        val closed = _measurementMode.value == MeasurementMode.AREA && n >= 3
+        for (i in 0 until n - 1) {
             val d = list[i].gcj.distanceTo(list[i + 1].gcj)
             totalDist += d
             segs.add(Segment(i, d))
+        }
+        if (closed) {
+            val d = list.last().gcj.distanceTo(list.first().gcj)
+            totalDist += d
+            segs.add(Segment(n - 1, d))
         }
         _measurementSegments.value = segs
         _measurementTotalDist.value = totalDist
