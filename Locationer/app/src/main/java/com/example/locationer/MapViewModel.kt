@@ -153,8 +153,16 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _reticleCoord = MutableStateFlow<CT.Coord?>(null)
     val reticleCoord: StateFlow<CT.Coord?> = _reticleCoord.asStateFlow()
 
-    /** 拾取编号计数器 */
+    /** 拾取编号计数器（从持久化 flag 中恢复，避免重启后编号重复） */
     private var _pickCounter = 0L
+        get() {
+            if (field == 0L && flagStore.flags.value.isNotEmpty()) {
+                field = flagStore.flags.value
+                    .mapNotNull { it.label.toLongOrNull() }
+                    .maxOrNull() ?: 0L
+            }
+            return field
+        }
     /** 跳转编号计数器 */
     private var _jumpCounter = 0L
 
