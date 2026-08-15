@@ -180,27 +180,6 @@ bool CacheStore::LoadCommitsForDate(const std::wstring& repositoryId, const std:
     return true;
 }
 
-bool CacheStore::LoadAllCommits(const std::wstring& repositoryId,
-                                std::vector<DayEntry::CommitEntry>& commits,
-                                std::wstring& error) const {
-    commits.clear();
-    Json root;
-    if (!ReadJson(RepositoryFile(repositoryId), root, error)) return false;
-    const Json& values = root.get("commits");
-    if (!values.isArray()) return true;
-    for (const Json& item : values.array()) {
-        if (!item.isObject()) continue;
-        DayEntry::CommitEntry entry;
-        entry.hash = JsonWide(item.get("hash"));
-        entry.date = JsonWide(item.get("date"));
-        entry.time = JsonWide(item.get("time"));
-        entry.message = JsonWide(item.get("message"));
-        entry.author = JsonWide(item.get("author"));
-        commits.push_back(std::move(entry));
-    }
-    return true;
-}
-
 bool CacheStore::SaveHistory(const Repository& repository, const std::map<std::wstring, int>& days,
                              const std::vector<DayEntry::CommitEntry>& commits,
                              std::wstring& error, std::wstring* saveTime) const {
@@ -279,8 +258,6 @@ bool LoadAppConfig(AppConfig& config, std::wstring& notice, std::wstring& error)
     Json root;
     if (!ReadJson(path, root, error)) return false;
     config.scanAllDrives = root.get("scanAllDrives").boolean(true);
-    const int loadedSchemaVersion = root.get("schemaVersion").integer(1);
-    config.schemaVersion = 2;
     config.includeAllAuthors = root.get("includeAllAuthors").boolean(false);
     config.maxScanDepth = root.get("maxScanDepth").integer(10);
     config.scanConcurrency = root.get("scanConcurrency").integer(8);
@@ -304,21 +281,7 @@ bool LoadAppConfig(AppConfig& config, std::wstring& notice, std::wstring& error)
     // Load sidebar width
     config.sidebarWidth = root.get("sidebarWidth").integer(250);
     config.sidebarWidth = std::max(190, std::min(600, config.sidebarWidth));
-    const Json& ai = root.get("ai");
-    if (ai.isObject()) {
-        config.aiEnabled = ai.get("enabled").boolean(config.aiEnabled);
-        if (ai.get("provider").isString()) config.aiProvider = Utf8ToWide(ai.get("provider").string());
-        if (ai.get("baseUrl").isString()) config.aiBaseUrl = Utf8ToWide(ai.get("baseUrl").string());
-        if (ai.get("model").isString()) config.aiModel = Utf8ToWide(ai.get("model").string());
-        if (ai.get("apiKey").isString()) config.aiApiKey = Utf8ToWide(ai.get("apiKey").string());
-        config.aiMaxTokens = std::max(256, std::min(16384, ai.get("maxTokens").integer(config.aiMaxTokens)));
-        config.aiContextWindowTokens = std::max(4096, ai.get("contextWindowTokens").integer(config.aiContextWindowTokens));
-        config.aiTemperature = std::max(0.0, std::min(2.0, ai.get("temperature").number(config.aiTemperature)));
-        config.aiPrivacyConsent = ai.get("privacyConsent").boolean(config.aiPrivacyConsent);
-        config.aiRedactPaths = ai.get("redactPaths").boolean(config.aiRedactPaths);
-        config.aiPersistConversations = ai.get("persistConversations").boolean(config.aiPersistConversations);
-    }
-    const bool normalized = NormalizeConfigLists(config) || config.fontSize != loadedFontSize || loadedSchemaVersion != 2;
+    const bool normalized = NormalizeConfigLists(config) || config.fontSize != loadedFontSize;
     if (config.authors.empty()) config.includeAllAuthors = true;
     if (normalized) {
         std::wstring saveError;
@@ -337,7 +300,6 @@ bool SaveAppConfig(const AppConfig& config, std::wstring& error) {
     NormalizeConfigLists(normalized);
     std::wstring path = JoinPath(ApplicationDataDirectory(), L"config.json");
     Json root = Json::Object();
-    root["schemaVersion"] = Json(2);
     root["scanAllDrives"] = Json(normalized.scanAllDrives);
     root["includeAllAuthors"] = Json(normalized.includeAllAuthors);
     root["maxScanDepth"] = Json(normalized.maxScanDepth);
@@ -356,18 +318,5 @@ bool SaveAppConfig(const AppConfig& config, std::wstring& error) {
     for (const int w : normalized.columnWidths) colWidthsJson.push(Json(w));
     root["columnWidths"] = colWidthsJson;
     root["sidebarWidth"] = Json(normalized.sidebarWidth);
-    Json ai = Json::Object();
-    ai["enabled"] = Json(normalized.aiEnabled);
-    ai["provider"] = Json(WideToUtf8(normalized.aiProvider));
-    ai["baseUrl"] = Json(WideToUtf8(normalized.aiBaseUrl));
-    ai["model"] = Json(WideToUtf8(normalized.aiModel));
-    ai["apiKey"] = Json(WideToUtf8(normalized.aiApiKey));
-    ai["maxTokens"] = Json(normalized.aiMaxTokens);
-    ai["contextWindowTokens"] = Json(normalized.aiContextWindowTokens);
-    ai["temperature"] = Json(normalized.aiTemperature);
-    ai["privacyConsent"] = Json(normalized.aiPrivacyConsent);
-    ai["redactPaths"] = Json(normalized.aiRedactPaths);
-    ai["persistConversations"] = Json(normalized.aiPersistConversations);
-    root["ai"] = ai;
     return WriteUtf8FileAtomic(path, root.Serialize() + "\n", error);
 }

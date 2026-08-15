@@ -26,7 +26,7 @@
 #define CLR_DARK_BORDER       RGB(48,54,61)
 #define CLR_DARK_TEXT_PRIMARY RGB(230,237,243)
 #define CLR_DARK_TEXT_SEC     RGB(139,148,158)
-#define CLR_DARK_GREEN_0      RGB(27,32,40)
+#define CLR_DARK_GREEN_0      RGB(22,27,34)
 #define CLR_DARK_GREEN_1      RGB(14,68,41)
 #define CLR_DARK_GREEN_2      RGB(0,109,50)
 #define CLR_DARK_GREEN_3      RGB(38,166,65)
@@ -37,11 +37,8 @@
 #define APP_TITLE             L"Git Local"
 #define IDI_ICON              101
 #define IDC_SEARCH            2001
-#define IDC_AGENT_INPUT       2002
-#define IDC_AGENT_MESSAGES    2003
 #define WM_APP_OPERATION_DONE (WM_APP + 1)
 #define WM_APP_PROGRESS       (WM_APP + 2)
-#define WM_APP_AI_RESULT      (WM_APP + 3)
 
 #define TOPBAR_H              58
 #define SIDEBAR_W             250

@@ -38,14 +38,6 @@ echo [state]
 %CL% %COMMON% src\state.cpp /Foobj\state.obj
 if errorlevel 1 goto error
 
-echo [ai_tools]
-%CL% %COMMON% src\ai_tools.cpp /Foobj\ai_tools.obj
-if errorlevel 1 goto error
-
-echo [ai_agent]
-%CL% %COMMON% src\ai_agent.cpp /Foobj\ai_agent.obj
-if errorlevel 1 goto error
-
 echo [ui_draw]
 %CL% %COMMON% src\ui_draw.cpp /Foobj\ui_draw.obj
 if errorlevel 1 goto error
@@ -65,7 +57,7 @@ if errorlevel 1 goto error
 echo [link]
 %LINK% /nologo /OUT:build\git_local.exe /SUBSYSTEM:WINDOWS /MANIFEST:EMBED /DYNAMICBASE /NXCOMPAT /MACHINE:X64 ^
     obj\json.obj obj\platform.obj obj\cache_store.obj obj\git_scan.obj ^
-    obj\state.obj obj\ai_tools.obj obj\ai_agent.obj obj\ui_draw.obj obj\ui_control.obj obj\entry.obj obj\app_res.res ^
+    obj\state.obj obj\ui_draw.obj obj\ui_control.obj obj\entry.obj obj\app_res.res ^
     gdi32.lib gdiplus.lib comctl32.lib shell32.lib shlwapi.lib user32.lib advapi32.lib ole32.lib bcrypt.lib
 if errorlevel 1 goto error
 

@@ -4,7 +4,6 @@
 #include "platform.h"
 #include "state.h"
 #include "cache_store.h"
-#include "ai_agent.h"
 
 #include <windows.h>
 #include <wingdi.h>
@@ -154,80 +153,8 @@ void Text(HDC dc, const std::wstring& value, RECT rect, int size, COLORREF color
     SelectObject(dc, old);
     DeleteObject(font);
 }
-int WrappedTextHeight(HDC dc, const std::wstring& value, int width, int size, int weight = FW_NORMAL) {
-    if (value.empty() || width <= 0) return FontFromLayoutPixels(size) + ScaleIntHelper(8);
-    HFONT font = MakeFont(FontFromLayoutPixels(size), weight);
-    HFONT old = static_cast<HFONT>(SelectObject(dc, font));
-    RECT measure = {0, 0, width, 0};
-    DrawTextW(dc, value.c_str(), static_cast<int>(value.size()), &measure,
-              DT_LEFT | DT_TOP | DT_WORDBREAK | DT_CALCRECT);
-    SelectObject(dc, old);
-    DeleteObject(font);
-    return std::max(FontFromLayoutPixels(size) + ScaleIntHelper(6),
-                    static_cast<int>(measure.bottom - measure.top));
-}
-
-// Find the character index at pixel position (x, y) within a wrapped text block.
-// Returns -1 if y is outside the text area.
-int AgentCharIndexAt(HDC dc, const std::wstring& text, int x, int y, int contentW, int fontSize) {
-    if (text.empty() || contentW <= 0) return -1;
-    HFONT font = MakeFont(FontFromLayoutPixels(fontSize), FW_NORMAL);
-    HFONT old = static_cast<HFONT>(SelectObject(dc, font));
-    int curY = 0;
-    int i = 0;
-    int n = static_cast<int>(text.size());
-    while (i < n) {
-        RECT m = {0, 0, contentW, 0};
-        int chars = n - i;
-        DrawTextW(dc, text.c_str() + i, chars, &m, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_CALCRECT);
-        int lh = m.bottom - m.top;
-        if (lh <= 0) { ++i; continue; }
-        int lineBottom = curY + lh;
-        if (y >= curY && y < lineBottom) {
-            int j = i;
-            while (j < n) {
-                RECT cm = {0, 0, contentW, 0};
-                DrawTextW(dc, text.c_str() + i, j - i + 1, &cm, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_CALCRECT);
-                if (x < cm.right - cm.left) {
-                    SelectObject(dc, old);
-                    DeleteObject(font);
-                    return j;
-                }
-                ++j;
-            }
-            SelectObject(dc, old);
-            DeleteObject(font);
-            return n;
-        }
-        curY = lineBottom;
-        i = n; // advance past this line
-    }
-    SelectObject(dc, old);
-    DeleteObject(font);
-    return -1;
-}
-
-// Helper: find char index within a wrapped text, used by both namespace and member functions
-static int FindCharIndexInText(HDC dc, const std::wstring& text, int x, int y, int contentW, int fontSize) {
-    return AgentCharIndexAt(dc, text, x, y, contentW, fontSize);
-}
 
 bool Contains(const RECT& rect, int x, int y) { return x >= rect.left && x < rect.right && y >= rect.top && y <= rect.bottom; }
-
-constexpr int kAgentHeaderHeight = 48;
-constexpr int kAgentInputHeight = 88;
-constexpr int kAgentBodyFont = 14;
-constexpr int kAgentMetaFont = 12;
-
-RECT AgentHeaderActionRect(const RECT& panel, int slot) {
-    const int inset = ScaleIntHelper(6);
-    const int gap = ScaleIntHelper(6);
-    const int width = ScaleIntHelper(66);
-    int right = panel.right - ScaleIntHelper(30) - inset;
-    if (slot >= 1) right -= width + gap;
-    if (slot >= 2) right -= width + gap;
-    return {right - width, panel.top + inset, right, panel.top + ScaleIntHelper(kAgentHeaderHeight) - inset};
-}
 
 bool CopyTextToClipboard(HWND owner, const std::wstring& value) {
     if (value.empty() || !OpenClipboard(owner)) return false;
@@ -364,8 +291,6 @@ void UiDraw::ComputeLayout(int width, int height) {
     discoverRect_ = {width - ScaleIntHelper(456), buttonTop, width - ScaleIntHelper(326), buttonTop + buttonHeight};
     refreshRect_ = {width - ScaleIntHelper(316), buttonTop, width - ScaleIntHelper(196), buttonTop + buttonHeight};
     themeRect_ = {width - ScaleIntHelper(178), buttonTop, width - ScaleIntHelper(28), buttonTop + buttonHeight};
-    calendarTabRect_ = {ScaleIntHelper(128), buttonTop, ScaleIntHelper(226), buttonTop + buttonHeight};
-    aiTabRect_ = {ScaleIntHelper(226), buttonTop, ScaleIntHelper(324), buttonTop + buttonHeight};
 
     const int statusHeight = std::max(ScaleIntHelper(42), FontPixels(11) + ScaleIntHelper(16));
     statusbarRect_ = {0, std::max(topbarHeight, height - statusHeight), width, height};
@@ -417,10 +342,6 @@ void UiDraw::ComputeLayout(int width, int height) {
     const int panelTop = static_cast<int>(calendarRect_.bottom) + ScaleIntHelper(12);
     const int panelHeight = std::max(0, static_cast<int>(statusbarRect_.top) - panelTop - ScaleIntHelper(8));
     detailPanelRect_ = {contentLeft, panelTop, contentRight, panelTop + panelHeight};
-    if (aiWorkspace_) {
-        detailPanelRect_ = {contentLeft, topbarRect_.bottom + ScaleIntHelper(16),
-                            contentRight, statusbarRect_.top - ScaleIntHelper(8)};
-    }
     if (selectedDay_ >= 0 && panelHeight < std::max(ScaleIntHelper(140), CommitRowHeight() + ScaleIntHelper(62))) {
         detailPanelRect_.top = calendarRect_.top;
         detailPanelRect_.bottom = statusbarRect_.top - ScaleIntHelper(8);
@@ -431,19 +352,6 @@ void UiDraw::Resize(int width, int height) { ComputeLayout(width, height); }
 
 void UiDraw::Paint(HDC target, int width, int height) {
     ComputeLayout(width, height);
-
-    // Position agent input control
-    if (aiWorkspace_ && g_agentSession.active && g_hwndAgentInput) {
-        const int inset = ScaleIntHelper(12);
-        const int inputH = ScaleIntHelper(kAgentInputHeight);
-        const int inputX = detailPanelRect_.left + inset;
-        const int inputW = detailPanelRect_.right - ScaleIntHelper(92) - inputX;
-        const int inputTop = detailPanelRect_.bottom - inputH - inset;
-        SetWindowPos(g_hwndAgentInput, nullptr, inputX, inputTop,
-                     std::max(1, inputW), std::max(1, inputH),
-                     SWP_NOZORDER | SWP_NOACTIVATE);
-    }
-
     HDC buffer = CreateCompatibleDC(target);
     HBITMAP bitmap = CreateCompatibleBitmap(target, width, height);
     HBITMAP previous = static_cast<HBITMAP>(SelectObject(buffer, bitmap));
@@ -472,13 +380,10 @@ void UiDraw::DrawTopbar(HDC dc) {
     Line(dc, 0, topbarRect_.bottom - 1, width_, topbarRect_.bottom - 1,
          ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
 
-    RECT title = {ScaleIntHelper(20), 0, std::max(ScaleIntHelper(20), static_cast<int>(calendarTabRect_.left) - ScaleIntHelper(12)),
+    RECT title = {ScaleIntHelper(20), 0, std::max(ScaleIntHelper(20), static_cast<int>(discoverRect_.left) - ScaleIntHelper(20)),
                   topbarRect_.bottom};
-    Text(dc, L"Git Local", title, 17, ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
+    Text(dc, L"Git Local", title, ScaleIntHelper(17), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
          DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS, FW_SEMIBOLD);
-
-    Button(dc, calendarTabRect_, L"贡献日历", !aiWorkspace_);
-    Button(dc, aiTabRect_, L"AI 助手", aiWorkspace_);
 
     Button(dc, discoverRect_, L"发现新项目", false, g_loading);
     Button(dc, refreshRect_, g_loading && g_operationKind == OperationKind::Refresh ? L"正在刷新…" : L"刷新提交", true, g_loading);
@@ -568,10 +473,6 @@ void UiDraw::DrawSidebar(HDC dc) {
 }
 
 void UiDraw::DrawContent(HDC dc) {
-    if (aiWorkspace_) {
-        DrawAgentPanel(dc);
-        return;
-    }
     const COLORREF primary = ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY);
 
     Button(dc, yearPreviousRect_, L"<", false);
@@ -606,12 +507,7 @@ void UiDraw::DrawContent(HDC dc) {
     }
 
     DrawCalendar(dc);
-    if (selectedDay_ >= 0) {
-        if (g_agentSession.active)
-            DrawAgentPanel(dc);
-        else
-            DrawDayDetailPanel(dc);
-    }
+    if (selectedDay_ >= 0) DrawDayDetailPanel(dc);
     else DrawRanking(dc);
 
     // Sidebar resize guide line — mirrors column drag guide line pattern
@@ -838,8 +734,6 @@ int UiDraw::CommitAt(int x, int y) const {
 }
 
 bool UiDraw::Click(int x, int y) {
-    if (Contains(calendarTabRect_, x, y)) { CloseAgentWorkspace(); return true; }
-    if (Contains(aiTabRect_, x, y)) { OpenAgentWorkspace(); return true; }
     if (Contains(themeRect_, x, y)) { ToggleTheme(); return true; }
     if (Contains(refreshRect_, x, y)) { StartRefresh(); return true; }
     if (Contains(discoverRect_, x, y)) { StartDiscovery(); return true; }
@@ -854,96 +748,14 @@ bool UiDraw::Click(int x, int y) {
     }
     const int repository = RepositoryAt(x, y);
     if (repository >= 0) { ToggleRepository(g_repos[repository].id); return true; }
-    if (aiWorkspace_ && Contains(detailPanelRect_, x, y)) {
-        const int headerH = ScaleIntHelper(kAgentHeaderHeight);
-        RECT closeRect = {detailPanelRect_.right - ScaleIntHelper(30), detailPanelRect_.top,
-                          detailPanelRect_.right, detailPanelRect_.top + headerH};
-        if (Contains(closeRect, x, y)) { CloseAgentWorkspace(); return true; }
-        if (AgentConversationBtnHitTest(x, y, detailPanelRect_)) {
-            POINT menuPoint = {AgentHeaderActionRect(detailPanelRect_, 2).left,
-                               detailPanelRect_.top + headerH};
-            ClientToScreen(g_hwndMain, &menuPoint);
-            AgentShowConversationMenu(g_hwndMain, menuPoint.x, menuPoint.y);
-            return true;
-        }
-        if (AgentNewBtnHitTest(x, y, detailPanelRect_)) { AgentNewConversation(); return true; }
-        if (AgentClearBtnHitTest(x, y, detailPanelRect_)) { AgentClearConversation(); return true; }
-        if (AgentSendBtnHitTest(x, y, detailPanelRect_)) {
-            if (AgentIsBusy()) { AgentCancel(); return true; }
-            HWND editHwnd = GetDlgItem(g_hwndMain, IDC_AGENT_INPUT);
-            if (editHwnd) {
-                const int len = GetWindowTextLengthW(editHwnd);
-                std::wstring text(static_cast<size_t>(len + 1), L'\0');
-                if (len > 0) GetWindowTextW(editHwnd, text.data(), len + 1);
-                text.resize(static_cast<size_t>(len));
-                if (!text.empty() && AgentSend(text)) SetWindowTextW(editHwnd, L"");
-            }
-            return true;
-        }
-        if (AgentInputHitTest(x, y, detailPanelRect_)) { SetFocus(g_hwndAgentInput); return true; }
-        return true;
-    }
     // Column resize start
     if (selectedDay_ >= 0 && colDragDivider_ >= 0 && Contains(detailPanelRect_, x, y)) {
         MouseDown(x, y);
         return true;
     }
     if (selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) {
-        if (g_agentSession.active) {
-            const int headerH = ScaleIntHelper(kAgentHeaderHeight);
-            // Close button in agent header
-            RECT closeRect = {detailPanelRect_.right - ScaleIntHelper(30), detailPanelRect_.top,
-                              detailPanelRect_.right, detailPanelRect_.top + headerH};
-            if (Contains(closeRect, x, y)) {
-                CloseAgentWorkspace();
-                return true;
-            }
-            if (AgentConversationBtnHitTest(x, y, detailPanelRect_)) {
-                POINT menuPoint = {AgentHeaderActionRect(detailPanelRect_, 2).left,
-                                   detailPanelRect_.top + headerH};
-                ClientToScreen(g_hwndMain, &menuPoint);
-                AgentShowConversationMenu(g_hwndMain, menuPoint.x, menuPoint.y);
-                return true;
-            }
-            if (AgentNewBtnHitTest(x, y, detailPanelRect_)) { AgentNewConversation(); return true; }
-            if (AgentClearBtnHitTest(x, y, detailPanelRect_)) { AgentClearConversation(); return true; }
-            // Send button
-            if (AgentSendBtnHitTest(x, y, detailPanelRect_)) {
-                if (AgentIsBusy()) {
-                    AgentCancel();
-                    return true;
-                }
-                HWND editHwnd = GetDlgItem(g_hwndMain, IDC_AGENT_INPUT);
-                if (editHwnd) {
-                    int len = GetWindowTextLengthW(editHwnd);
-                    std::wstring msg(static_cast<size_t>(len + 1), L'\0');
-                    if (len > 0) GetWindowTextW(editHwnd, &msg[0], len + 1);
-                    msg.resize(static_cast<size_t>(len));
-                    if (!msg.empty()) {
-                        AgentSend(msg);
-                        SetWindowTextW(editHwnd, L"");
-                    }
-                }
-                return true;
-            }
-            // Input area — set focus to window for keyboard input
-            if (AgentInputHitTest(x, y, detailPanelRect_)) {
-                SetFocus(g_hwndAgentInput);
-                return true;
-            }
-            return true;
-        }
-        const int titleH = std::max(ScaleIntHelper(36), FontPixels(12) + ScaleIntHelper(12));
-        // AI analysis button (left side of title bar)
-        const RECT aiRect = {detailPanelRect_.left, detailPanelRect_.top,
-                             detailPanelRect_.left + ScaleIntHelper(68), detailPanelRect_.top + titleH};
-        if (Contains(aiRect, x, y)) {
-            StartAiAnalysis(selectedDay_);
-            return true;
-        }
-        // Close button (right side)
         const RECT closeRect = {detailPanelRect_.right - ScaleIntHelper(36), detailPanelRect_.top,
-                                detailPanelRect_.right, detailPanelRect_.top + titleH};
+                                detailPanelRect_.right, detailPanelRect_.top + ScaleIntHelper(36)};
         if (Contains(closeRect, x, y)) ClearDaySelection();
         return true;
     }
@@ -1203,19 +1015,6 @@ void UiDraw::MouseUp(int x, int y) {
 
 
 void UiDraw::MouseWheel(int x, int y, int delta) {
-    if (aiWorkspace_ && Contains(detailPanelRect_, x, y)) {
-        const int messageTop = detailPanelRect_.top + ScaleIntHelper(kAgentHeaderHeight) + ScaleIntHelper(6);
-        const int messageBottom = detailPanelRect_.bottom - ScaleIntHelper(kAgentInputHeight) - ScaleIntHelper(14);
-        if (y >= messageTop && y < messageBottom) {
-            const int maxScroll = std::max(0, agentContentHeight_ - agentViewportHeight_);
-            const int wheelSteps = delta / WHEEL_DELTA;
-            agentScroll_ = std::max(0, std::min(maxScroll,
-                agentScroll_ - wheelSteps * ScaleIntHelper(54)));
-            agentAutoFollow_ = agentScroll_ >= maxScroll;
-            InvalidateRect(g_hwndMain, nullptr, FALSE);
-            return;
-        }
-    }
     if (selectedDay_ >= 0 && Contains(detailPanelRect_, x, y)) {
         commitScroll_ -= delta / WHEEL_DELTA * 3;
         const int totalRows = static_cast<int>(g_contributionData.days[selectedDay_].commits.size());
@@ -1253,33 +1052,6 @@ void UiDraw::ClearDaySelection() {
     selectedDay_ = -1;
     commitScroll_ = 0;
     hoveredCommit_ = -1;
-    AgentStop();
-    InvalidateRect(g_hwndMain, nullptr, FALSE);
-}
-
-void StartAiAnalysis(int dayIndex) {
-    if (dayIndex < 0 || dayIndex >= static_cast<int>(g_contributionData.days.size())) return;
-    const std::wstring& dayDate = g_contributionData.days[dayIndex].date;
-    g_ui.OpenAgentWorkspace(dayDate);
-    InvalidateRect(g_hwndMain, nullptr, FALSE);
-}
-
-void UiDraw::OpenAgentWorkspace(const std::wstring& dayDate) {
-    AgentStart(dayDate);
-    if (!g_agentSession.active) return;
-    aiWorkspace_ = true;
-    RECT client = {};
-    if (g_hwndMain) GetClientRect(g_hwndMain, &client);
-    ComputeLayout(client.right, client.bottom);
-    InvalidateRect(g_hwndMain, nullptr, FALSE);
-}
-
-void UiDraw::CloseAgentWorkspace() {
-    aiWorkspace_ = false;
-    AgentStop();
-    RECT client = {};
-    if (g_hwndMain) GetClientRect(g_hwndMain, &client);
-    ComputeLayout(client.right, client.bottom);
     InvalidateRect(g_hwndMain, nullptr, FALSE);
 }
 
@@ -1300,26 +1072,13 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
 
     RECT titleRect = {panel.left, panel.top, panel.right, panel.top + titleHeight};
     Fill(dc, titleRect, ThemeColor(CLR_BG_HOVER, CLR_DARK_BG_HOVER));
-
-    // AI 分析按钮（左侧）
-    const int aiBtnWidth = ScaleIntHelper(68);
-    RECT aiBtnRect = {panel.left, titleRect.top, panel.left + aiBtnWidth, titleRect.bottom};
-    COLORREF aiBtnBg = ThemeColor(CLR_BG_PAGE, CLR_DARK_BG_HOVER);
-    COLORREF aiBtnFg = ThemeColor(RGB(29,78,216), RGB(99,179,237));
-    Fill(dc, aiBtnRect, aiBtnBg);
-    // 分隔线
-    Line(dc, panel.left + aiBtnWidth, titleRect.top, panel.left + aiBtnWidth, titleRect.bottom,
-         ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
-    Text(dc, L"AI 分析", aiBtnRect, ScaleIntHelper(11), aiBtnFg,
-         DT_CENTER | DT_VCENTER | DT_SINGLELINE, FW_NORMAL);
-
     const int visibleRows = VisibleCommitRows();
     const int totalRows = static_cast<int>(day.commits.size());
     commitScroll_ = std::max(0, std::min(commitScroll_, std::max(0, totalRows - visibleRows)));
     const int firstVisible = totalRows ? commitScroll_ + 1 : 0;
     const int lastVisible = std::min(totalRows, commitScroll_ + visibleRows);
 
-    RECT titleText = {titleRect.left + aiBtnWidth + ScaleIntHelper(6), titleRect.top, titleRect.right - ScaleIntHelper(150), titleRect.bottom};
+    RECT titleText = {titleRect.left + inset, titleRect.top, titleRect.right - ScaleIntHelper(150), titleRect.bottom};
     Text(dc, day.date + L" · " + FormatInteger(day.count) + L" 次提交 · " +
              FormatInteger(static_cast<int>(day.details.size())) + L" 个项目",
          titleText, ScaleIntHelper(12), ThemeColor(CLR_TEXT_PRIMARY, CLR_DARK_TEXT_PRIMARY),
@@ -1433,92 +1192,4 @@ void UiDraw::DrawDayDetailPanel(HDC dc) {
         Fill(dc, {track.left, thumbTop, track.right, thumbTop + thumbHeight},
              ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC));
     }
-}
-
-void UiDraw::DrawAgentPanel(HDC dc) {
-    if (!g_agentSession.active) return;
-
-    RECT panel = detailPanelRect_;
-    if (panel.bottom <= panel.top) return;
-
-    constexpr int cornerRadius = 6;
-    RoundRect(dc, panel, cornerRadius, ThemeColor(CLR_BG_SURFACE, CLR_DARK_BG_SURFACE),
-              ThemeColor(CLR_BORDER, CLR_DARK_BORDER));
-
-    const int inset = ScaleIntHelper(12);
-    const int headerH = ScaleIntHelper(kAgentHeaderHeight);
-    const int inputH = ScaleIntHelper(kAgentInputHeight);
-
-    // Header (drawn with GDI)
-    RECT headerRect = {panel.left, panel.top, panel.right, panel.top + headerH};
-    Fill(dc, headerRect, ThemeColor(RGB(239,245,255), RGB(15,23,42)));
-    HBRUSH accentBrush = CreateSolidBrush(ThemeColor(RGB(29,78,216), RGB(99,179,237)));
-    FrameRect(dc, &headerRect, accentBrush);
-    DeleteObject(accentBrush);
-
-    // Icon
-    RECT iconRect = {panel.left + inset, headerRect.top + ScaleIntHelper(6),
-                     panel.left + ScaleIntHelper(40), headerRect.bottom - ScaleIntHelper(6)};
-    Text(dc, L"AI", iconRect, ScaleIntHelper(14), RGB(29,78,216),
-         DT_CENTER | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
-
-    // Title
-    const RECT conversationRect = AgentHeaderActionRect(panel, 2);
-    const RECT newRect = AgentHeaderActionRect(panel, 1);
-    const RECT clearRect = AgentHeaderActionRect(panel, 0);
-    RECT titleRect = {panel.left + ScaleIntHelper(46), headerRect.top + ScaleIntHelper(6),
-                      conversationRect.left - ScaleIntHelper(8), headerRect.bottom - ScaleIntHelper(6)};
-    const wchar_t* statusText = g_agentBusy ? L"正在思考" :
-                                !g_agentSession.lastError.empty() ? L"连接异常" : L"助手";
-    Text(dc, statusText, titleRect, ScaleIntHelper(13),
-         ThemeColor(RGB(29,78,216), RGB(148,163,184)),
-         DT_LEFT | DT_VCENTER | DT_SINGLELINE, FW_NORMAL);
-
-    const COLORREF actionBg = ThemeColor(RGB(255,255,255), RGB(22,27,34));
-    const COLORREF actionBorder = ThemeColor(RGB(191,205,224), RGB(71,85,105));
-    const COLORREF actionText = g_agentBusy
-        ? ThemeColor(RGB(148,163,184), RGB(100,116,139))
-        : ThemeColor(RGB(51,65,85), RGB(203,213,225));
-    RoundRect(dc, conversationRect, ScaleIntHelper(4), actionBg, actionBorder);
-    RoundRect(dc, newRect, ScaleIntHelper(4), actionBg, actionBorder);
-    RoundRect(dc, clearRect, ScaleIntHelper(4), actionBg, actionBorder);
-    Text(dc, L"对话", conversationRect, ScaleIntHelper(12), actionText, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-    Text(dc, L"新建", newRect, ScaleIntHelper(12), actionText, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-    Text(dc, L"清空", clearRect, ScaleIntHelper(12),
-         g_agentBusy ? actionText : ThemeColor(RGB(185,28,28), RGB(252,165,165)),
-         DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-    // Close button
-    RECT closeRect = {panel.right - ScaleIntHelper(30), headerRect.top,
-                      panel.right - ScaleIntHelper(6), headerRect.bottom};
-    Text(dc, L"×", closeRect, ScaleIntHelper(15),
-         ThemeColor(CLR_TEXT_TERTIARY, CLR_DARK_TEXT_SEC),
-         DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-    // Divider
-    Line(dc, panel.left, headerRect.bottom, panel.right, headerRect.bottom,
-         ThemeColor(RGB(203,213,225), RGB(51,65,85)));
-
-    // Position agent messages EDIT control (native selection support)
-    if (g_hwndAgentMessages) {
-        RECT msgRect = {panel.left + inset, headerRect.bottom + ScaleIntHelper(6),
-                        panel.right - inset, panel.bottom - inputH - ScaleIntHelper(14)};
-        SetWindowPos(g_hwndAgentMessages, nullptr, msgRect.left, msgRect.top,
-                     msgRect.right - msgRect.left, msgRect.bottom - msgRect.top,
-                     SWP_NOZORDER | SWP_NOACTIVATE);
-    }
-
-    // Send button (drawn since no native button widget)
-    const int inputTop = panel.bottom - inputH - inset;
-    const int sendHeight = ScaleIntHelper(52);
-    const int sendTop = inputTop + (inputH - sendHeight) / 2;
-    RECT sendRect = {panel.right - ScaleIntHelper(84), sendTop,
-                     panel.right - inset, sendTop + sendHeight};
-    COLORREF sendBg = g_agentBusy
-        ? ThemeColor(RGB(200,207,216), RGB(55,65,81))
-        : ThemeColor(RGB(29,78,216), RGB(37,99,235));
-    RoundRectFill(dc, sendRect, ScaleIntHelper(6), sendBg);
-    Text(dc, g_agentBusy ? L"停止" : L"发送", sendRect, ScaleIntHelper(13),
-         ThemeColor(RGB(255,255,255), RGB(255,255,255)),
-         DT_CENTER | DT_VCENTER | DT_SINGLELINE, FW_SEMIBOLD);
 }

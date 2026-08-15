@@ -4,7 +4,6 @@
 #include "platform.h"
 #include "state.h"
 #include "cache_store.h"
-#include "ai_tools.h"
 
 #include <windows.h>
 #include <gdiplus.h>
@@ -29,12 +28,6 @@ void EnsureUsableWindowSize(HWND window) {
 
 int RunDiagnostics() {
     bool passed = true;
-    Json literalValue("text");
-    if (!literalValue.isString() || literalValue.string() != "text" || literalValue.Serialize() != "\"text\"") {
-        std::printf("FAIL json string literal constructor\n");
-        passed = false;
-    } else std::printf("PASS json string literal constructor\n");
-
     Json value;
     std::string parseError;
     const std::string sample = "{\"name\":\"测试\",\"enabled\":true,\"days\":{\"2026-08-01\":3}}";
@@ -43,46 +36,6 @@ int RunDiagnostics() {
         std::printf("FAIL json: %s\n", parseError.c_str());
         passed = false;
     } else std::printf("PASS json parse/serialize\n");
-
-    AnalyticsContext toolContext;
-    toolContext.activeYear = 2026;
-    Json toolArguments = Json::Object();
-    toolArguments["year"] = Json(2026);
-    std::wstring toolError;
-    const Json timeTool = ExecuteAnalyticsTool("get_time_preferences", toolArguments, toolContext, toolError);
-    const Json definitions = AnalyticsToolDefinitions();
-    bool hasTimeTool = false;
-    bool hasRepositoryOverviewTool = false;
-    bool repositoryOverviewContractValid = false;
-    for (const Json& definition : definitions.array()) {
-        const Json& function = definition.get("function");
-        const std::string name = function.get("name").string();
-        if (name == "get_time_preferences") hasTimeTool = true;
-        if (name == "get_repository_overview") {
-            hasRepositoryOverviewTool = true;
-            const Json& parameters = function.get("parameters");
-            bool requiresYear = false;
-            bool requiresQuery = false;
-            for (const Json& required : parameters.get("required").array()) {
-                requiresYear = requiresYear || required.string() == "year";
-                requiresQuery = requiresQuery || required.string() == "query";
-            }
-            repositoryOverviewContractValid = parameters.get("properties").get("year").isObject() &&
-                                              parameters.get("properties").get("query").isObject() &&
-                                              requiresYear && requiresQuery;
-        }
-    }
-    if (!hasTimeTool || !timeTool.get("ok").boolean() || !timeTool.get("hours").isObject() ||
-        !timeTool.get("topHours").isArray() || !timeTool.get("earliest").isObject() ||
-        !timeTool.get("latest").isObject()) {
-        std::printf("FAIL aggregate time-preference tool contract: %s\n", WideToUtf8(toolError).c_str());
-        passed = false;
-    } else std::printf("PASS aggregate time-preference tool contract\n");
-
-    if (!hasRepositoryOverviewTool || !repositoryOverviewContractValid) {
-        std::printf("FAIL aggregate repository-overview tool contract\n");
-        passed = false;
-    } else std::printf("PASS aggregate repository-overview tool contract\n");
 
     const std::wstring root = ApplicationDataDirectory();
     std::wstring error;

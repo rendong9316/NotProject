@@ -6,11 +6,14 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>GitLocalWebView2Host</AssemblyName>
-    <RootNamespace>GitLocalWebView2Host</RootNamespace>
+    <AssemblyName>WebViewPreview</AssemblyName>
+    <RootNamespace>WebViewPreview</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Update="webview2_runtime\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="frontend\dist\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

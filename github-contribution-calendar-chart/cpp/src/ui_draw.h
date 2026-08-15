@@ -1,8 +1,6 @@
 #pragma once
 
 #include <windows.h>
-#include <cstdint>
-#include <string>
 #include <vector>
 
 class UiDraw {
@@ -22,8 +20,6 @@ public:
     void ClearDaySelection();
     void InitColumnWidths();
     int VisibleRankingRows() const;
-    void OpenAgentWorkspace(const std::wstring& dayDate = L"");
-    void CloseAgentWorkspace();
 
 private:
     void ComputeLayout(int width, int height);
@@ -36,7 +32,6 @@ private:
     void DrawCalendar(HDC dc);
     void DrawRanking(HDC dc);
     void DrawDayDetailPanel(HDC dc);
-    void DrawAgentPanel(HDC dc);
     void DrawStatusbar(HDC dc);
     void DrawTooltip(HDC dc);
 
@@ -45,8 +40,6 @@ private:
     RECT refreshRect_ = {};
     RECT discoverRect_ = {};
     RECT themeRect_ = {};
-    RECT calendarTabRect_ = {};
-    RECT aiTabRect_ = {};
     RECT yearPreviousRect_ = {};
     RECT yearNextRect_ = {};
     RECT selectAllRect_ = {};
@@ -65,15 +58,8 @@ private:
     int selectedDay_ = -1;
     int commitScroll_ = 0;
     int repoScroll_ = 0;
-    int agentScroll_ = 0;
-    int agentContentHeight_ = 0;
-    int agentViewportHeight_ = 0;
-    std::uint64_t agentSeenRevision_ = 0;
-    std::wstring agentDisplayedSession_;
-    bool agentAutoFollow_ = true;
     int mouseX_ = 0;
     int mouseY_ = 0;
-    bool aiWorkspace_ = false;
 
     // Column resize state
     enum class ColResizeState { None, Dragging };
@@ -90,4 +76,3 @@ private:
 extern UiDraw g_ui;
 
 void RefreshSearchControlScale();
-void StartAiAnalysis(int dayIndex);

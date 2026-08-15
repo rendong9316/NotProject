@@ -1,6 +1,10 @@
-$procs = Get-Process | Where-Object { $_.ProcessName -match 'GitLocal|msedgewebview' }
-foreach ($p in $procs) {
-    Write-Host ("{0,-25} {1,6} MB" -f $p.ProcessName, [math]::Round($p.WorkingSet64/1MB, 1))
-}
-$total = ($procs | Measure-Object -Property WorkingSet64 -Sum).Sum
-Write-Host ("Total: {0:N1} MB" -f ($total/1MB))
+# Check memory usage of WebView2 related processes
+$procs = Get-Process | Where-Object {
+    $_.ProcessName -match 'WebViewPreview|Edge|WebView|msedgewebview'
+} | Select-Object Id, ProcessName, @{N='MemMB';E={[math]::Round($_.WorkingSet64/1MB,1)}}
+$procs | Format-Table -AutoSize
+
+# Check total
+$total = ($procs | Measure-Object -Property MemMB -Sum).Sum
+Write-Host ""
+Write-Host "Total WebView2 related memory: $([math]::Round($total,1)) MB"

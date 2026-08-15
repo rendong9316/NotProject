@@ -9,7 +9,6 @@ enum class Theme { Light, Dark };
 enum class OperationKind { None, Refresh, Discover };
 
 struct AppConfig {
-    int schemaVersion = 2;
     bool scanAllDrives = true;
     bool includeAllAuthors = false;
     int maxScanDepth = 10;
@@ -18,22 +17,11 @@ struct AppConfig {
     std::vector<std::wstring> scanRoots;
     std::vector<std::wstring> authors;
     double fontSize = 1.0;  // Default font scale factor
-    double minFontSize = 0.75;
-    double maxFontSize = 1.5;
+    double minFontSize = 0.5;  // Minimum scale
+    double maxFontSize = 3.0;  // Maximum readable scale supported by the responsive layout
     std::vector<int> columnWidths;  // Detail panel column widths
     int sidebarWidth = 250;   // User-adjusted sidebar width in pixels (unscaled)
     Theme theme = Theme::Light;
-    bool aiEnabled = true;
-    std::wstring aiProvider = L"agnes";
-    std::wstring aiBaseUrl = L"https://apihub.agnes-ai.cn/v1/chat/completions";
-    std::wstring aiModel = L"agnes-2.5-flash";
-    std::wstring aiApiKey;
-    int aiMaxTokens = 2048;
-    int aiContextWindowTokens = 32768;
-    double aiTemperature = 0.3;
-    bool aiPrivacyConsent = false;
-    bool aiRedactPaths = true;
-    bool aiPersistConversations = true;
 };
 
 struct Repository {
@@ -88,14 +76,4 @@ struct OperationSummary {
     int removed = 0;
     int unavailable = 0;
     unsigned long long durationMs = 0;
-};
-
-// AI analysis result
-enum class AiState { Idle, Loading, Done, Error };
-
-struct AiResult {
-    AiState state = AiState::Idle;
-    std::wstring dayDate;
-    std::wstring text;
-    std::wstring error;
 };
