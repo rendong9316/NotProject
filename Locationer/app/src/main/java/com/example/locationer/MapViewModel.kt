@@ -14,10 +14,16 @@ import com.amap.api.location.AMapLocationClient
 import com.amap.api.location.AMapLocationClientOption
 import com.amap.api.location.AMapLocationListener
 import com.amap.api.location.ISensorListenerDelegate
+import com.amap.api.services.geocoder.GeocodeSearch
+import com.amap.api.services.geocoder.RegeocodeQuery
+import com.amap.api.services.geocoder.RegeocodeResult
+import com.amap.api.services.core.LatLonPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -93,6 +99,13 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _jumpTarget   = MutableStateFlow<JumpTarget?>(null)
     val jumpTarget: StateFlow<JumpTarget?> = _jumpTarget.asStateFlow()
+
+    /** 逆地理编码结果（地址文本），null 表示尚未请求或请求失败 */
+    private val _reverseGeocodeAddress = MutableStateFlow<String?>(null)
+    val reverseGeocodeAddress: StateFlow<String?> = _reverseGeocodeAddress.asStateFlow()
+
+    /** 记录最后一次已请求的逆地理编码参数，用于缓存判断 */
+    private var lastGeocodeKey: String = ""
 
     private val _accuracyMeters = MutableStateFlow<Float?>(null)
     val accuracyMeters: StateFlow<Float?> = _accuracyMeters.asStateFlow()
@@ -192,6 +205,70 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             }
         } catch (e: Exception) {
             _message.value = UiMessage("定位客户端初始化失败：${e.message}")
+        }
+    }
+
+    /** 逆地理编码搜索（延迟初始化，确保地图SDK就绪） */
+    private var _geocodeSearch: GeocodeSearch? = null
+    private val geocodeSearch: GeocodeSearch
+        get() = _geocodeSearch ?: throw IllegalStateException("GeocodeSearch未初始化，请调用initGeocodeSearch()")
+
+    /** 初始化逆地理编码（应在地图就绪后调用） */
+    fun initGeocodeSearch() {
+        if (_geocodeSearch != null) return
+        _geocodeSearch = GeocodeSearch(_context).apply {
+            setOnGeocodeSearchListener(object : GeocodeSearch.OnGeocodeSearchListener {
+                override fun onRegeocodeSearched(result: RegeocodeResult?, statusCode: Int) {
+                    val statusStr = when {
+                        statusCode == 1000 -> "成功"
+                        statusCode == 1001 -> "参数错误"
+                        statusCode == 1002 -> "key无效"
+                        statusCode == 1003 -> "配额超限"
+                        statusCode == 1004 -> "服务不可用"
+                        else -> "未知($statusCode)"
+                    }
+                    if (statusCode != 1000) {
+                        _message.value = UiMessage("逆地理编码: $statusStr")
+                        _reverseGeocodeAddress.value = null
+                        lastGeocodeKey = ""
+                        return
+                    }
+                    if (result == null) {
+                        _message.value = UiMessage("逆地理编码: $statusStr, result=null")
+                        _reverseGeocodeAddress.value = null
+                        lastGeocodeKey = ""
+                        return
+                    }
+                    val addr = result.regeocodeAddress
+                    if (addr == null) {
+                        _message.value = UiMessage("逆地理编码: $statusStr, regeocodeAddress=null")
+                        _reverseGeocodeAddress.value = null
+                        lastGeocodeKey = ""
+                        return
+                    }
+                    // 高德通常返回 formatAddress；少数坐标只返回行政区字段，使用字段组合兜底。
+                    val fallbackAddress = listOfNotNull(
+                        addr.province,
+                        addr.city?.takeIf { it != addr.province },
+                        addr.district,
+                        addr.township,
+                        addr.neighborhood,
+                        addr.building,
+                        addr.streetNumber?.street,
+                        addr.streetNumber?.number,
+                        addr.pois?.firstOrNull()?.title,
+                    ).filter { it.isNotBlank() }.distinct().joinToString("")
+                    val displayAddress = addr.formatAddress?.trim().orEmpty().ifEmpty { fallbackAddress }
+                    if (displayAddress.isEmpty()) {
+                        _message.value = UiMessage("逆地理编码: $statusStr | 地址为空")
+                        _reverseGeocodeAddress.value = null
+                        lastGeocodeKey = ""
+                    } else {
+                        _reverseGeocodeAddress.value = displayAddress
+                    }
+                }
+                override fun onGeocodeSearched(result: com.amap.api.services.geocoder.GeocodeResult?, statusCode: Int) {}
+            })
         }
     }
 
@@ -310,6 +387,31 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         val wgs = CT.gcj02ToWgs84(gcj, precision = CT.HIGH_PRECISION)
         _jumpCounter++
         _jumpTarget.value = JumpTarget(++jumpId, gcj, typed, _coordType.value)
+        resetReverseGeocode()
+    }
+
+    /** 跳转完成后重置逆地理编码缓存（坐标变了，地址也要重新请求） */
+    fun resetReverseGeocode() {
+        lastGeocodeKey = ""
+        _reverseGeocodeAddress.value = null
+    }
+
+    /** 调用高德逆地理编码（SDK 内置，复用现有 Android Key） */
+    fun fetchReverseGeocode(gcjLon: Double, gcjLat: Double) {
+        val key = "%.6f,%.6f".format(gcjLon, gcjLat)
+        if (key == lastGeocodeKey) return  // 已有结果，不重复请求
+        lastGeocodeKey = key
+        _reverseGeocodeAddress.value = "解析中…"
+        try {
+            _geocodeSearch?.getFromLocationAsyn(
+                // LatLonPoint 的构造顺序是 latitude、longitude（官方 SDK 定义）。
+                RegeocodeQuery(LatLonPoint(gcjLat, gcjLon), 200f, GeocodeSearch.AMAP)
+            ) ?: throw IllegalStateException("GeocodeSearch未初始化")
+        } catch (e: Exception) {
+            _message.value = UiMessage("逆地理编码失败：${e.message}")
+            _reverseGeocodeAddress.value = null
+            lastGeocodeKey = ""
+        }
     }
 
     // ---------- 拾取模式（连续放置）----------

@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
@@ -271,6 +272,7 @@ fun MapScreen(
     val flags           by viewModel.flags.collectAsState()
     val bearing         by viewModel.bearing.collectAsState()
     val isTracking      by viewModel.isTracking.collectAsState()
+    val address         by viewModel.reverseGeocodeAddress.collectAsState()
     // ================ 测量相关状态 ================
     val measurementMode       by viewModel.measurementMode.collectAsState()
     val measurementState      by viewModel.measurementState.collectAsState()
@@ -312,6 +314,8 @@ fun MapScreen(
     }
     LaunchedEffect(mapReady, mapLayer, darkTheme) {
         if (!mapReady) return@LaunchedEffect
+        // 地图就绪后初始化逆地理编码（SDK内部依赖地图服务）
+        viewModel.initGeocodeSearch()
         aMap?.setMapType(when {
             mapLayer     -> AMap.MAP_TYPE_SATELLITE
             darkTheme    -> AMap.MAP_TYPE_NIGHT
@@ -765,6 +769,16 @@ fun MapScreen(
                     onLatChange    = { viewModel.updateLatText(it) },
                     onCoordType    = { viewModel.setCoordType(it) },
                     onJumpTo       = { viewModel.jumpTo() },
+                    address        = address,
+                    jumpTarget     = jump,
+                    onReverseGeocode = {
+                        val gcjForAddr = jump?.gcj ?: gcj
+                        if (gcjForAddr == null) {
+                            Toast.makeText(context, "请先输入坐标并跳转定位", Toast.LENGTH_SHORT).show()
+                            return@UnifiedPanel
+                        }
+                        viewModel.fetchReverseGeocode(gcjForAddr.lon, gcjForAddr.lat)
+                    },
                 )
             }
         }
@@ -792,7 +806,11 @@ private fun UnifiedPanel(
     onLatChange    : (String) -> Unit,
     onCoordType    : (CoordType) -> Unit,
     onJumpTo       : () -> Unit,
+    jumpTarget     : JumpTarget?,
+    address        : String?,
+    onReverseGeocode: () -> Unit,
 ) {
+    val _jt = jumpTarget
     Card(
         modifier = Modifier
             .fillMaxWidth(),
@@ -889,7 +907,7 @@ private fun UnifiedPanel(
                         )
                     }
 
-                    // 坐标类型 + 跳转按钮
+                    // 坐标类型 + 跳转按钮 + 地址解析按钮
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -899,12 +917,53 @@ private fun UnifiedPanel(
                         CoordRadio("GCJ02", coordType == CoordType.GCJ02) { onCoordType(CoordType.GCJ02) }
                         CoordRadio("WGS84", coordType == CoordType.WGS84) { onCoordType(CoordType.WGS84) }
                         Spacer(Modifier.weight(1f))
+                        val hasCoordinate = _jt?.gcj != null || gcj != null
+                        Button(
+                            onClick = onReverseGeocode,
+                            enabled = hasCoordinate && (address.isNullOrEmpty() || address == "解析中…"),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        ) {
+                            Icon(Icons.Filled.LocationOn,
+                                contentDescription = "逆地理编码", modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            FText("解析地址", 12)
+                        }
+                        Spacer(Modifier.width(4.dp))
                         Button(
                             onClick = onJumpTo,
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                         ) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardReturn,
                                 contentDescription = "跳转定位", modifier = Modifier.size(16.dp))
+                        }
+                    }
+
+                    // 逆地理编码结果（显示在输入框下方）
+                    if (address != null) {
+                        Spacer(Modifier.height(2.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                            shape = MaterialTheme.shapes.small,
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Filled.LocationOn,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                FText(
+                                    text = address,
+                                    fontSize = 13,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 2,
+                                )
+                            }
                         }
                     }
                 }
