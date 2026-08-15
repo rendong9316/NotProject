@@ -320,7 +320,10 @@ private val FLAG_COLOR_PRESETS = listOf(
 private val TEXT_COLOR_PRESETS = listOf(
     ColorPreset("白色", Color(0xFFFFFFFF), 0xFFFFFFFFL, false),
     ColorPreset("黑色", Color(0xFF000000), 0xFF000000L, true),
-    ColorPreset("黄色", Color(0xFFFFD600), 0xFFFFD600L, false),
-    ColorPreset("亮青", Color(0xFF00E5FF), 0xFF00E5FFL, false),
-    ColorPreset("亮红", Color(0xFFFF5252), 0xFFFF5252L, false),
+    ColorPreset("红色", Color(0xFFC01428), 0xFFC01428L, false),
+    ColorPreset("蓝色", Color(0xFF1976D2), 0xFF1976D2L, false),
+    ColorPreset("绿色", Color(0xFF388E3C), 0xFF388E3CL, false),
+    ColorPreset("橙色", Color(0xFFFF8F00), 0xFFFF8F00L, false),
+    ColorPreset("紫色", Color(0xFF7B1FA2), 0xFF7B1FA2L, false),
+    ColorPreset("青色", Color(0xFF00838F), 0xFF00838FL, false),
 )
