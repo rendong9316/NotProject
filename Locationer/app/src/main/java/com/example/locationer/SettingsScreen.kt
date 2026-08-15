@@ -10,15 +10,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Check
 
 import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Tune
@@ -48,6 +51,7 @@ fun SettingsScreen(
     currentStyle : FlagStyle,
     onStyleChange: (FlagStyle) -> Unit,
     mapViewModel : MapViewModel? = null,
+    onHelpClick  : () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -156,6 +160,48 @@ fun SettingsScreen(
             }
         }
 
+        // ── 帮助文档按钮 ──
+        HelpButton(modifier = Modifier.fillMaxWidth(), onClick = onHelpClick)
+    }
+}
+
+@Composable
+private fun HelpButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(
+        modifier = modifier
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.Help,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                "帮助文档",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Spacer(Modifier.weight(1f))
+            Icon(
+                imageVector = Icons.Filled.ArrowForwardIos,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+            )
+        }
     }
 }
 

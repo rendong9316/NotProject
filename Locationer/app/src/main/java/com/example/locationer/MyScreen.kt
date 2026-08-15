@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -26,7 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
-/** "我的"页面，收藏夹和设置子页支持左右滑动平滑切换。 */
+/** "我的"页面，收藏夹和设置子页支持左右滑动平滑切换，含帮助文档入口。 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyScreen(
@@ -52,7 +53,6 @@ fun MyScreen(
             .edit().putInt("selected_my_tab", pagerState.currentPage).apply()
     }
 
-    // 点击 Tab 时触发平滑滚动（LaunchedEffect 在 recompose 结束后异步执行，无额外延迟）
     var tapTarget by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(tapTarget) {
         tapTarget?.let { page ->
@@ -60,6 +60,9 @@ fun MyScreen(
         }
         tapTarget = null
     }
+
+    // 帮助文档可见性
+    var showHelp by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         TabRow(
@@ -95,9 +98,14 @@ fun MyScreen(
                         currentStyle  = currentStyle,
                         onStyleChange = onStyleChange,
                         mapViewModel  = mapViewModel,
+                        onHelpClick   = { showHelp = true },
                     )
                 }
             }
         }
+    }
+
+    if (showHelp) {
+        HelpScreen(onBack = { showHelp = false })
     }
 }
