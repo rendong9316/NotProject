@@ -93,7 +93,7 @@ HFONT MakeFont(int pixels, int weight = FW_NORMAL) {
                        DEFAULT_PITCH | FF_DONTCARE, FONT_FAMILY);
 }
 
-double LayoutScale() { return std::max(0.75, std::min(3.0, g_fontScale)); }
+double LayoutScale() { return std::max(0.75, std::min(4.0, g_fontScale)); }
 double CalendarScale() { return std::max(0.75, std::min(4.0, g_fontScale)); }
 int ScaleIntHelper(int value) { return std::max(0, static_cast<int>(std::lround(value * LayoutScale()))); }
 int ScaleCalendarIntHelper(int value) {
@@ -200,7 +200,7 @@ int AgentCharIndexAt(HDC dc, const std::wstring& text, int x, int y, int content
             return n;
         }
         curY = lineBottom;
-        i = j;
+        i = std::min(n, i + 1);
     }
     SelectObject(dc, old);
     DeleteObject(font);
@@ -852,7 +852,7 @@ bool UiDraw::Click(int x, int y) {
     if (aiWorkspace_ && Contains(detailPanelRect_, x, y)) {
         const int headerH = ScaleIntHelper(kAgentHeaderHeight);
         // Copy button hit test (shown after text selection)
-        if (!agentTextSelection_.copyBtnRect.isempty() && Contains(agentTextSelection_.copyBtnRect, x, y)) {
+        if (!IsRectEmpty(&agentTextSelection_.copyBtnRect) && Contains(agentTextSelection_.copyBtnRect, x, y)) {
             if (AgentCopySelected()) AgentClearSelection();
             return true;
         }
@@ -1144,7 +1144,7 @@ void UiDraw::MouseDown(int x, int y) {
             agentDragStartY_ = y;
             agentTextSelecting_ = true;
             agentTextSelection_.messageIndex = msgIdx;
-            agentTextSelection_.charStart = AgentCharIndexAt(x, y, msgIdx, 0);
+            agentTextSelection_.charStart = this->AgentCharIndexAt(x, y, msgIdx, 0);
             agentTextSelection_.charEnd = agentTextSelection_.charStart;
             agentTextSelection_.selRect = {};
             agentTextSelection_.copyBtnRect = {};
@@ -1188,7 +1188,7 @@ void UiDraw::MouseUp(int x, int y) {
             int msgIdx = AgentMessageAt(x, y);
             if (msgIdx >= 0) {
                 agentTextSelection_.messageIndex = msgIdx;
-                agentTextSelection_.charEnd = AgentCharIndexAt(x, y, msgIdx, 0);
+                agentTextSelection_.charEnd = this->AgentCharIndexAt(x, y, msgIdx, 0);
             }
             // Normalize
             if (agentTextSelection_.charStart > agentTextSelection_.charEnd)
@@ -1497,7 +1497,7 @@ int UiDraw::AgentMessageAt(int x, int y) const {
     if (!Contains(msgRect, x, y)) return -1;
 
     const int contentRight = msgRect.right - ScaleIntHelper(10);
-    const int contentWidth = std::max(1, contentRight - msgRect.left);
+    int contentWidth = std::max(1, static_cast<int>(contentRight - msgRect.left));
     const int userBubbleWidth = std::max(ScaleIntHelper(120),
         std::min(ScaleIntHelper(520), contentWidth * 4 / 5));
 
@@ -1539,12 +1539,12 @@ int UiDraw::AgentCharIndexAt(int x, int y, int msgIndex, int msgScroll) const {
     RECT msgRect = {panel.left + inset, panel.top + headerH + ScaleIntHelper(6),
                     panel.right - inset, panel.bottom - inputH - ScaleIntHelper(14)};
     const int contentRight = msgRect.right - ScaleIntHelper(10);
-    const int contentWidth = std::max(1, contentRight - msgRect.left);
+    int contentWidth = std::max(1, static_cast<int>(contentRight - msgRect.left));
     const int userBubbleWidth = std::max(ScaleIntHelper(120),
         std::min(ScaleIntHelper(520), contentWidth * 4 / 5));
     int msgFontSize = (msg.kind == ChatMessage::User) ? kAgentBodyFont : kAgentBodyFont;
     int relY = y - (msgRect.top - agentScroll_ + msgScroll);
-    return AgentCharIndexAt(nullptr, msg.text, x - msgRect.left, relY, contentWidth, msgFontSize);
+    return ::AgentCharIndexAt(nullptr, msg.text, x - msgRect.left, relY, contentWidth, msgFontSize);
 }
 
 void UiDraw::AgentClearSelection() {
@@ -1561,7 +1561,7 @@ void UiDraw::AgentStartSelection(int x, int y) {
     if (msgIdx < 0) return;
     agentTextSelecting_ = true;
     agentTextSelection_.messageIndex = msgIdx;
-    agentTextSelection_.charStart = AgentCharIndexAt(x, y, msgIdx, 0);
+    agentTextSelection_.charStart = this->AgentCharIndexAt(x, y, msgIdx, 0);
     agentTextSelection_.charEnd = agentTextSelection_.charStart;
     agentDragStartX_ = x;
     agentDragStartY_ = y;
@@ -1579,7 +1579,7 @@ void UiDraw::AgentUpdateSelection(int x, int y) {
     if (msgIdx != agentTextSelection_.messageIndex) {
         agentTextSelection_.messageIndex = msgIdx;
     }
-    int charIdx = AgentCharIndexAt(x, y, msgIdx, 0);
+    int charIdx = this->AgentCharIndexAt(x, y, msgIdx, 0);
     if (charIdx >= 0) agentTextSelection_.charEnd = charIdx;
 
     // Compute selection rect: full rectangle covering from start to end messages
@@ -1626,8 +1626,8 @@ void UiDraw::AgentUpdateSelection(int x, int y) {
         // Single message: narrow rect
         const auto& msg = g_agentSession.history[startMsg];
         int msgFontSize = kAgentBodyFont;
-        int startCX = startChar >= 0 ? AgentCharIndexAt(nullptr, msg.text, 0, 0, msgRect.right - msgRect.left, msgFontSize) : 0;
-        int endCX = endChar >= 0 ? AgentCharIndexAt(nullptr, msg.text, 0, 0, msgRect.right - msgRect.left, msgFontSize) : msg.text.size();
+        int startCX = startChar >= 0 ? ::AgentCharIndexAt(nullptr, msg.text, 0, 0, msgRect.right - msgRect.left, msgFontSize) : 0;
+        int endCX = endChar >= 0 ? ::AgentCharIndexAt(nullptr, msg.text, 0, 0, msgRect.right - msgRect.left, msgFontSize) : msg.text.size();
         // Simplified: use full message bounds for now
         agentTextSelection_.selRect = {msgRect.left, topY, msgRect.right, bottomY};
     } else {

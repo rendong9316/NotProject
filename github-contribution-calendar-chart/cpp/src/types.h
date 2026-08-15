@@ -19,7 +19,7 @@ struct AppConfig {
     std::vector<std::wstring> authors;
     double fontSize = 1.0;  // Default font scale factor
     double minFontSize = 0.75;
-    double maxFontSize = 3.0;
+    double maxFontSize = 4.0;
     std::vector<int> columnWidths;  // Detail panel column widths
     int sidebarWidth = 250;   // User-adjusted sidebar width in pixels (unscaled)
     Theme theme = Theme::Light;

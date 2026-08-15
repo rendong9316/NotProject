@@ -414,7 +414,7 @@ AnalyticsContext CaptureContext(const std::wstring& dayDate) {
 }
 
 RECT HeaderButtonRect(const RECT& panelRect, int slot, int width) {
-    const double scale = std::max(0.75, std::min(1.5, g_fontScale));
+    const double scale = std::max(0.75, std::min(4.0, g_fontScale));
     const int inset = static_cast<int>(std::lround(6.0 * scale));
     const int closeWidth = static_cast<int>(std::lround(30.0 * scale));
     const int gap = static_cast<int>(std::lround(6.0 * scale));
@@ -747,7 +747,7 @@ void AgentRefreshInputFont() {
 }
 
 bool AgentInputHitTest(int x, int y, const RECT& panelRect) {
-    const double scale = std::max(0.75, std::min(1.5, g_fontScale));
+    const double scale = std::max(0.75, std::min(4.0, g_fontScale));
     const int inset = static_cast<int>(std::lround(static_cast<double>(kAgentInset) * scale));
     const int inputHeight = static_cast<int>(std::lround(static_cast<double>(kAgentInputHeight) * scale));
     RECT input = {panelRect.left + inset, panelRect.bottom - inputHeight - inset,
@@ -771,7 +771,7 @@ bool AgentClearBtnHitTest(int x, int y, const RECT& panelRect) {
 }
 
 bool AgentSendBtnHitTest(int x, int y, const RECT& panelRect) {
-    const double scale = std::max(0.75, std::min(1.5, g_fontScale));
+    const double scale = std::max(0.75, std::min(4.0, g_fontScale));
     const int inset = static_cast<int>(std::lround(12.0 * scale));
     const int inputHeight = static_cast<int>(std::lround(static_cast<double>(kAgentInputHeight) * scale));
     const int buttonHeight = static_cast<int>(std::lround(52.0 * scale));

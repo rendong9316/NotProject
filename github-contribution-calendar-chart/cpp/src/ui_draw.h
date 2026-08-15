@@ -49,13 +49,6 @@ private:
     void AgentDrawSelection(HDC dc) const;
     void AgentDrawCopyButton(HDC dc) const;
     bool AgentCopySelected() const;
-    void MouseDown(int x, int y);
-    void MouseUp(int x, int y);
-
-private:
-    void ComputeLayout(int width, int height);
-    int RepositoryAt(int x, int y) const;
-    int CommitAt(int x, int y) const;
     int VisibleCommitRows() const;
     void DrawTopbar(HDC dc);
     void DrawSidebar(HDC dc);
