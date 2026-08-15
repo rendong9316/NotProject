@@ -801,10 +801,10 @@ private fun MeasurementCard(
                 onClick = { mapViewModel.removeLastWaypoint() })
             Spacer(Modifier.width(6.dp))
             MeasureBtn(icon = Icons.Filled.Clear, label = "清除",
-                enabled = waypoints.isNotEmpty(),
+                enabled = true,
                 onClick = {
-                    if (isMeasuring) mapViewModel.clearWaypoints()
-                    else mapViewModel.stopMeasurement()
+                    if (isMeasuring) mapViewModel.stopMeasurement()
+                    else mapViewModel.clearWaypoints()
                 })
         }
 

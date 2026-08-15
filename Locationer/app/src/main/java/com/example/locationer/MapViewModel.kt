@@ -592,6 +592,8 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         _measurementTotalArea.value = 0.0
         if (_measurementState.value == MeasurementState.COMPLETED) {
             _measurementState.value = MeasurementState.IDLE
+        } else if (_measurementState.value == MeasurementState.PLACING) {
+            _measurementState.value = MeasurementState.IDLE
         }
         saveMeasurement()
     }
