@@ -52,6 +52,8 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.AlertDialog
@@ -280,6 +282,7 @@ fun MapScreen(
     val searchQuery     by viewModel.searchQuery.collectAsState()
     val searchResults   by viewModel.searchResults.collectAsState()
     val searching       by viewModel.searching.collectAsState()
+    val showPickedFlagLabels by viewModel.showPickedFlagLabels.collectAsState()
     // ================ 测量相关状态 ================
     val measurementMode       by viewModel.measurementMode.collectAsState()
     val measurementState      by viewModel.measurementState.collectAsState()
@@ -515,7 +518,7 @@ fun MapScreen(
     }
 
     // ================ 旗标标记渲染（支持自定义样式） ================
-    LaunchedEffect(flags, mapReady, flagStyle) {
+    LaunchedEffect(flags, mapReady, flagStyle, showPickedFlagLabels) {
         if (!mapReady) return@LaunchedEffect
         val amap = aMap ?: return@LaunchedEffect
         flagMarkers.values.forEach { it.remove() }
@@ -533,10 +536,14 @@ fun MapScreen(
             }
             val flagBitmap = createFlagBitmap(
                 color = iconColor,
-                label = flag.customName.ifBlank { flag.label },
+                // 只对 PICKED 类型旗标受开关影响；CURRENT/JUMPED 始终显示标签
+                label = when {
+                    flag.type == FlagType.PICKED && !showPickedFlagLabels -> ""
+                    else                                                 -> flag.customName.ifBlank { flag.label }
+                },
                 iconRadius = flagStyle.flagIconSize,
-                textSize = flagStyle.flagTextSize,
-                textColor = flagStyle.flagTextColor.toInt(),
+                textSize   = flagStyle.flagTextSize,
+                textColor  = flagStyle.flagTextColor.toInt(),
             )
             val marker = amap.addMarker(
                 MarkerOptions().position(pos)
@@ -725,24 +732,37 @@ fun MapScreen(
                             }
                         }
                     } else {
-                        // 非测量拾取时：根据是否在测量中决定按钮行为
-                        PickModeFab(
-                            placeMode = placeMode,
-                            onToggle  = {
-                                if (isMeasuring) {
-                                    // 测量中：切换为测量拾取模式（放置测量断点）
-                                    val center = aMap?.cameraPosition?.target?.let {
-                                        CT.Coord(it.longitude, it.latitude)
-                                    }
-                                    viewModel.toggleMeasurementPickMode(initCoord = center)
-                                } else {
-                                    val center = aMap?.cameraPosition?.target?.let {
-                                        CT.Coord(it.longitude, it.latitude)
-                                    }
-                                    viewModel.togglePlaceMode(initCoord = center)
-                                }
-                            },
-                        )
+                        // 右上垂直按钮组：拾取放大镜（上） + 隐藏/显示旗标标签（下）
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Column(
+                                modifier = Modifier
+                                    .align(androidx.compose.ui.Alignment.TopEnd)
+                                    .padding(end = 16.dp, top = 16.dp),
+                                horizontalAlignment = androidx.compose.ui.Alignment.End,
+                            ) {
+                                PickModeFab(
+                                    placeMode = placeMode,
+                                    onToggle  = {
+                                        if (isMeasuring) {
+                                            val center = aMap?.cameraPosition?.target?.let {
+                                                CT.Coord(it.longitude, it.latitude)
+                                            }
+                                            viewModel.toggleMeasurementPickMode(initCoord = center)
+                                        } else {
+                                            val center = aMap?.cameraPosition?.target?.let {
+                                                CT.Coord(it.longitude, it.latitude)
+                                            }
+                                            viewModel.togglePlaceMode(initCoord = center)
+                                        }
+                                    },
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                VisibilityToggleFab(
+                                    visible = showPickedFlagLabels,
+                                    onClick = { viewModel.toggleShowPickedFlagLabels() },
+                                )
+                            }
+                        }
                     }
                     if (isMeasuring && canCalculate) {
                         Box(modifier = Modifier.fillMaxSize()) {
@@ -1180,23 +1200,35 @@ fun CoordRadio(label    : String, selected : Boolean, onClick  : () -> Unit) {
 // 拾取模式浮动按钮
 // ============================================================================
 
+/** 显示/隐藏拾取旗标名称的按钮，复用 PickModeFab 同款 FloatingAction */
+@Composable
+private fun VisibilityToggleFab(visible: Boolean, onClick: () -> Unit) {
+    FloatingActionButton(
+        onClick = onClick,
+        modifier = Modifier.size(48.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor   = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Icon(
+            imageVector = if (visible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+            contentDescription = if (visible) "隐藏旗标名称" else "显示旗标名称",
+        )
+    }
+}
+
 @Composable
 private fun PickModeFab(placeMode: Boolean, onToggle: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        FloatingActionButton(
-            onClick = onToggle,
-            modifier = Modifier
-                .padding(16.dp)
-                .align(androidx.compose.ui.Alignment.TopEnd),
-            containerColor = if (placeMode) MaterialTheme.colorScheme.error
-                             else MaterialTheme.colorScheme.primary,
-            contentColor   = MaterialTheme.colorScheme.onPrimary,
-        ) {
-            if (placeMode)
-                Icon(Icons.Filled.Close, contentDescription = "退出拾取")
-            else
-                Icon(Icons.Filled.Search, contentDescription = "拾取坐标")
-        }
+    FloatingActionButton(
+        onClick = onToggle,
+        modifier = Modifier.size(48.dp),
+        containerColor = if (placeMode) MaterialTheme.colorScheme.error
+                         else MaterialTheme.colorScheme.primary,
+        contentColor   = MaterialTheme.colorScheme.onPrimary,
+    ) {
+        if (placeMode)
+            Icon(Icons.Filled.Close, contentDescription = "退出拾取")
+        else
+            Icon(Icons.Filled.Search, contentDescription = "拾取坐标")
     }
 }
 

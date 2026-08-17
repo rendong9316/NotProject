@@ -189,6 +189,15 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             if (sqMeters >= 1_000_000) "%.2f km²".format(sqMeters / 1_000_000) else "%.2f m²".format(sqMeters)
     }
 
+    // ================ 拾取旗标标签显示开关 ================
+    private val _showPickedFlagLabels = MutableStateFlow(loadPref("showPickedFlagLabels", "true") == "true")
+    val showPickedFlagLabels: StateFlow<Boolean> = _showPickedFlagLabels.asStateFlow()
+
+    fun toggleShowPickedFlagLabels() {
+        _showPickedFlagLabels.value = !_showPickedFlagLabels.value
+        savePref("showPickedFlagLabels", _showPickedFlagLabels.value.toString())
+    }
+
     // ================ 拾取模式开关 ================
     private val _placeMode = MutableStateFlow(false)
     val placeMode: StateFlow<Boolean> = _placeMode.asStateFlow()
