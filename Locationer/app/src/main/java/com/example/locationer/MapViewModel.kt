@@ -18,6 +18,8 @@ import com.amap.api.services.geocoder.GeocodeSearch
 import com.amap.api.services.geocoder.RegeocodeQuery
 import com.amap.api.services.geocoder.RegeocodeResult
 import com.amap.api.services.core.LatLonPoint
+import com.amap.api.services.poisearch.PoiSearchV2
+import com.amap.api.services.poisearch.PoiResultV2
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.LinkedHashMap
 
 internal fun minimumMeasurementPoints(mode: MapViewModel.MeasurementMode): Int = when (mode) {
     MapViewModel.MeasurementMode.DISTANCE -> 2
@@ -71,6 +74,14 @@ data class JumpTarget(
 /** UI 提示消息（Toast 展示） */
 data class UiMessage(val text: String)
 
+/** 正向地理编码搜索结果 */
+data class SearchResult(
+    val title: String,
+    val address: String,
+    val gcjLon: Double,
+    val gcjLat: Double,
+)
+
 class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _context = application
 
@@ -106,6 +117,26 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     /** 记录最后一次已请求的逆地理编码参数，用于缓存判断 */
     private var lastGeocodeKey: String = ""
+
+    /** 记录最后一次搜索的时间，防止请求过于频繁 */
+    private var lastSearchTime = 0L
+    private val SEARCH_COOLDOWN_MS = 1000L // 搜索间隔至少 1 秒
+
+    /** 搜索缓存：关键词 -> 结果列表，避免重复请求触发限流 */
+    private val _searchCache = LinkedHashMap<String, List<SearchResult>>()
+    private val SEARCH_CACHE_MAX_SIZE = 20 // 最多缓存 20 条
+
+    /** 正向地理编码搜索关键词 */
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    /** 搜索结果列表 */
+    private val _searchResults = MutableStateFlow<List<SearchResult>>(emptyList())
+    val searchResults: StateFlow<List<SearchResult>> = _searchResults.asStateFlow()
+
+    /** 搜索是否进行中 */
+    private val _searching = MutableStateFlow(false)
+    val searching: StateFlow<Boolean> = _searching.asStateFlow()
 
     private val _accuracyMeters = MutableStateFlow<Float?>(null)
     val accuracyMeters: StateFlow<Float?> = _accuracyMeters.asStateFlow()
@@ -213,7 +244,12 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val geocodeSearch: GeocodeSearch
         get() = _geocodeSearch ?: throw IllegalStateException("GeocodeSearch未初始化，请调用initGeocodeSearch()")
 
-    /** 初始化逆地理编码（应在地图就绪后调用） */
+    /** POI 关键词搜索（延迟初始化，确保地图SDK就绪） */
+    private var _poiSearch: PoiSearchV2? = null
+    private val poiSearch: PoiSearchV2
+        get() = _poiSearch ?: throw IllegalStateException("PoiSearchV2未初始化，请调用initGeocodeSearch()")
+
+    /** 初始化逆地理编码与 POI 搜索（应在地图就绪后调用） */
     fun initGeocodeSearch() {
         if (_geocodeSearch != null) return
         _geocodeSearch = GeocodeSearch(_context).apply {
@@ -267,8 +303,99 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                         _reverseGeocodeAddress.value = displayAddress
                     }
                 }
-                override fun onGeocodeSearched(result: com.amap.api.services.geocoder.GeocodeResult?, statusCode: Int) {}
+                override fun onGeocodeSearched(result: com.amap.api.services.geocoder.GeocodeResult?, statusCode: Int) {
+                    _searching.value = false
+                    if (statusCode != 1000 || result == null) {
+                        val statusText = geocodeStatusText(statusCode)
+                        // 频率限制错误：给出更友好的提示，有缓存时展示缓存结果
+                        if (statusCode == 1101 || statusCode == 1115) {
+                            _message.value = UiMessage("搜索请求过于频繁，请稍后再试")
+                            val searchKey = _searchQuery.value.trim()
+                            if (searchKey.isNotEmpty()) {
+                                _searchResults.value = _searchCache[searchKey] ?: emptyList()
+                            }
+                        } else {
+                            _message.value = UiMessage("地址搜索失败：$statusText")
+                            _searchResults.value = emptyList()
+                        }
+                        return
+                    }
+                    // 捕获当前搜索关键词用于缓存
+                    val searchKey = _searchQuery.value.trim()
+                    val list = result.geocodeAddressList?.mapNotNull { addr ->
+                        val loc = addr.latLonPoint ?: return@mapNotNull null
+                        SearchResult(
+                            title = (addr.formatAddress ?: "").replace("/", " ").trim(),
+                            address = addr.formatAddress ?: "",
+                            gcjLon = loc.longitude,
+                            gcjLat = loc.latitude,
+                        )
+                    } ?: emptyList()
+                    // 更新缓存
+                    val sorted = if (_currentGcj.value != null) {
+                        val current = _currentGcj.value!!
+                        list.sortedBy { result ->
+                            CT.Coord(result.gcjLon, result.gcjLat).distanceTo(current)
+                        }
+                    } else list
+                    if (searchKey.isNotEmpty()) {
+                        _searchCache[searchKey] = sorted
+                        if (_searchCache.size > SEARCH_CACHE_MAX_SIZE) {
+                            val firstKey = _searchCache.keys.first()
+                            _searchCache.remove(firstKey)
+                        }
+                    }
+                    _searchResults.value = sorted
+                }
             })
+        }
+        try {
+            _poiSearch = PoiSearchV2(_context, PoiSearchV2.Query("", "")).apply {
+                setOnPoiSearchListener(object : PoiSearchV2.OnPoiSearchListener {
+                    override fun onPoiSearched(result: PoiResultV2?, statusCode: Int) {
+                        _searching.value = false
+                        if (statusCode != 1000 || result == null) {
+                            val statusText = geocodeStatusText(statusCode)
+                            if (statusCode == 1101 || statusCode == 1115) {
+                                _message.value = UiMessage("搜索请求过于频繁，请稍后再试")
+                                val searchKey = _searchQuery.value.trim()
+                                if (searchKey.isNotEmpty()) {
+                                    _searchResults.value = _searchCache[searchKey] ?: emptyList()
+                                }
+                            } else {
+                                _message.value = UiMessage("搜索失败：$statusText")
+                                _searchResults.value = emptyList()
+                            }
+                            return
+                        }
+                        val searchKey = _searchQuery.value.trim()
+                        val list = result.pois?.mapNotNull { poi ->
+                            val loc = poi.latLonPoint ?: return@mapNotNull null
+                            SearchResult(
+                                title = poi.title ?: "",
+                                address = poi.snippet ?: "",
+                                gcjLon = loc.longitude,
+                                gcjLat = loc.latitude,
+                            )
+                        } ?: emptyList()
+                        val sorted = if (_currentGcj.value != null) {
+                            val current = _currentGcj.value!!
+                            list.sortedBy { r -> CT.Coord(r.gcjLon, r.gcjLat).distanceTo(current) }
+                        } else list
+                        if (searchKey.isNotEmpty()) {
+                            _searchCache[searchKey] = sorted
+                            if (_searchCache.size > SEARCH_CACHE_MAX_SIZE) {
+                                _searchCache.remove(_searchCache.keys.first())
+                            }
+                        }
+                        _searchResults.value = sorted
+                    }
+                    override fun onPoiItemSearched(item: com.amap.api.services.core.PoiItemV2?, statusCode: Int) {}
+                    override fun onVisualSearched(result: com.amap.api.services.poisearch.VisualSearchResult?, statusCode: Int) {}
+                })
+            }
+        } catch (e: Exception) {
+            _message.value = UiMessage("POI 搜索初始化失败：${e.message}")
         }
     }
 
@@ -412,6 +539,81 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             _reverseGeocodeAddress.value = null
             lastGeocodeKey = ""
         }
+    }
+
+    /** 更新搜索关键词（不自动触发搜索） */
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    /** 手动触发搜索（按钮点击） */
+    fun searchAddress() {
+        val query = _searchQuery.value.trim()
+        if (query.isEmpty()) {
+            _message.value = UiMessage("请输入要搜索的地址")
+            return
+        }
+        // 检查缓存
+        val cached = _searchCache[query]
+        if (cached != null) {
+            _searchResults.value = cached
+            return
+        }
+        // 冷却期检查：防止请求过于频繁
+        val now = System.currentTimeMillis()
+        if (now - lastSearchTime < SEARCH_COOLDOWN_MS) {
+            // 不显示错误，静默忽略
+            return
+        }
+        lastSearchTime = now
+        _searching.value = true
+        _searchResults.value = emptyList()
+        try {
+            val poiQuery = com.amap.api.services.poisearch.PoiSearchV2.Query(query, "")
+            _poiSearch?.setQuery(poiQuery)
+            _poiSearch?.searchPOIAsyn()
+                ?: throw IllegalStateException("PoiSearchV2未初始化")
+        } catch (e: Exception) {
+            _searching.value = false
+            _message.value = UiMessage("地址搜索失败：${e.message}")
+        }
+    }
+
+    /** 将错误码转换为用户友好的提示信息 */
+    private fun geocodeStatusText(statusCode: Int): String = when (statusCode) {
+        1000 -> "成功"
+        1001 -> "参数错误"
+        1002 -> "key无效"
+        1003 -> "配额超限"
+        1004 -> "服务不可用"
+        1101 -> "搜索过于频繁，请稍后重试"  // IP 频率限制
+        1102 -> "业务类型错误"
+        1103 -> "查询内容非法"
+        1104 -> "接口维护中"
+        1105 -> "内部服务错误"
+        1107 -> "URL非法"
+        1112 -> "数据不存在"
+        1115 -> "用户无正当理由频繁请求"
+        1401 -> "不支持的请求类型"
+        1601 -> "不支持 HTTP 请求"
+        else -> "未知错误($statusCode)"
+    }
+
+    /** 选择搜索结果并跳转 */
+    fun selectSearchResult(result: SearchResult) {
+        val gcj = CT.Coord(result.gcjLon, result.gcjLat)
+        val wgs = CT.gcj02ToWgs84(gcj, precision = CT.HIGH_PRECISION)
+        val typed = when (_coordType.value) {
+            CoordType.GCJ02 -> gcj
+            CoordType.WGS84 -> wgs
+        }
+        _lonText.value = "%.6f".format(typed.lon)
+        _latText.value = "%.6f".format(typed.lat)
+        _searchResults.value = emptyList()
+        // 复用 jumpTo 逻辑
+        _jumpCounter++
+        _jumpTarget.value = JumpTarget(++jumpId, gcj, typed, _coordType.value)
+        resetReverseGeocode()
     }
 
     // ---------- 拾取模式（连续放置）----------

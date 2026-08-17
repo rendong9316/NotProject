@@ -36,11 +36,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -51,6 +52,8 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -65,6 +68,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -273,6 +277,9 @@ fun MapScreen(
     val bearing         by viewModel.bearing.collectAsState()
     val isTracking      by viewModel.isTracking.collectAsState()
     val address         by viewModel.reverseGeocodeAddress.collectAsState()
+    val searchQuery     by viewModel.searchQuery.collectAsState()
+    val searchResults   by viewModel.searchResults.collectAsState()
+    val searching       by viewModel.searching.collectAsState()
     // ================ 测量相关状态 ================
     val measurementMode       by viewModel.measurementMode.collectAsState()
     val measurementState      by viewModel.measurementState.collectAsState()
@@ -779,6 +786,12 @@ fun MapScreen(
                         }
                         viewModel.fetchReverseGeocode(gcjForAddr.lon, gcjForAddr.lat)
                     },
+                    searchQuery    = searchQuery,
+                    searchResults  = searchResults,
+                    searching      = searching,
+                    onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+                    onSearch = { viewModel.searchAddress() },
+                    onSelectResult = { viewModel.selectSearchResult(it) },
                 )
             }
         }
@@ -809,6 +822,12 @@ private fun UnifiedPanel(
     jumpTarget     : JumpTarget?,
     address        : String?,
     onReverseGeocode: () -> Unit,
+    searchQuery    : String,
+    searchResults  : List<SearchResult>,
+    searching      : Boolean,
+    onSearchQueryChange: (String) -> Unit,
+    onSearch       : () -> Unit,
+    onSelectResult : (SearchResult) -> Unit,
 ) {
     val _jt = jumpTarget
     Card(
@@ -819,7 +838,7 @@ private fun UnifiedPanel(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {
-        Column(modifier = Modifier.verticalScroll(rememberScrollState()).imePadding()) {
+        Column(modifier = Modifier.imePadding()) {
             // -------- 折叠栏（始终显示） --------
             Row(
                 modifier = Modifier
@@ -853,7 +872,89 @@ private fun UnifiedPanel(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(1.dp),
                 ) {
-                    // 当前位置坐标
+                    // 地址搜索
+                    FText("搜索地址", 13, fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(
+                        value        = searchQuery,
+                        onValueChange = onSearchQueryChange,
+                        modifier     = Modifier.fillMaxWidth(),
+                        label        = { FText("输入地址关键词", 11) },
+                        placeholder  = { FText("如：北京市海淀区", 12) },
+                        singleLine   = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        trailingIcon = {
+                            if (searching) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Filled.Search,
+                                    contentDescription = "搜索",
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clickable(enabled = !searching && searchQuery.isNotBlank(), onClick = onSearch),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        },
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor      = MaterialTheme.colorScheme.primary,
+                            unfocusedIndicatorColor    = MaterialTheme.colorScheme.outline,
+                            disabledIndicatorColor     = MaterialTheme.colorScheme.outline,
+                            focusedContainerColor      = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor    = MaterialTheme.colorScheme.surface,
+                        ),
+                    )
+                    // 搜索结果列表（LazyColumn 自管理滚动，避免与外层滚动冲突）
+                    if (searchResults.isNotEmpty()) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
+                            shape = MaterialTheme.shapes.small,
+                        ) {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(240.dp),
+                                horizontalAlignment = Alignment.Start,
+                            ) {
+                                itemsIndexed(searchResults, key = { _, result ->
+                                    "${result.gcjLon}_${result.gcjLat}"
+                                }) { index, result ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(onClick = { onSelectResult(result) })
+                                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.Search,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text = result.title,
+                                            fontSize = 13.sp,
+                                            maxLines = 2,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    }
+                                    if (index < searchResults.size - 1) {
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 分隔线
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     CoordsRow(label = "GCJ02", coord = gcj,
                         color = MaterialTheme.colorScheme.primary)
                     CoordsRow(label = "WGS84", coord = wgs,
@@ -941,8 +1042,15 @@ private fun UnifiedPanel(
                     // 逆地理编码结果（显示在输入框下方）
                     if (address != null) {
                         Spacer(Modifier.height(2.dp))
+                        val ctx = LocalContext.current
+                        val cm = remember { ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager }
                         Surface(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    cm?.setPrimaryClip(android.content.ClipData.newPlainText("地址", address))
+                                    Toast.makeText(ctx, "已复制地址", Toast.LENGTH_SHORT).show()
+                                },
                             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
                             shape = MaterialTheme.shapes.small,
                         ) {
