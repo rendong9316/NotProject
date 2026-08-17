@@ -108,6 +108,7 @@ import com.amap.api.maps.AMap
 import com.amap.api.maps.CameraUpdateFactory
 import com.amap.api.maps.MapView
 import com.amap.api.maps.MapsInitializer
+import com.amap.api.maps.model.CameraPosition
 import com.amap.api.maps.model.BitmapDescriptorFactory
 import com.amap.api.maps.model.LatLng
 import com.amap.api.maps.model.Marker
@@ -333,7 +334,9 @@ fun MapScreen(
         })
         if (!initialCameraSet) {
             initialCameraSet = true
-            aMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.0, 104.0), 4.5f))
+            // 优先恢复上次退出时的相机高度；否则使用默认值 4.5f（全国视角）
+            val initZoom = viewModel.cameraZoom.value ?: 4.5f
+            aMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.0, 104.0), initZoom))
         }
     }
 
@@ -348,6 +351,16 @@ fun MapScreen(
         try {
             aMap?.uiSettings?.javaClass?.getMethod("setLogoEnable", Boolean::class.java)?.invoke(aMap.uiSettings, false)
         } catch (_: Exception) {}
+    }
+
+    // ================ 相机缩放级别持久化：监听镜头变化，结束时保存当前 zoom ================
+    LaunchedEffect(aMap) {
+        aMap?.setOnCameraChangeListener(object : AMap.OnCameraChangeListener {
+            override fun onCameraChange(position: CameraPosition?) {}
+            override fun onCameraChangeFinish(position: CameraPosition?) {
+                position?.let { viewModel.saveCameraZoom(it.zoom) }
+            }
+        })
     }
     LaunchedEffect(placeMode, measurementPickMode) {
         aMap?.setMapCustomEnable(placeMode || measurementPickMode)
@@ -470,7 +483,9 @@ fun MapScreen(
         }
         if (!firstLocateDone) {
             firstLocateDone = true
-            amap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 17f))
+            // 保持当前相机高度，不主动改变缩放级别；首次启动无持久化值时使用默认 17f
+            val currentZoom = amap.cameraPosition?.zoom ?: viewModel.cameraZoom.value ?: 17f
+            amap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, currentZoom))
         }
     }
 
@@ -494,7 +509,9 @@ fun MapScreen(
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
                 .anchor(0.5f, 0.5f)
         )
-        amap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 17f))
+        // 保持当前相机高度，不主动改变缩放级别；首次启动无持久化值时使用默认 17f
+        val currentZoom = amap.cameraPosition?.zoom ?: viewModel.cameraZoom.value ?: 17f
+        amap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, currentZoom))
     }
 
     // ================ 准星标记（拾取模式 / 测量拾取模式中） ================

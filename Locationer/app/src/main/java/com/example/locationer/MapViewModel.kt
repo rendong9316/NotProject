@@ -198,6 +198,18 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         savePref("showPickedFlagLabels", _showPickedFlagLabels.value.toString())
     }
 
+    // ================ 相机缩放级别持久化（杀死进程后恢复） ================
+    private val _cameraZoom = MutableStateFlow<Float?>(loadPref("cameraZoom", "").toFloatOrNull())
+    val cameraZoom: StateFlow<Float?> = _cameraZoom.asStateFlow()
+
+    /** 保存当前相机缩放级别（由 MapScreen 在 onCameraChangeFinish 时调用） */
+    fun saveCameraZoom(zoom: Float) {
+        if (_cameraZoom.value != zoom) {
+            _cameraZoom.value = zoom
+            savePref("cameraZoom", zoom.toString())
+        }
+    }
+
     // ================ 拾取模式开关 ================
     private val _placeMode = MutableStateFlow(false)
     val placeMode: StateFlow<Boolean> = _placeMode.asStateFlow()
