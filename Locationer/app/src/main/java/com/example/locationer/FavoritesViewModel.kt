@@ -2,16 +2,18 @@ package com.example.locationer
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
+import java.nio.charset.StandardCharsets
 import java.util.Locale
 import kotlin.math.abs
 
-/** 独立于地图旗标的收藏快照。 */
+/** A favorites snapshot that is independent from map flags. */
 class FavoritesViewModel(application: Application) : AndroidViewModel(application) {
 
     data class FavoritePoint(
@@ -29,20 +31,19 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
     private val _favorites = MutableStateFlow(load())
     val favorites: StateFlow<List<FavoritePoint>> = _favorites.asStateFlow()
 
-    /**
-     * 旧版本把收藏状态存在 Flag.isFavorite 中。这里只复制一次快照，迁移后两套数据不再关联。
-     */
     fun migrateLegacyFavorites(flags: List<Flag>) {
         if (prefs.getBoolean(KEY_LEGACY_MIGRATED, false)) return
-        val migrated = flags.filter { it.isFavorite }.fold(_favorites.value) { points, flag ->
-            val point = flag.toFavorite(nextId(points), flag.createdAt)
-            if (points.any { it.sameSnapshot(point) }) points else points + point
+        val legacyFavorites = flags.filter { it.isFavorite }
+        if (legacyFavorites.isNotEmpty()) {
+            val migrated = legacyFavorites.fold(_favorites.value) { points, flag ->
+                val point = flag.toFavorite(nextId(points), flag.createdAt)
+                if (points.any { it.sameSnapshot(point) }) points else points + point
+            }
+            if (migrated != _favorites.value) save(migrated)
         }
-        save(migrated)
         prefs.edit().putBoolean(KEY_LEGACY_MIGRATED, true).apply()
     }
 
-    /** 返回 false 表示相同名称和坐标的快照已经存在。 */
     fun addFromFlag(flag: Flag): Boolean {
         val point = flag.toFavorite(nextId(_favorites.value), System.currentTimeMillis())
         if (_favorites.value.any { it.sameSnapshot(point) }) return false
@@ -54,9 +55,15 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
         save(_favorites.value.filterNot { it.id == id })
     }
 
+    /** Clears local data while retaining the last public backup for explicit recovery. */
     fun clearAll() {
-        save(emptyList())
+        _favorites.value = emptyList()
+        prefs.edit().putString(KEY_DATA, "[]").apply()
     }
+
+    fun clearBackup(): Boolean = FavoriteFileStore(getApplication()).deleteFromFile()
+
+    fun clearLegacyBackups(): Int = FavoriteFileStore(getApplication()).deleteLegacyBackups()
 
     fun rename(id: Long, newLabel: String) {
         val label = newLabel.trim()
@@ -64,22 +71,16 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
         save(_favorites.value.map { if (it.id == id) it.copy(label = label) else it })
     }
 
-    fun search(query: String): List<FavoritePoint> {
-        val normalized = query.trim()
-        return if (normalized.isEmpty()) {
-            _favorites.value
-        } else {
-            _favorites.value.filter { it.label.contains(normalized, ignoreCase = true) }
-        }
-    }
-
-    fun copyText(id: Long): String? = _favorites.value.find { it.id == id }?.formatForClipboard()
-
-    fun exportAll(): String = _favorites.value.joinToString(separator = "\n\n") { it.formatForClipboard() }
-
     fun updateExpanded(id: Long, expanded: Boolean) {
-        save(_favorites.value.map { if (it.id == id) it.copy(isExpanded = expanded) else it })
+        save(_favorites.value.map { point ->
+            if (point.id == id) point.copy(isExpanded = expanded) else point
+        })
     }
+
+    fun exportAll(): String =
+        _favorites.value.joinToString(separator = "\n\n") { it.formatForClipboard() }
+
+    fun exportToJson(): String = buildJsonArray(_favorites.value).toString()
 
     fun jumpTo(point: FavoritePoint, mapViewModel: MapViewModel) {
         mapViewModel.updateLonText(formatCoordinate(point.gcjLon))
@@ -87,6 +88,98 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
         mapViewModel.setCoordType(CoordType.GCJ02)
         mapViewModel.jumpTo()
         mapViewModel.requestSwitchToMap()
+    }
+
+    fun countBackupRecords(): Int {
+        val json = FavoriteFileStore(getApplication()).readFromFile() ?: return 0
+        return parseJsonArray(json).size
+    }
+
+    fun hasAutoSavedToPublic(): Boolean =
+        FavoriteFileStore(getApplication()).readFromFile() != null
+
+    fun backupCurrentFavorites(): Boolean {
+        if (_favorites.value.isEmpty()) return false
+        return FavoriteFileStore(getApplication()).saveToPublic(exportToJson())
+    }
+
+    fun restoreFromOffline(): Int {
+        val json = FavoriteFileStore(getApplication()).readFromFile() ?: return 0
+        return restoreJson(json)
+    }
+
+    fun restoreFromUri(uri: Uri): Int {
+        val json = runCatching {
+            getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
+                input.readBytes().toString(StandardCharsets.UTF_8)
+            }
+        }.getOrNull() ?: return 0
+        return restoreJson(json)
+    }
+
+    private fun restoreJson(json: String): Int {
+        val parsed = parseJsonArray(json)
+        if (parsed.isEmpty()) return 0
+        save(parsed)
+        return parsed.size
+    }
+
+    private fun load(): List<FavoritePoint> {
+        val local = parseJsonArray(prefs.getString(KEY_DATA, "[]").orEmpty())
+        if (local.isNotEmpty()) return local
+
+        val legacyJson = FavoriteFileStore.tryReadLegacyFile(getApplication()) ?: return emptyList()
+        val legacy = parseJsonArray(legacyJson)
+        if (legacy.isNotEmpty()) prefs.edit().putString(KEY_DATA, legacyJson).apply()
+        return legacy
+    }
+
+    private fun save(points: List<FavoritePoint>) {
+        val json = buildJsonArray(points).toString()
+        _favorites.value = points
+        prefs.edit().putString(KEY_DATA, json).apply()
+        FavoriteFileStore(getApplication()).saveToPublic(json)
+    }
+
+    private fun parseJsonArray(json: String): List<FavoritePoint> = runCatching {
+        val array = JSONArray(json)
+        buildList {
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                val id = item.optLong("id", 0L)
+                if (id == 0L) continue
+                add(
+                    FavoritePoint(
+                        id = id,
+                        label = item.optString("label"),
+                        gcjLon = item.optDouble("gcjLon"),
+                        gcjLat = item.optDouble("gcjLat"),
+                        wgsLon = item.optDouble("wgsLon"),
+                        wgsLat = item.optDouble("wgsLat"),
+                        timestamp = item.optLong("timestamp", id),
+                        isExpanded = item.optBoolean("isExpanded", false),
+                    )
+                )
+            }
+        }
+    }.getOrDefault(emptyList())
+
+    private fun buildJsonArray(points: List<FavoritePoint>): JSONArray {
+        val array = JSONArray()
+        points.forEach { point ->
+            array.put(
+                JSONObject()
+                    .put("id", point.id)
+                    .put("label", point.label)
+                    .put("gcjLon", point.gcjLon)
+                    .put("gcjLat", point.gcjLat)
+                    .put("wgsLon", point.wgsLon)
+                    .put("wgsLat", point.wgsLat)
+                    .put("timestamp", point.timestamp)
+                    .put("isExpanded", point.isExpanded)
+            )
+        }
+        return array
     }
 
     private fun Flag.toFavorite(id: Long, savedAt: Long) = FavoritePoint(
@@ -97,7 +190,6 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
         wgsLon = wgsLon,
         wgsLat = wgsLat,
         timestamp = savedAt,
-        isExpanded = false,
     )
 
     private fun FavoritePoint.sameSnapshot(other: FavoritePoint): Boolean =
@@ -119,51 +211,6 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun nextId(points: List<FavoritePoint>): Long =
         maxOf(System.currentTimeMillis(), (points.maxOfOrNull { it.id } ?: 0L) + 1L)
-
-    private fun load(): List<FavoritePoint> {
-        val raw = prefs.getString(KEY_DATA, "[]").orEmpty()
-        return runCatching {
-            val array = JSONArray(raw)
-            buildList {
-                for (index in 0 until array.length()) {
-                    val item = array.optJSONObject(index) ?: continue
-                    val id = item.optLong("id", 0L)
-                    if (id == 0L) continue
-                    add(
-                        FavoritePoint(
-                            id = id,
-                            label = item.optString("label"),
-                            gcjLon = item.optDouble("gcjLon"),
-                            gcjLat = item.optDouble("gcjLat"),
-                            wgsLon = item.optDouble("wgsLon"),
-                            wgsLat = item.optDouble("wgsLat"),
-                            timestamp = item.optLong("timestamp", id),
-                            isExpanded = item.optBoolean("isExpanded", false),
-                        )
-                    )
-                }
-            }
-        }.getOrDefault(emptyList())
-    }
-
-    private fun save(points: List<FavoritePoint>) {
-        val array = JSONArray()
-        points.forEach { point ->
-            array.put(
-                JSONObject()
-                    .put("id", point.id)
-                    .put("label", point.label)
-                    .put("gcjLon", point.gcjLon)
-                    .put("gcjLat", point.gcjLat)
-                    .put("wgsLon", point.wgsLon)
-                    .put("wgsLat", point.wgsLat)
-                    .put("timestamp", point.timestamp)
-                    .put("isExpanded", point.isExpanded)
-            )
-        }
-        _favorites.value = points
-        prefs.edit().putString(KEY_DATA, array.toString()).apply()
-    }
 
     companion object {
         private const val PREFS_NAME = "favorites_manual"

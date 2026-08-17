@@ -8,6 +8,10 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Android 9 and below write Download directly; Android 10+ uses MediaStore. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <application
         android:allowBackup="true"
@@ -18,10 +22,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Locationer">
-        <!-- 【高德地图 API Key 配置区】
-             如需更换 Key，请到高德开放平台(https://console.amap.com)申请，
-             并将下方 com.amap.api.v2.apikey 的 value 替换为新 Key
-             （SHA1 签名与其绑定，release.keystore 的 SHA1 与 Key 必须一致） -->
+        <!-- 【高德地图 API Key 配置区】 -->
         <meta-data
             android:name="com.amap.api.v2.apikey"
             android:value="afead164540ed20313a6cccf0723c4ef" />
@@ -37,8 +38,17 @@
         </activity>
         <activity
             android:name=".MainActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Locationer" />
+            android:exported="true"
+            android:theme="@style/Theme.Locationer">
+            <!-- 接收 JSON 文件打开请求（用户点击 Download 目录中的 favorites.json） -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/json" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

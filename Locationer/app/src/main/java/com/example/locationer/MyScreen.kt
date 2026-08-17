@@ -36,6 +36,8 @@ fun MyScreen(
     currentStyle: FlagStyle,
     onStyleChange: (FlagStyle) -> Unit,
     isActive: Boolean = true,
+    pendingRestoreUri: android.net.Uri? = null,
+    onRestoreUriHandled: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val initialTab = remember {
@@ -51,6 +53,10 @@ fun MyScreen(
     LaunchedEffect(pagerState.currentPage) {
         context.getSharedPreferences("my_tab_pref", Context.MODE_PRIVATE)
             .edit().putInt("selected_my_tab", pagerState.currentPage).apply()
+    }
+
+    LaunchedEffect(pendingRestoreUri) {
+        if (pendingRestoreUri != null) pagerState.scrollToPage(0)
     }
 
     var tapTarget by remember { mutableStateOf<Int?>(null) }
@@ -93,6 +99,9 @@ fun MyScreen(
                     0 -> FavoritesScreen(
                         mapViewModel = mapViewModel,
                         favoritesViewModel = favoritesViewModel,
+                        pendingRestoreUri = pendingRestoreUri,
+                        isActive = isActive && pagerState.currentPage == 0,
+                        onRestoreUriHandled = onRestoreUriHandled,
                     )
                     1 -> SettingsScreen(
                         currentStyle  = currentStyle,
