@@ -439,23 +439,32 @@ fun MapScreen(
         }
     }
 
-    // ================ 长按地图快捷放置（仅非测量、非拾取模式） ================
-    LaunchedEffect(aMap, placeMode, measurementPickMode) {
+    // ================ 长按地图：测量模式下放测点，否则放普通旗标 ================
+    LaunchedEffect(aMap, placeMode, measurementPickMode, measurementState) {
         aMap?.setOnMapLongClickListener { latlng ->
-            if (!placeMode && !measurementPickMode) {
-                viewModel.confirmPlacement(CT.Coord(latlng.longitude, latlng.latitude))
-                viewModel.vibratePick()
+            when {
+                placeMode || measurementPickMode -> Unit  // 拾取模式由 OnMapTouchListener 处理
+                measurementState == MapViewModel.MeasurementState.PLACING -> {
+                    viewModel.addWaypoint(latlng.longitude, latlng.latitude)
+                    viewModel.vibratePick()
+                }
+                else -> {
+                    viewModel.confirmPlacement(CT.Coord(latlng.longitude, latlng.latitude))
+                    viewModel.vibratePick()
+                }
             }
             true
         }
     }
 
-    // ================ 地图点击监听（非测量、非拾取时传递到旧接口） ================
-    LaunchedEffect(aMap, placeMode, measurementPickMode) {
+    // ================ 地图点击监听（测量模式下放测点，否则传递到旧接口） ================
+    LaunchedEffect(aMap, placeMode, measurementPickMode, measurementState) {
         aMap?.setOnMapClickListener { latlng ->
             when {
                 placeMode                                       -> Unit  // 由 OnMapTouchListener 处理
                 measurementPickMode                             -> Unit  // 由长按确认，单击忽略
+                measurementState == MapViewModel.MeasurementState.PLACING ->
+                    viewModel.addWaypoint(latlng.longitude, latlng.latitude)
                 else                                            -> viewModel.onMapClick(latlng.longitude, latlng.latitude)
             }
             true
@@ -744,7 +753,12 @@ fun MapScreen(
                                     val center = aMap?.cameraPosition?.target?.let {
                                         CT.Coord(it.longitude, it.latitude)
                                     }
-                                    viewModel.togglePlaceMode(initCoord = center)
+                                    // 测距模式下优先开启测量拾取，而非旗标拾取
+                                    if (isMeasuring && !measurementPickMode) {
+                                        viewModel.toggleMeasurementPickMode(initCoord = center)
+                                    } else {
+                                        viewModel.togglePlaceMode(initCoord = center)
+                                    }
                                 },
                                 onToggleMeasure = {
                                     val center = aMap?.cameraPosition?.target?.let {
