@@ -692,7 +692,10 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** 清除所有旗标 */
-    fun clearAllFlags() { flagStore.deleteAll() }
+    fun clearAllFlags() {
+        flagStore.deleteAll()
+        _pickCounter = 0L
+    }
 
     /** 清除指定类型的旗标 */
     fun clearFlagsByType(type: FlagType) { flagStore.deleteByType(type) }
