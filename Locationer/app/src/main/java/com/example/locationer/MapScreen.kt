@@ -712,56 +712,35 @@ fun MapScreen(
                             onClick     = { mapLayer = !mapLayer },
                         )
                     }
-                    // 测量拾取模式：显示 Close 按钮；否则显示 PickModeFab
-                    if (measurementPickMode) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            FloatingActionButton(
-                                onClick = {
+                    // 右上垂直按钮组：拾取（放大镜/关闭）+ 隐藏/显示旗标标签（始终两按钮共存）
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Column(
+                            modifier = Modifier
+                                .align(androidx.compose.ui.Alignment.TopEnd)
+                                .padding(end = 16.dp, top = 16.dp),
+                            horizontalAlignment = androidx.compose.ui.Alignment.End,
+                        ) {
+                            PickModeFab(
+                                placeMode     = placeMode,
+                                measureMode   = measurementPickMode,
+                                onTogglePlace = {
+                                    val center = aMap?.cameraPosition?.target?.let {
+                                        CT.Coord(it.longitude, it.latitude)
+                                    }
+                                    viewModel.togglePlaceMode(initCoord = center)
+                                },
+                                onToggleMeasure = {
                                     val center = aMap?.cameraPosition?.target?.let {
                                         CT.Coord(it.longitude, it.latitude)
                                     }
                                     viewModel.toggleMeasurementPickMode(initCoord = center)
                                 },
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .align(androidx.compose.ui.Alignment.TopEnd),
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor   = MaterialTheme.colorScheme.onPrimary,
-                            ) {
-                                Icon(Icons.Filled.Close, contentDescription = "退出拾取测点")
-                            }
-                        }
-                    } else {
-                        // 右上垂直按钮组：拾取放大镜（上） + 隐藏/显示旗标标签（下）
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Column(
-                                modifier = Modifier
-                                    .align(androidx.compose.ui.Alignment.TopEnd)
-                                    .padding(end = 16.dp, top = 16.dp),
-                                horizontalAlignment = androidx.compose.ui.Alignment.End,
-                            ) {
-                                PickModeFab(
-                                    placeMode = placeMode,
-                                    onToggle  = {
-                                        if (isMeasuring) {
-                                            val center = aMap?.cameraPosition?.target?.let {
-                                                CT.Coord(it.longitude, it.latitude)
-                                            }
-                                            viewModel.toggleMeasurementPickMode(initCoord = center)
-                                        } else {
-                                            val center = aMap?.cameraPosition?.target?.let {
-                                                CT.Coord(it.longitude, it.latitude)
-                                            }
-                                            viewModel.togglePlaceMode(initCoord = center)
-                                        }
-                                    },
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                VisibilityToggleFab(
-                                    visible = showPickedFlagLabels,
-                                    onClick = { viewModel.toggleShowPickedFlagLabels() },
-                                )
-                            }
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            VisibilityToggleFab(
+                                visible = showPickedFlagLabels,
+                                onClick = { viewModel.toggleShowPickedFlagLabels() },
+                            )
                         }
                     }
                     if (isMeasuring && canCalculate) {
@@ -1217,15 +1196,25 @@ private fun VisibilityToggleFab(visible: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PickModeFab(placeMode: Boolean, onToggle: () -> Unit) {
+private fun PickModeFab(
+    placeMode     : Boolean,
+    measureMode   : Boolean,
+    onTogglePlace : () -> Unit,
+    onToggleMeasure: () -> Unit,
+) {
+    val active  = placeMode || measureMode
+    val isError = active
     FloatingActionButton(
-        onClick = onToggle,
+        onClick = {
+            if (measureMode) onToggleMeasure()
+            else onTogglePlace()
+        },
         modifier = Modifier.size(48.dp),
-        containerColor = if (placeMode) MaterialTheme.colorScheme.error
+        containerColor = if (isError) MaterialTheme.colorScheme.error
                          else MaterialTheme.colorScheme.primary,
         contentColor   = MaterialTheme.colorScheme.onPrimary,
     ) {
-        if (placeMode)
+        if (active)
             Icon(Icons.Filled.Close, contentDescription = "退出拾取")
         else
             Icon(Icons.Filled.Search, contentDescription = "拾取坐标")
