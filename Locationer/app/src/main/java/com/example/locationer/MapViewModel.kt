@@ -159,6 +159,10 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _latText  = MutableStateFlow(loadPref("latText", ""))
     val latText: StateFlow<String> = _latText.asStateFlow()
 
+    /** 记录每次剪贴板内容的快照，用于 LaunchedEffect 检测真正的粘贴操作 */
+    private val _pasteBuffer = MutableStateFlow("")
+    val pasteBuffer: StateFlow<String> = _pasteBuffer.asStateFlow()
+
     private val _coordType = MutableStateFlow(
         runCatching { CoordType.valueOf(loadPref("coordType", "GCJ02")) }.getOrDefault(CoordType.GCJ02)
     )
@@ -1046,6 +1050,24 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         savePref("coordType", t.name)
     }
     fun messageShown()            { _message.value = null }
+
+    /** 更新剪贴板缓存，供 UI 层在 LaunchedEffect 中检测粘贴时机 */
+    fun updatePasteBuffer(text: String) { _pasteBuffer.value = text }
+
+    /** 通知 UI 显示坐标粘贴拆分成功提示 */
+    fun showPasteSplitTip(lon: Double, lat: Double) {
+        _message.value = UiMessage("已拆分填入：经度 %.6f  纬度 %.6f".format(lon, lat))
+    }
+
+    /** 通知 UI 显示坐标粘贴格式无法识别提示 */
+    fun showPasteParseFailTip() {
+        _message.value = UiMessage("粘贴格式无法识别，请手动输入")
+    }
+
+    /** 通知 UI 显示单值粘贴成功提示 */
+    fun showPasteSingleTip() {
+        _message.value = UiMessage("已粘贴")
+    }
 
     override fun onCleared() {
         super.onCleared()
