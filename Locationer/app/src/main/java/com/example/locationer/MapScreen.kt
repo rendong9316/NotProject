@@ -56,9 +56,6 @@ import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -91,7 +88,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
@@ -290,7 +286,6 @@ fun MapScreen(
     val searchResults   by viewModel.searchResults.collectAsState()
     val searching       by viewModel.searching.collectAsState()
     val showPickedFlagLabels by viewModel.showPickedFlagLabels.collectAsState()
-    val pasteBuffer          by viewModel.pasteBuffer.collectAsState()
     // ================ 测量相关状态 ================
     val measurementMode       by viewModel.measurementMode.collectAsState()
     val measurementState      by viewModel.measurementState.collectAsState()
@@ -318,20 +313,6 @@ fun MapScreen(
     // 测量拾取模式开启时自动收起面板，避免遮挡地图触摸
     LaunchedEffect(measurementPickMode) {
         if (measurementPickMode) panelExpanded = false
-    }
-
-    // ---- 剪贴板监听：检测到粘贴时更新 viewModel.pasteBuffer 触发 LaunchedEffect ----
-    var lastClipText by remember { mutableStateOf("") }
-    LaunchedEffect(key1 = Unit) {
-        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        while (true) {
-            delay(150L)
-            val current = cm?.primaryClip?.getItemAt(0)?.text?.toString()?.trim().orEmpty()
-            if (current != lastClipText && current.isNotEmpty()) {
-                lastClipText = current
-                viewModel.updatePasteBuffer(current)
-            }
-        }
     }
 
     // ================ 地图图层切换 + 深色模式适配 ================
@@ -548,6 +529,20 @@ fun MapScreen(
         // 保持当前相机高度，不主动改变缩放级别；首次启动无持久化值时使用默认 17f
         val currentZoom = amap.cameraPosition?.zoom ?: viewModel.cameraZoom.value ?: 17f
         amap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, currentZoom))
+    }
+
+    // ================ 历史测量回看镜头：移动到所有节点的质心，保持当前缩放级别 ================
+    LaunchedEffect(mapReady, isReplaying, replayRecord) {
+        if (!mapReady || !isReplaying) return@LaunchedEffect
+        val points = replayRecord?.waypoints.orEmpty()
+        if (points.isEmpty()) return@LaunchedEffect
+        val amap = aMap ?: return@LaunchedEffect
+        val center = LatLng(
+            points.map { it.lat }.average(),
+            points.map { it.lon }.average(),
+        )
+        val currentZoom = amap.cameraPosition?.zoom ?: viewModel.cameraZoom.value ?: 17f
+        amap.animateCamera(CameraUpdateFactory.newLatLngZoom(center, currentZoom))
     }
 
     // ================ 准星标记（拾取模式 / 测量拾取模式中） ================
@@ -857,10 +852,7 @@ fun MapScreen(
                     coordType      = coordType,
                     onLonChange    = { viewModel.updateLonText(it) },
                     onLatChange    = { viewModel.updateLatText(it) },
-                    pasteBuffer    = pasteBuffer,
                     onPasteCoordParsed = { lon, lat -> viewModel.showPasteSplitTip(lon, lat) },
-                    onPasteParseFailed = { viewModel.showPasteParseFailTip() },
-                    onPasteSingleValue = { viewModel.showPasteSingleTip() },
                     onCoordType    = { viewModel.setCoordType(it) },
                     onJumpTo       = { viewModel.jumpTo() },
                     address        = address,
@@ -905,9 +897,6 @@ private fun UnifiedPanel(
     onLonChange    : (String) -> Unit,
     onLatChange    : (String) -> Unit,
     onPasteCoordParsed: (lon: Double, lat: Double) -> Unit = { _, _ -> },
-    onPasteParseFailed: () -> Unit = {},
-    onPasteSingleValue: () -> Unit = {},
-    pasteBuffer        : String = "",
     onCoordType    : (CoordType) -> Unit,
     onJumpTo       : () -> Unit,
     jumpTarget     : JumpTarget?,
@@ -921,31 +910,6 @@ private fun UnifiedPanel(
     onSelectResult : (SearchResult) -> Unit,
 ) {
     val _jt = jumpTarget
-    // 追踪哪个输入框获得焦点（经度框=0, 纬度框=1）
-    var focusedBox by remember { mutableStateOf(0) }
-
-    // ---- 粘贴检测 LaunchedEffect ----
-    // 思路：剪贴板内容与当前文本相等且比上次不同 → 说明用户刚执行了粘贴操作
-    //       正常打字时剪贴板内容与新文本不一致，不会进入 tryHandleCoordPaste
-    val prevClip = remember { mutableStateOf("") }
-    LaunchedEffect(pasteBuffer, lonText, latText) {
-        val clip = pasteBuffer
-        if (clip == prevClip.value) return@LaunchedEffect
-        prevClip.value = clip
-        val t = clip.trim()
-        if (t.isEmpty()) return@LaunchedEffect
-        if (!canBeCoordPaste(t) && !isSingleCoordValue(t)) return@LaunchedEffect
-        tryHandleCoordPaste(
-            text = t,
-            focusedBox = focusedBox,
-            onLonChange = onLonChange,
-            onLatChange = onLatChange,
-            onParsed = onPasteCoordParsed,
-            onParseFail = onPasteParseFailed,
-            onSingle = onPasteSingleValue,
-        )
-    }
-
     Card(
         modifier = Modifier
             .fillMaxWidth(),
@@ -1085,17 +1049,29 @@ private fun UnifiedPanel(
                     ) {}
                     Spacer(Modifier.height(2.dp))
 
-                    // 经纬度输入
+                    // 经纬度输入（本地 TextFieldValue 状态保留光标位置）
+                    var lonTFValue by remember { mutableStateOf(TextFieldValue(lonText)) }
+                    var latTFValue by remember { mutableStateOf(TextFieldValue(latText)) }
+                    LaunchedEffect(lonText) { lonTFValue = TextFieldValue(lonText, lonTFValue.selection) }
+                    LaunchedEffect(latText) { latTFValue = TextFieldValue(latText, latTFValue.selection) }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         OutlinedTextField(
-                            value        = TextFieldValue(lonText),
-                            onValueChange = { newV: TextFieldValue -> onLonChange(newV.text.toString()) },
+                            value        = lonTFValue,
+                            onValueChange = { newV: TextFieldValue ->
+                                lonTFValue = newV
+                                handleCoordinateInput(
+                                    text = newV.text,
+                                    onCurrentChange = onLonChange,
+                                    onLonChange = onLonChange,
+                                    onLatChange = onLatChange,
+                                    onParsed = onPasteCoordParsed,
+                                )
+                            },
                             modifier     = Modifier
-                                .weight(1f)
-                                .onFocusChanged { focusState -> if (focusState.isFocused) focusedBox = 0 },
+                                .weight(1f),
                             label        = { FText("经度", 11) },
                             placeholder  = { FText("116.397428", 13) },
                             singleLine   = true,
@@ -1109,11 +1085,19 @@ private fun UnifiedPanel(
                             ),
                         )
                         OutlinedTextField(
-                            value        = TextFieldValue(latText),
-                            onValueChange = { newV: TextFieldValue -> onLatChange(newV.text.toString()) },
+                            value        = latTFValue,
+                            onValueChange = { newV: TextFieldValue ->
+                                latTFValue = newV
+                                handleCoordinateInput(
+                                    text = newV.text,
+                                    onCurrentChange = onLatChange,
+                                    onLonChange = onLonChange,
+                                    onLatChange = onLatChange,
+                                    onParsed = onPasteCoordParsed,
+                                )
+                            },
                             modifier     = Modifier
-                                .weight(1f)
-                                .onFocusChanged { focusState -> if (focusState.isFocused) focusedBox = 1 },
+                                .weight(1f),
                             label        = { FText("纬度", 11) },
                             placeholder  = { FText("39.90923", 13) },
                             singleLine   = true,
@@ -1301,62 +1285,29 @@ fun CoordRadio(label    : String, selected : Boolean, onClick  : () -> Unit) {
 // ============================================================================
 
 /**
- * 快速预判：文本是否可能是坐标粘贴（含分隔符且不太长）。
- * 用于 onValueChange 中过滤普通打字输入，只处理粘贴行为。
+ * 在原生输入框已经接收到文本后识别完整坐标。
+ * 普通输入和单值粘贴继续交给原有输入回调；只有完整坐标才拆分到两个输入框。
  */
-private fun canBeCoordPaste(text: String): Boolean {
-    return text.any { it in "，；; \t\n" } && text.length < 100
-}
-
-/**
- * 判断是否为单个坐标数值（纯数字 + 可选小数点 + 可选正负号）。
- * 用于区分"单值粘贴"和"纯手敲输入"。
- */
-private fun isSingleCoordValue(text: String): Boolean {
-    if (text.isEmpty()) return false
-    val pattern = Regex("^[-+]?\\d+(\\.\\d+)?$")
-    return pattern.matches(text.trim())
-}
-
-/**
- * 处理坐标粘贴：
- * - 非坐标文本 → 静默拦截（不写入）
- * - 单值坐标 → 填入当前焦点框 + 调用 onSingle
- * - 带分隔符的双值 → 拆分填入两框 + 调用 onParsed
- * - 带分隔符但解析失败 → 调用 onParseFail
- */
-private fun tryHandleCoordPaste(
+private fun handleCoordinateInput(
     text: String,
-    focusedBox: Int,
+    onCurrentChange: (String) -> Unit,
     onLonChange: (String) -> Unit,
     onLatChange: (String) -> Unit,
     onParsed: (Double, Double) -> Unit,
-    onParseFail: () -> Unit,
-    onSingle: () -> Unit,
 ) {
-    if (text.isBlank()) return
-    val t = text.trim()
-
-    if (canBeCoordPaste(t)) {
-        // 含分隔符 → 尝试拆分填入两框
-        val result = parseCoordFromPaste(t)
-        if (result != null) {
-            onLonChange("%.6f".format(result.lon))
-            onLatChange("%.6f".format(result.lat))
-            onParsed(result.lon, result.lat)
-            return
-        } else {
-            onParseFail()
-            return
-        }
-    } else if (isSingleCoordValue(t)) {
-        // 单个数值 → 填入当前焦点框
-        if (focusedBox == 0) onLonChange(t) else onLatChange(t)
-        onSingle()
+    val result = if (hasCoordinatePairSeparator(text)) parseCoordFromPaste(text) else null
+    if (result == null) {
+        onCurrentChange(text)
         return
     }
-    // 非坐标文本 → 静默拦截，不写入任何框
+    onLonChange("%.6f".format(result.lon))
+    onLatChange("%.6f".format(result.lat))
+    onParsed(result.lon, result.lat)
 }
+
+private fun hasCoordinatePairSeparator(text: String): Boolean =
+    text.any { it == ',' || it == '，' || it == ';' || it == '；' || it == '\t' || it == '\n' || it == ' ' } ||
+        text.contains(":") || text.contains("：")
 
 /**
  * 从粘贴文本中解析出 (lon, lat)。
@@ -1365,34 +1316,44 @@ private fun tryHandleCoordPaste(
  * 解析成功返回 Coord，失败返回 null。
  */
 internal fun parseCoordFromPaste(raw: String): CT.Coord? {
-    // 1. 规范化分隔符
+    // 支持逗号、中文逗号、分号、空格、换行，以及“经度: ... 纬度: ...”等标签格式。
     val normalized = raw.trim()
-        .replace("，", ",")
-        .replace("；", ",")
-        .replace(";", ",")
-        .replace("\t", ",")
-        .replace("\n", ",")
-    val tokens = normalized.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-    if (tokens.size < 2) return null
+        .replace('，', ',')
+        .replace('；', ',')
+        .replace(';', ',')
+        .replace('\t', ',')
+        .replace('\n', ',')
+        .replace('\r', ',')
+    val withoutCrsLabel = normalized.replace(
+        Regex("(?i)(?:gcj|wgs)\\s*[-_]?\\s*\\d+"),
+        "",
+    )
+    val numberPattern = Regex("[-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)")
+    val values = numberPattern.findAll(withoutCrsLabel)
+        .mapNotNull { it.value.toDoubleOrNull() }
+        .take(2)
+        .toList()
+    if (values.size < 2) return null
 
-    // 2. 尝试提取纯数字（去掉可能的 ° 等后缀）
-    fun extractDouble(s: String): Double? = s.toDoubleOrNull()
-        ?: s.removeSuffix("°").toDoubleOrNull()
+    val d0 = values[0]
+    val d1 = values[1]
 
-    val d0 = extractDouble(tokens[0]) ?: return null
-    val d1 = extractDouble(tokens[1]) ?: return null
-
-    // 3. 关键字识别前缀（"经度:" "lat:" 等）
-    val lonKeywords = setOf("经度", "lon", "lng", "x")
-    val latKeywords = setOf("纬度", "lat", "y")
-    val aHasLon = tokens[0].lowercase().any { kw -> lonKeywords.any { kw in it } }
-    val aHasLat = tokens[0].lowercase().any { kw -> latKeywords.any { kw in it } }
-    val bHasLon = tokens[1].lowercase().any { kw -> lonKeywords.any { kw in it } }
-    val bHasLat = tokens[1].lowercase().any { kw -> latKeywords.any { kw in it } }
+    // 关键字识别：关键词所在文本片段的数字顺序对应经纬度顺序。
+    val lower = normalized.lowercase()
+    val lonIndex = listOf("经度", "longitude", "lon", "lng", "x")
+        .map { keyword -> lower.indexOf(keyword) }
+        .filter { it >= 0 }
+        .minOrNull() ?: -1
+    val latIndex = listOf("纬度", "latitude", "lat", "y")
+        .map { keyword -> lower.indexOf(keyword) }
+        .filter { it >= 0 }
+        .minOrNull() ?: -1
 
     val (lon, lat) = when {
-        (aHasLon || bHasLat) && !aHasLat && !bHasLon -> d0 to d1
-        (bHasLon || aHasLat) && !bHasLat && !aHasLon -> d1 to d0
+        lonIndex >= 0 && latIndex >= 0 && lonIndex < latIndex -> d0 to d1
+        lonIndex >= 0 && latIndex >= 0 && latIndex < lonIndex -> d1 to d0
+        lonIndex >= 0 -> d0 to d1
+        latIndex >= 0 -> d1 to d0
         else -> {
             // 范围启发式：0~180 是经度，0~90 是纬度
             val abs0 = kotlin.math.abs(d0)

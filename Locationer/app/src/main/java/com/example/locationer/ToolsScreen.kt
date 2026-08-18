@@ -72,9 +72,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -752,6 +756,13 @@ private fun MeasurementCard(
     val measurementState by mapViewModel.measurementState.collectAsState()
     val isMeasuring = measurementState == MapViewModel.MeasurementState.PLACING
     val isComplete = measurementState == MapViewModel.MeasurementState.COMPLETED
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var saveLabel by remember { mutableStateOf(TextFieldValue()) }
+    val saveLabelFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(showSaveDialog) {
+        if (showSaveDialog) saveLabelFocusRequester.requestFocus()
+    }
     // 重新开始测量时清除"已手动收起"标记，恢复自动展开行为
     LaunchedEffect(isMeasuring) { if (isMeasuring) userCollapsed = false }
 
@@ -863,12 +874,12 @@ private fun MeasurementCard(
             // 保存到历史按钮
             Button(
                 onClick = {
-                    val saved = mapViewModel.saveMeasurementToHistory()
-                    Toast.makeText(
-                        cardContext,
-                        if (saved) "已保存到历史测量" else "该测量已存在于历史记录中",
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    val defaultLabel = formatMeasurementTimestamp()
+                    saveLabel = TextFieldValue(
+                        text = defaultLabel,
+                        selection = TextRange(0, defaultLabel.length),
+                    )
+                    showSaveDialog = true
                 },
                 enabled = waypoints.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(
@@ -884,6 +895,40 @@ private fun MeasurementCard(
             }
         }
         }
+    }
+
+    if (showSaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showSaveDialog = false },
+            title = { Text("命名测量记录") },
+            text = {
+                OutlinedTextField(
+                    value = saveLabel,
+                    onValueChange = { saveLabel = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(saveLabelFocusRequester),
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val saved = mapViewModel.saveMeasurementToHistory(saveLabel.text.trim())
+                        showSaveDialog = false
+                        Toast.makeText(
+                            cardContext,
+                            if (saved) "已保存到历史测量" else "该测量已存在于历史记录中",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    },
+                    enabled = saveLabel.text.trim().isNotEmpty(),
+                ) { Text("确定") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSaveDialog = false }) { Text("取消") }
+            },
+        )
     }
 }
 

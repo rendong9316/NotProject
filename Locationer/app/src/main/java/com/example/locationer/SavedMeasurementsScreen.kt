@@ -84,6 +84,7 @@ fun SavedMeasurementsScreen(
     var editingRecord       by remember { mutableStateOf<SavedMeasurementRecord?>(null) }
     var deleteTarget        by remember { mutableStateOf<SavedMeasurementRecord?>(null) }
     var showClearDialog             by remember { mutableStateOf(false) }
+    var showClearBackupDialog       by remember { mutableStateOf(false) }
     var offlineBackupCount   by remember { mutableStateOf(0) }
     var showRestoreDialog       by remember { mutableStateOf(false) }
     var backupChecked          by remember { mutableStateOf(false) }
@@ -321,11 +322,37 @@ fun SavedMeasurementsScreen(
             text = { Text("确定清空全部 ${records.size} 条测量记录吗？公共目录备份将暂时保留。") },
             confirmButton = {
                 TextButton(onClick = {
+                    val hadBackup = savedStore.hasAutoSaved()
                     savedStore.clearAll()
                     showClearDialog = false
+                    showClearBackupDialog = hadBackup
                 }) { Text("清空", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { showClearDialog = false }) { Text("取消") } },
+        )
+    }
+
+    // ── 清空后同时删除备份确认 ──
+    if (showClearBackupDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearBackupDialog = false },
+            icon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+            title = { Text("同时删除备份文件？") },
+            text = { Text("删除后将无法通过备份恢复。是否删除系统下载目录中的备份？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val deleted = savedStore.deleteBackup()
+                    showClearBackupDialog = false
+                    Toast.makeText(
+                        context,
+                        if (deleted) "备份文件已删除" else "备份删除失败",
+                        if (deleted) Toast.LENGTH_SHORT else Toast.LENGTH_LONG,
+                    ).show()
+                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearBackupDialog = false }) { Text("保留备份") }
+            },
         )
     }
 }

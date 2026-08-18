@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * 历史测量记录的数据模型。
@@ -54,12 +57,19 @@ class SavedMeasurementsStore(private val application: Application) {
         _records.value = parseRecords(prefs.getString(KEY_DATA, "[]").orEmpty())
     }
 
-    /** 持久化：同时写 SharedPreferences 和公共下载目录备份 */
+    /** 持久化到内存 + SharedPreferences + 公共备份文件（用于数据变更操作） */
     private fun save(records: List<SavedMeasurementRecord>) {
         val json = buildJsonArray(records).toString()
         _records.value = records
         prefs.edit().putString(KEY_DATA, json).apply()
         FavoriteFileStore(application).saveToPublic(json, AUTO_BACKUP_FILE_NAME)
+    }
+
+    /** 仅更新内存和 SharedPreferences，不触碰公共备份（用于 clearAll / updateExpanded） */
+    private fun saveDataOnly(records: List<SavedMeasurementRecord>) {
+        val json = buildJsonArray(records).toString()
+        _records.value = records
+        prefs.edit().putString(KEY_DATA, json).apply()
     }
 
     /** 添加一条测量记录；同名且坐标重复则忽略 */
@@ -72,7 +82,7 @@ class SavedMeasurementsStore(private val application: Application) {
     ): Boolean {
         val newRecord = SavedMeasurementRecord(
             id        = nextId(),
-            label     = label.trim().ifEmpty { "测量 ${System.currentTimeMillis()}" },
+            label     = label.trim().ifEmpty { formatMeasurementTimestamp() },
             mode      = mode,
             waypoints = waypoints.map { gcj ->
                 val wgs = CT.gcj02ToWgs84(gcj, precision = CT.HIGH_PRECISION)
@@ -94,8 +104,9 @@ class SavedMeasurementsStore(private val application: Application) {
         save(_records.value.filterNot { it.id == id })
     }
 
+    /** 清空本地数据，保留公共备份文件供手动恢复（与收藏夹行为一致） */
     fun clearAll() {
-        save(emptyList())
+        saveDataOnly(emptyList())
     }
 
     /** 删除公共下载目录中的备份文件 */
@@ -109,7 +120,7 @@ class SavedMeasurementsStore(private val application: Application) {
     }
 
     fun updateExpanded(id: Long, expanded: Boolean) {
-        save(_records.value.map { if (it.id == id) it.copy(isExpanded = expanded) else it })
+        saveDataOnly(_records.value.map { if (it.id == id) it.copy(isExpanded = expanded) else it })
     }
 
     fun exportAll(): String =
@@ -246,3 +257,6 @@ internal fun SavedMeasurementRecord.formatForClipboard(): String {
     if (mode == "AREA") sb.append("  面积 ").append(MapViewModel.formatArea(totalArea))
     return sb.toString().trimEnd()
 }
+
+internal fun formatMeasurementTimestamp(timestamp: Long = System.currentTimeMillis()): String =
+    SimpleDateFormat("yyyy年MM月dd日HH时mm分ss秒", Locale.CHINA).format(Date(timestamp))
