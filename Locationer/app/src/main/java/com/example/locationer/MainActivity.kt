@@ -178,6 +178,7 @@ fun LocationerApp(
             MapViewModel.NavigationTarget.MAP             -> selectedTab = 0
             MapViewModel.NavigationTarget.TOOLS_MEASUREMENT -> selectedTab = 1
             MapViewModel.NavigationTarget.MY_FAVORITES    -> selectedTab = 2
+            MapViewModel.NavigationTarget.MEASUREMENT_HISTORY -> selectedTab = 2
             MapViewModel.NavigationTarget.NONE            -> Unit
         }
         viewModel.consumedNavEvent()

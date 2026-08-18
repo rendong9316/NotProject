@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
@@ -857,6 +858,29 @@ private fun MeasurementCard(
                             modifier = Modifier.weight(1f))
                     }
                 }
+            }
+
+            // 保存到历史按钮
+            Button(
+                onClick = {
+                    val saved = mapViewModel.saveMeasurementToHistory()
+                    Toast.makeText(
+                        cardContext,
+                        if (saved) "已保存到历史测量" else "该测量已存在于历史记录中",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                },
+                enabled = waypoints.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                Icon(Icons.Filled.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("保存到历史", fontSize = 14.sp)
             }
         }
         }

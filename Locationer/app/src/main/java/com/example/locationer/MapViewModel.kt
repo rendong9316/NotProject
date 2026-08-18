@@ -99,7 +99,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    enum class NavigationTarget { NONE, MAP, TOOLS_MEASUREMENT, MY_FAVORITES }
+    enum class NavigationTarget { NONE, MAP, TOOLS_MEASUREMENT, MY_FAVORITES, MEASUREMENT_HISTORY }
     data class NavigationEvent(val id: Long = 0L, val target: NavigationTarget = NavigationTarget.NONE)
 
     private val _currentGcj   = MutableStateFlow<CT.Coord?>(null)
@@ -212,6 +212,77 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             _cameraZoom.value = zoom
             savePref("cameraZoom", zoom.toString())
         }
+    }
+
+    // ================ 历史测量回放状态 ================
+    data class ReplayRecord(
+        val label     : String,
+        val mode      : String,
+        val waypoints : List<CT.Coord>,
+        val totalDist : Double,
+        val totalArea : Double,
+    )
+    private val _replayRecord = MutableStateFlow<ReplayRecord?>(null)
+    val replayRecord: StateFlow<ReplayRecord?> = _replayRecord.asStateFlow()
+
+    private val _isReplaying = MutableStateFlow(false)
+    val isReplaying: StateFlow<Boolean> = _isReplaying.asStateFlow()
+
+    /** 历史测量保存 Store */
+    val savedMeasurementsStore = SavedMeasurementsStore(getApplication())
+
+    /** 从历史测量开始回放；同时清除当前正在进行的测量 */
+    fun startReplay(record: SavedMeasurementRecord) {
+        _measurementState.value = MeasurementState.IDLE
+        _measurementWaypoints.value = emptyList()
+        _measurementSegments.value = emptyList()
+        _measurementTotalDist.value = 0.0
+        _measurementTotalArea.value = 0.0
+        _measurementPickMode.value = false
+        _placeMode.value = false
+        _replayRecord.value = ReplayRecord(
+            label     = record.label,
+            mode      = record.mode,
+            waypoints = record.waypoints.map { CT.Coord(it.gcjLon, it.gcjLat) },
+            totalDist = record.totalDist,
+            totalArea = record.totalArea,
+        )
+        _isReplaying.value = true
+    }
+
+    fun stopReplay() {
+        _replayRecord.value = null
+        _isReplaying.value = false
+        // 回放结束：确保拖拽手势恢复（防止手势状态残留）
+        _measurementPickMode.value = false
+        _placeMode.value = false
+    }
+
+    /** 开始新测量前清除回放状态，避免新旧数据混杂 */
+    fun clearReplayBeforeNewMeasurement() {
+        _replayRecord.value = null
+        _isReplaying.value = false
+    }
+
+    /** 将当前已完成测量的结果保存到历史 */
+    fun saveMeasurementToHistory(label: String = ""): Boolean {
+        if (_measurementState.value != MeasurementState.COMPLETED) return false
+        if (_measurementWaypoints.value.isEmpty()) return false
+        val gcjWaypoints = _measurementWaypoints.value.map { it.gcj }
+        return savedMeasurementsStore.add(
+            label = label,
+            mode = _measurementMode.value.name,
+            waypoints = gcjWaypoints,
+            totalDist = _measurementTotalDist.value,
+            totalArea = _measurementTotalArea.value,
+        )
+    }
+
+    fun requestSwitchToMeasurementHistory() {
+        _navigationEvent.value = NavigationEvent(
+            id = _navigationEvent.value.id + 1,
+            target = NavigationTarget.MEASUREMENT_HISTORY,
+        )
     }
 
     // ================ 拾取模式开关 ================
@@ -873,6 +944,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     fun triggerCollapsePanel() { _collapsePanelEvent.value++ }
 
     fun startMeasurement(mode: MeasurementMode) {
+        clearReplayBeforeNewMeasurement()
         _placeMode.value = false
         _reticleCoord.value = null
         _measurementPickMode.value = false

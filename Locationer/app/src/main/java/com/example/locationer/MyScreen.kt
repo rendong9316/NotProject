@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,19 +28,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
-/** "我的"页面，收藏夹和设置子页支持左右滑动平滑切换，含帮助文档入口。 */
+/** "我的"页面：收藏夹 / 历史测量 / 设置，三页滑动切换。 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyScreen(
-    mapViewModel: MapViewModel,
-    favoritesViewModel: FavoritesViewModel,
-    currentStyle: FlagStyle,
-    onStyleChange: (FlagStyle) -> Unit,
-    isActive: Boolean = true,
-    pendingRestoreUri: android.net.Uri? = null,
+    mapViewModel       : MapViewModel,
+    favoritesViewModel : FavoritesViewModel,
+    currentStyle       : FlagStyle,
+    onStyleChange      : (FlagStyle) -> Unit,
+    isActive           : Boolean = true,
+    pendingRestoreUri  : android.net.Uri? = null,
     onRestoreUriHandled: () -> Unit = {},
 ) {
-    val context = LocalContext.current
+    val context          = LocalContext.current
     val initialTab = remember {
         context.getSharedPreferences("my_tab_pref", Context.MODE_PRIVATE)
             .getInt("selected_my_tab", 0)
@@ -48,7 +49,7 @@ fun MyScreen(
     val pagerState = rememberPagerState(
         initialPage = initialTab,
         initialPageOffsetFraction = 0f,
-    ) { 2 }
+    ) { 3 }
 
     LaunchedEffect(pagerState.currentPage) {
         context.getSharedPreferences("my_tab_pref", Context.MODE_PRIVATE)
@@ -70,6 +71,9 @@ fun MyScreen(
     // 帮助文档可见性
     var showHelp by remember { mutableStateOf(false) }
 
+    // 历史测量 Store：直接从 viewModel 获取，避免新建独立实例导致保存后不更新
+    val savedStore = mapViewModel.savedMeasurementsStore
+
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         TabRow(
             selectedTabIndex = pagerState.currentPage,
@@ -85,6 +89,12 @@ fun MyScreen(
             Tab(
                 selected = pagerState.currentPage == 1,
                 onClick = { tapTarget = 1 },
+                text = { Text("历史测量") },
+                icon = { Icon(Icons.Filled.Straighten, contentDescription = null) },
+            )
+            Tab(
+                selected = pagerState.currentPage == 2,
+                onClick = { tapTarget = 2 },
                 text = { Text("设置") },
                 icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
             )
@@ -103,7 +113,17 @@ fun MyScreen(
                         isActive = isActive && pagerState.currentPage == 0,
                         onRestoreUriHandled = onRestoreUriHandled,
                     )
-                    1 -> SettingsScreen(
+                    1 -> SavedMeasurementsScreen(
+                        mapViewModel       = mapViewModel,
+                        savedStore         = savedStore,
+                        pendingRestoreUri  = pendingRestoreUri,
+                        isActive           = isActive && pagerState.currentPage == 1,
+                        onRestoreUriHandled= {
+                            onRestoreUriHandled()
+                            // 通知 ViewModel 清除 URI，防止重复消费
+                        },
+                    )
+                    2 -> SettingsScreen(
                         currentStyle  = currentStyle,
                         onStyleChange = onStyleChange,
                         mapViewModel  = mapViewModel,

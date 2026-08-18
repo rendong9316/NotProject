@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Search
@@ -296,6 +297,8 @@ fun MapScreen(
     val measurementPickMode   by viewModel.measurementPickMode.collectAsState()
     val waypoints             by viewModel.measurementWaypoints.collectAsState()
     val collapsePanelEvent by viewModel.collapsePanelEvent.collectAsState()
+    val isReplaying        by viewModel.isReplaying.collectAsState()
+    val replayRecord       by viewModel.replayRecord.collectAsState()
     val isMeasuring = measurementState == MapViewModel.MeasurementState.PLACING
     val canCalculate = isMeasurementReady(measurementMode, waypoints.size)
 
@@ -364,6 +367,8 @@ fun MapScreen(
     var reticleOffset      by remember { mutableStateOf<Pair<Float, Float>?>(null) }
     // 测量拾取：手指与准星的屏幕像素偏移（ACTION_DOWN 时记录，拖动时保持固定）
     var measurePickDelta   by remember { mutableStateOf<Pair<Float, Float>?>(null) }
+    // 回放模式：是否显示"返回历史"按钮（在 measurement card 收起时不可见）
+    var showReturnBtn      by remember { mutableStateOf(false) }
 
     // ================ 地图手势：全局禁用旋转；平移在拾取/测量拾取模式下锁定 ================
     LaunchedEffect(aMap) {
@@ -382,13 +387,13 @@ fun MapScreen(
             }
         })
     }
-    LaunchedEffect(placeMode, measurementPickMode) {
-        aMap?.setMapCustomEnable(placeMode || measurementPickMode)
+    LaunchedEffect(placeMode, measurementPickMode, isReplaying) {
+        aMap?.setMapCustomEnable(placeMode || measurementPickMode || isReplaying)
         aMap?.uiSettings?.setScrollGesturesEnabled(!(placeMode || measurementPickMode))
     }
 
-    // ================ 触摸监听：支持普通拾取和测量拾取双模式 ================
-    LaunchedEffect(placeMode, measurementPickMode, aMap) {
+    // ================ 触摸监听：支持普通拾取和测量拾取双模式（回放模式不拦截触摸） ================
+    LaunchedEffect(placeMode, measurementPickMode, isReplaying, aMap) {
         if (aMap == null) return@LaunchedEffect
         val active = placeMode || measurementPickMode
         if (!active) {
@@ -459,11 +464,12 @@ fun MapScreen(
         }
     }
 
-    // ================ 长按地图：测量模式下放测点，否则放普通旗标 ================
-    LaunchedEffect(aMap, placeMode, measurementPickMode, measurementState) {
+    // ================ 长按地图：测量模式下放测点，回放模式禁止操作，否则放普通旗标 ================
+    LaunchedEffect(aMap, placeMode, measurementPickMode, measurementState, isReplaying) {
         aMap?.setOnMapLongClickListener { latlng ->
             when {
-                placeMode || measurementPickMode -> Unit  // 拾取模式由 OnMapTouchListener 处理
+                isReplaying                                  -> Unit
+                placeMode || measurementPickMode             -> Unit  // 拾取模式由 OnMapTouchListener 处理
                 measurementState == MapViewModel.MeasurementState.PLACING -> {
                     viewModel.addWaypoint(latlng.longitude, latlng.latitude)
                     viewModel.vibratePick()
@@ -477,10 +483,11 @@ fun MapScreen(
         }
     }
 
-    // ================ 地图点击监听（测量模式下放测点，否则传递到旧接口） ================
-    LaunchedEffect(aMap, placeMode, measurementPickMode, measurementState) {
+    // ================ 地图点击监听（回放模式禁止操作） ================
+    LaunchedEffect(aMap, placeMode, measurementPickMode, measurementState, isReplaying) {
         aMap?.setOnMapClickListener { latlng ->
             when {
+                isReplaying                                    -> Unit
                 placeMode                                       -> Unit  // 由 OnMapTouchListener 处理
                 measurementPickMode                             -> Unit  // 由长按确认，单击忽略
                 measurementState == MapViewModel.MeasurementState.PLACING ->
@@ -601,26 +608,34 @@ fun MapScreen(
         flagMarkers = newMap
     }
 
-    // ================ 测量折线 + Waypoint 标记渲染 ================
+    // ================ 测量折线 + Waypoint 标记渲染（支持正常测量 + 历史回放） ================
     var oldMarkers by remember { mutableStateOf<List<Marker>>(emptyList()) }
     var oldPolyline by remember { mutableStateOf<Polyline?>(null) }
     var oldPolygon by remember { mutableStateOf<Polygon?>(null) }
-    LaunchedEffect(waypoints, measurementMode, measurementPickMode, mapReady, flagStyle) {
+    LaunchedEffect(waypoints, measurementMode, measurementPickMode, mapReady, flagStyle, replayRecord, isReplaying) {
         if (!mapReady) return@LaunchedEffect
         val amap = aMap ?: return@LaunchedEffect
         // 清除旧对象
         oldMarkers.forEach { it.remove() }
         oldPolyline?.remove()
         oldPolygon?.remove()
-        if (waypoints.isEmpty()) {
+
+        // 优先使用回放数据，其次使用当前测量数据
+        val points = if (isReplaying && replayRecord != null) {
+            replayRecord!!.waypoints
+        } else {
+            waypoints.map { it.gcj }
+        }
+        if (points.isEmpty()) {
             oldMarkers = emptyList()
             oldPolyline = null
             oldPolygon = null
             return@LaunchedEffect
         }
-        val positions = waypoints.map { LatLng(it.gcj.lat, it.gcj.lon) }
+        val positions = points.map { LatLng(it.lat, it.lon) }
         val linePositions = if (
-            measurementMode == MapViewModel.MeasurementMode.AREA && positions.size >= 3
+            (measurementMode == MapViewModel.MeasurementMode.AREA ||
+             (isReplaying && replayRecord!!.mode == "AREA")) && positions.size >= 3
         ) positions + positions.first() else positions
         oldPolyline = if (linePositions.size >= 2) {
             amap.addPolyline(PolylineOptions()
@@ -629,7 +644,8 @@ fun MapScreen(
                 .width(6f))
         } else null
         oldPolygon = if (
-            measurementMode == MapViewModel.MeasurementMode.AREA && positions.size >= 3
+            (measurementMode == MapViewModel.MeasurementMode.AREA ||
+             (isReplaying && replayRecord!!.mode == "AREA")) && positions.size >= 3
         ) {
             amap.addPolygon(PolygonOptions()
                 .addAll(positions)
@@ -638,7 +654,7 @@ fun MapScreen(
                 .fillColor(Color.argb(55, 25, 118, 210)))
         } else null
         // 绘制与旗标同款的圆形图标标记（含序号标签）
-        oldMarkers = waypoints.mapIndexed { i, wp ->
+        oldMarkers = points.mapIndexed { i, pt ->
             val label = "${i + 1}"
             val bmp = createFlagBitmap(
                 color      = flagStyle.waypointIconColor.toInt(),
@@ -648,7 +664,7 @@ fun MapScreen(
                 textColor  = flagStyle.flagTextColor.toInt(),
             )
             amap.addMarker(MarkerOptions()
-                .position(LatLng(wp.gcj.lat, wp.gcj.lon))
+                .position(LatLng(pt.lat, pt.lon))
                 .icon(BitmapDescriptorFactory.fromBitmap(bmp.bitmap))
                 .anchor(bmp.anchorX, bmp.anchorY))
         }
@@ -804,6 +820,23 @@ fun MapScreen(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 icon = { Icon(Icons.Filled.Check, contentDescription = null) },
                                 text = { Text("开始计算") },
+                            )
+                        }
+                    }
+                    // 回放模式下显示"返回历史"按钮
+                    if (isReplaying) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            ExtendedFloatingActionButton(
+                                onClick = {
+                                    viewModel.stopReplay()
+                                    viewModel.requestSwitchToMeasurementHistory()
+                                },
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .align(androidx.compose.ui.Alignment.BottomEnd),
+                                containerColor = MaterialTheme.colorScheme.secondary,
+                                icon = { Icon(Icons.Filled.Straighten, contentDescription = null) },
+                                text = { Text("返回历史") },
                             )
                         }
                     }

@@ -34,22 +34,46 @@ class FavoriteFileStore(private val application: Application) {
     }
 
     fun saveToPublic(json: String): Boolean = try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) saveViaMediaStore(json)
-        else writeDirectly(json)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) saveViaMediaStore(json, AUTO_FILE_NAME)
+        else writeDirectly(json, AUTO_FILE_NAME)
+    } catch (_: Exception) {
+        false
+    }
+
+    /** 保存指定文件名的备份（供历史测量等独立数据使用） */
+    fun saveToPublic(json: String, fileName: String): Boolean = try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) saveViaMediaStore(json, fileName)
+        else writeDirectly(json, fileName)
     } catch (_: Exception) {
         false
     }
 
     fun readFromFile(): String? = try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) readViaMediaStore()
-        else readDirectly()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) readViaMediaStore(AUTO_FILE_NAME)
+        else readDirectly(AUTO_FILE_NAME)
+    } catch (_: Exception) {
+        null
+    }
+
+    /** 读取指定文件名的备份 */
+    fun readFromFile(fileName: String): String? = try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) readViaMediaStore(fileName)
+        else readDirectly(fileName)
     } catch (_: Exception) {
         null
     }
 
     fun deleteFromFile(): Boolean = try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) deleteViaMediaStore()
-        else deleteDirectly()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) deleteViaMediaStore(AUTO_FILE_NAME)
+        else deleteDirectly(AUTO_FILE_NAME)
+    } catch (_: Exception) {
+        false
+    }
+
+    /** 删除指定文件名的备份 */
+    fun deleteFromFile(fileName: String): Boolean = try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) deleteViaMediaStore(fileName)
+        else deleteDirectly(fileName)
     } catch (_: Exception) {
         false
     }
@@ -74,9 +98,9 @@ class FavoriteFileStore(private val application: Application) {
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    private fun saveViaMediaStore(json: String): Boolean {
+    private fun saveViaMediaStore(json: String, fileName: String): Boolean {
         val resolver = application.contentResolver
-        val existingUris = findBackupUris(AUTO_FILE_NAME)
+        val existingUris = findBackupUris(fileName)
 
         // Rows left by an earlier installation may be visible but not editable. Try every row.
         existingUris.forEach { uri ->
@@ -91,7 +115,7 @@ class FavoriteFileStore(private val application: Application) {
         val uri = resolver.insert(
             MediaStore.Downloads.EXTERNAL_CONTENT_URI,
             ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, AUTO_FILE_NAME)
+                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
                 put(MediaStore.Downloads.MIME_TYPE, "application/json")
                 put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
                 put(MediaStore.Downloads.IS_PENDING, 1)
@@ -136,9 +160,9 @@ class FavoriteFileStore(private val application: Application) {
     }.getOrDefault(false)
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    private fun readViaMediaStore(): String? {
+    private fun readViaMediaStore(fileName: String): String? {
         val resolver = application.contentResolver
-        val candidates = findBackupUris(AUTO_FILE_NAME) + findBackupUris(FILE_NAME)
+        val candidates = findBackupUris(fileName)
         return candidates.firstNotNullOfOrNull { uri ->
             runCatching {
                 resolver.openInputStream(uri)?.use { input ->
@@ -149,9 +173,9 @@ class FavoriteFileStore(private val application: Application) {
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    private fun deleteViaMediaStore(): Boolean {
+    private fun deleteViaMediaStore(fileName: String): Boolean {
         val resolver = application.contentResolver
-        val candidates = findBackupUris(AUTO_FILE_NAME) + findBackupUris(FILE_NAME)
+        val candidates = findBackupUris(fileName)
         return candidates.all { uri ->
             runCatching { resolver.delete(uri, null, null) >= 0 }.getOrDefault(false)
         }
@@ -193,33 +217,29 @@ class FavoriteFileStore(private val application: Application) {
         }
     }
 
-    private fun writeDirectly(json: String): Boolean {
+    private fun writeDirectly(json: String, fileName: String): Boolean {
         if (!hasLegacyStoragePermission()) return false
         val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         if (!dir.exists() && !dir.mkdirs()) return false
-        FileOutputStream(File(dir, AUTO_FILE_NAME)).use { output ->
+        FileOutputStream(File(dir, fileName)).use { output ->
             output.write(json.toByteArray(StandardCharsets.UTF_8))
         }
         return true
     }
 
-    private fun readDirectly(): String? {
+    private fun readDirectly(fileName: String): String? {
         if (!hasLegacyStoragePermission()) return null
         val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        return listOf(AUTO_FILE_NAME, FILE_NAME).firstNotNullOfOrNull { name ->
-            val file = File(dir, name)
-            if (!file.exists() || file.length() == 0L) null
-            else runCatching { file.readText(StandardCharsets.UTF_8) }.getOrNull()
-        }
+        val file = File(dir, fileName)
+        if (!file.exists() || file.length() == 0L) return null
+        return runCatching { file.readText(StandardCharsets.UTF_8) }.getOrNull()
     }
 
-    private fun deleteDirectly(): Boolean {
+    private fun deleteDirectly(fileName: String): Boolean {
         if (!hasLegacyStoragePermission()) return false
         val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        return listOf(AUTO_FILE_NAME, FILE_NAME).all { name ->
-            val file = File(dir, name)
-            !file.exists() || file.delete()
-        }
+        val file = File(dir, fileName)
+        return !file.exists() || file.delete()
     }
 
     private fun hasLegacyStoragePermission(): Boolean =
