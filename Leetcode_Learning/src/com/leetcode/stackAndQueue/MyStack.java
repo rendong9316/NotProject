@@ -3,6 +3,8 @@ package com.leetcode.stackAndQueue;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
+//自己写的石山代码
+
 public class MyStack {
     private Queue<Integer> queue1;
     private Queue<Integer> queue2;
