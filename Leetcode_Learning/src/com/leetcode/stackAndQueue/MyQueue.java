@@ -33,7 +33,8 @@ public class MyQueue {
         return stackin.isEmpty()&&stackout.isEmpty();
     }
     //自定义颠倒stack中所有元素的 函数
-    public void updown(Deque<Integer> stackin,Deque<Integer> stackout){
+    private void updown(Deque<Integer> stackin,Deque<Integer> stackout){
+        //成员变量一律 private；对外暴露的功能方法 public；内部工具方法 private。
 
         //使用惰性转移策略，可使均摊时间复杂度降到o1
         if(!stackout.isEmpty()){return;}
