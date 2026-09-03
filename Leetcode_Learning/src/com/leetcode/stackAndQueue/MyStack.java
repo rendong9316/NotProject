@@ -3,8 +3,8 @@ package com.leetcode.stackAndQueue;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
-//自己写的石山代码
-
+//自己写的石山代码，需要用到两个队列
+/**
 public class MyStack {
     private Queue<Integer> queue1;
     private Queue<Integer> queue2;
@@ -43,6 +43,47 @@ public class MyStack {
         while(!queue2.isEmpty()){
             queue1.offer(queue2.poll());
         }
+        return result;
+    }
+
+    public boolean empty() {
+        return queue1.isEmpty();
+    }
+}
+**/
+
+//自己尝试只用一个队列实现    也成功了
+public class MyStack {
+    private Queue<Integer> queue1;
+
+
+    public MyStack() {
+        queue1 = new ArrayDeque<>();
+
+    }
+
+    public void push(int x) {
+        queue1.offer(x);
+    }
+
+    public int pop() {
+        int size = queue1.size();
+        while (size>1){
+            queue1.offer(queue1.poll());
+            size--;
+        }
+        return queue1.poll();
+
+    }
+
+    public int top() {
+        int size = queue1.size();
+        while (size>1){
+            queue1.offer(queue1.poll());
+            size--;
+        }
+        int result = queue1.peek();
+        queue1.offer(queue1.poll());
         return result;
     }
 
