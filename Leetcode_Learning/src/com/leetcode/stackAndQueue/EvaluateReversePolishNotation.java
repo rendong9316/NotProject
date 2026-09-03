@@ -11,24 +11,24 @@ public class EvaluateReversePolishNotation {
         int b = 0;
         int c = 0;
         for(String s : tokens){
-            if(s!="+"&&s!="-"&&s!="*"&&s!="/"){
+            if(!s.equals("+")&&!s.equals("-")&&!s.equals("*")&&!s.equals("/")){
                 stack.push(s);
-            } else if (s=="+") {
+            } else if (s.equals("+")) {
                 a = Integer.valueOf(stack.pop());
                 b = Integer.valueOf(stack.pop());
                 c = b+a;
                 stack.push(String.valueOf(c));
-            }else if (s=="-") {
+            }else if (s.equals("-")) {
                 a = Integer.valueOf(stack.pop());
                 b = Integer.valueOf(stack.pop());
                 c = b-a;
                 stack.push(String.valueOf(c));
-            }else if (s=="*") {
+            }else if (s.equals("*")) {
                 a = Integer.valueOf(stack.pop());
                 b = Integer.valueOf(stack.pop());
                 c = b*a;
                 stack.push(String.valueOf(c));
-            }else if (s=="/") {
+            }else if (s.equals("/")) {
                 a = Integer.valueOf(stack.pop());
                 b = Integer.valueOf(stack.pop());
                 c = b/a;
