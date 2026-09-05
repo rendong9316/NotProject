@@ -38,6 +38,13 @@ public interface DishMapper {
     Page<DishVO> pageQuery(DishPageQueryDTO dishPageQueryDTO);
 
     /**
+     * 根据id查询菜品用来回显
+     * @param id 菜品ID
+     * @return 菜品VO（含分类名称）
+     */
+    DishVO getById(Long id);
+
+    /**
      * 统计指定ID列表中状态为status的菜品数量（用于批量删除前校验）
      * @param ids   菜品ID列表
      * @param status 状态值（1=起售）
@@ -50,5 +57,12 @@ public interface DishMapper {
      * @param ids 菜品ID列表
      */
     void deleteByIds(@Param("ids") List<Long> ids);
+
+    /**
+     * 更新菜品信息
+     * @param dish 菜品对象
+     */
+    @AutoFill(value = OperationType.UPDATE)
+    void update(Dish dish);
 
 }

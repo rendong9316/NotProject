@@ -4,6 +4,13 @@
 <mapper namespace="com.sky.mapper.DishFlavorMapper">
 
 
+    <!-- 根据菜品ID查询口味列表 -->
+    <select id="getByDishId" resultType="com.sky.entity.DishFlavor">
+        SELECT id, dish_id AS dishId, name, value
+        FROM sky_take_out.dish_flavor
+        WHERE dish_id = #{dishId}
+    </select>
+
     <insert id="insertbatch">
         insert into sky_take_out.dish_flavor(dish_id, name, value) VALUES
         <foreach collection="flavors" item="df" separator=",">

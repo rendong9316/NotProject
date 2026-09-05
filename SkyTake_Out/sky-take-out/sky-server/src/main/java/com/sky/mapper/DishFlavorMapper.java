@@ -10,6 +10,13 @@ import java.util.List;
 public interface DishFlavorMapper {
 
     /**
+     * 根据菜品ID查询口味列表
+     * @param dishId 菜品ID
+     * @return 口味列表
+     */
+    List<DishFlavor> getByDishId(@Param("dishId") Long dishId);
+
+    /**
      * 批量插入口味数据
      * @param flavors
      */
