@@ -40,4 +40,24 @@
         ORDER BY d.create_time DESC
     </select>
 
+    <!-- 批量删除时检查是否有起售中的菜品 -->
+    <select id="countByIdsAndStatus" resultType="java.lang.Integer">
+        SELECT COUNT(id)
+        FROM sky_take_out.dish
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND status = #{status}
+    </select>
+
+    <!-- 根据ID批量删除菜品 -->
+    <delete id="deleteByIds">
+        DELETE FROM sky_take_out.dish
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
 </mapper>

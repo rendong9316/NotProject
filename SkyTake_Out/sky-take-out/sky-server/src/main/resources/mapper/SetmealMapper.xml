@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.sky.mapper.SetmealMapper">
+
+    <!-- 统计指定菜品ID列表中被套餐关联的数量 -->
+    <select id="countByDishIds" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM sky_take_out.setmeal_dish
+        WHERE dish_id IN
+        <foreach collection="dishIds" item="dishId" open="(" separator="," close=")">
+            #{dishId}
+        </foreach>
+    </select>
+
+</mapper>

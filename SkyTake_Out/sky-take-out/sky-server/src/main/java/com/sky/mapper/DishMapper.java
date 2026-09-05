@@ -7,7 +7,10 @@ import com.sky.entity.Dish;
 import com.sky.enumeration.OperationType;
 import com.sky.vo.DishVO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 @Mapper
 public interface DishMapper {
@@ -33,4 +36,19 @@ public interface DishMapper {
      * @return
      */
     Page<DishVO> pageQuery(DishPageQueryDTO dishPageQueryDTO);
+
+    /**
+     * 统计指定ID列表中状态为status的菜品数量（用于批量删除前校验）
+     * @param ids   菜品ID列表
+     * @param status 状态值（1=起售）
+     * @return 符合条件的菜品数量
+     */
+    Integer countByIdsAndStatus(@Param("ids") List<Long> ids, @Param("status") Integer status);
+
+    /**
+     * 根据ID批量删除菜品
+     * @param ids 菜品ID列表
+     */
+    void deleteByIds(@Param("ids") List<Long> ids);
+
 }
