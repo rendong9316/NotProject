@@ -1,7 +1,9 @@
 package com.leetcode.binaryTree;
 
 import java.security.PrivateKey;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
 public class BinaryTreePreorderTraversal {
@@ -43,6 +45,35 @@ public class BinaryTreePreorderTraversal {
 
 
 
+
+    public List<Integer> preorderTraversal_diedai(TreeNode root) {
+        List<Integer> list = new ArrayList<>();
+        Deque<TreeNode> deque = new ArrayDeque<>();
+        if(root==null){
+            return list;
+        }
+        deque.push(root);
+        while(!deque.isEmpty()){
+            TreeNode top = deque.pop();
+            list.add(top.val);
+            if(top.right!=null){
+                deque.push(top.right);
+            }/*else {
+                continue;
+            }*/
+            if(top.left!=null){
+                deque.push(top.left);
+            }/*else {
+                continue;
+            }*/
+            //不能写continue，会跳过另外一侧子树
+        }
+        return list;
+
+    }
+
+
+
     public static void main(String[] args) {
         // 1. 手动构建一棵二叉树
         // 例如构建：    1
@@ -59,7 +90,7 @@ public class BinaryTreePreorderTraversal {
 
         // 2. 创建测试对象，调用方法
         BinaryTreePreorderTraversal solution = new BinaryTreePreorderTraversal();
-        List<Integer> result = solution.preorderTraversal(root);
+        List<Integer> result = solution.preorderTraversal_diedai(root);
 
         // 3. 打印结果
         System.out.println("前序遍历结果：" + result);
