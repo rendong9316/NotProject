@@ -1,6 +1,8 @@
 package com.leetcode.binaryTree;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
 public class BinaryTreeInorderTraversal {
@@ -21,7 +23,7 @@ public class BinaryTreeInorderTraversal {
  * }
  **/
     public List<Integer> inorderTraversal(TreeNode root) {
-        //左右中
+        //中序遍历
         List<Integer> list = new ArrayList<>();
         diguiF(root,list);
         return list;
@@ -44,6 +46,33 @@ public class BinaryTreeInorderTraversal {
     }
 
 
+    public List<Integer> inorderTraversal_diedai(TreeNode root) {
+        //中序遍历
+        List<Integer> list = new ArrayList<>();
+        Deque<TreeNode> deque = new ArrayDeque<>();
+        if(root==null){
+            return list;
+        }
+        TreeNode cur = root;
+
+        while (!deque.isEmpty()||cur!=null){
+            if(cur!=null){
+                deque.push(cur);
+                cur = cur.left;
+            }else {
+                TreeNode top = deque.pop();    // 只弹出一次
+                list.add(top.val);              // 用保存的引用取值
+                cur = top.right;                // 然后处理右子树
+            }
+        }
+
+        return list;
+
+
+    }
+
+
+
 
     public static void main(String[] args) {
         // 1. 手动构建一棵二叉树
@@ -61,7 +90,7 @@ public class BinaryTreeInorderTraversal {
 
         // 2. 创建测试对象，调用方法
         BinaryTreeInorderTraversal solution = new BinaryTreeInorderTraversal();
-        List<Integer> result = solution.inorderTraversal(root);
+        List<Integer> result = solution.inorderTraversal_diedai(root);
 
         // 3. 打印结果
         System.out.println("前序遍历结果：" + result);
